@@ -325,29 +325,6 @@ class TestComponent(unittest.TestCase):
 
         self.assertIn("cat", results[0].detection_properties["TEXT"])
 
-    def test_invalid_timestamp_format(self):
-        component = LlamaVideoSummarizationComponent()
-
-        cat_timeline = copy.deepcopy(CAT_TIMELINE["video_event_timeline"])
-        cat_timeline[0]["timestamp_start"] = "7:12:03.234"
-
-        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
-            {
-                "GENERATION_MAX_ATTEMPTS" : "1",
-                "TIMELINE_CHECK_TARGET_THRESHOLD" : "10"
-            },
-            CAT_VIDEO_PROPERTIES, {})
-
-        with self.assertRaises(mpf.DetectionException) as cm:
-            self.run_patched_job(component, job, json.dumps(
-            {
-                "video_summary": "This is a video of a cat.",
-                "video_event_timeline": cat_timeline
-            })) # don't care about results
-
-        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("Invalid timestamp: ", str(cm.exception))
-
 
     def test_invalid_json_response(self):
         component = LlamaVideoSummarizationComponent()
@@ -414,7 +391,7 @@ class TestComponent(unittest.TestCase):
             })) # don't care about results
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
-        self.assertIn("could not convert string to float", str(cm.exception))
+        self.assertIn("Invalid timestamp: ", str(cm.exception))
 
 
     def test_empty_response(self):
