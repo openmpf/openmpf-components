@@ -29,11 +29,10 @@
 ARG MODELS_REGISTRY=openmpf/
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:8.0.0 as models
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
-COPY --from=models /models/ViT-L-14.pt /models/ViT-L-14.pt
+FROM ${MODELS_REGISTRY}openmpf_clip_detection_models:8.0.0 AS models
+
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
@@ -43,20 +42,29 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 
 RUN pip3 install --upgrade pip
 
-RUN pip3 install ftfy regex tqdm 'setuptools<70'
-
 RUN --mount=type=tmpfs,target=/tmp \
-        mkdir /tmp/CLIP; \
-        wget -O- 'https://github.com/openai/CLIP/tarball/master' \
-            | tar --extract --gzip --directory /tmp/CLIP; \
-        cd /tmp/CLIP/*; \
-        pip3 install . 'torchvision==0.14.1'
+    mkdir /tmp/CLIP; \
+    wget -O- 'https://github.com/openai/CLIP/tarball/master' \
+        | tar --extract --gzip --directory /tmp/CLIP; \
+    cd /tmp/CLIP/*; \
+    pip3 install . 'torchvision==0.14.1' 'tritonclient[grpc]==2.40'
 
 ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
+    --mount=from=models,source=/models,target=/models \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_clip.py; fi
+
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+
+COPY --from=models /models/ViT-B-32.pt /models/ViT-B-32.pt
+COPY --from=models /models/ViT-L-14.pt /models/ViT-L-14.pt
+
+COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
+COPY --from=build $PLUGINS_DIR/ClipDetection $PLUGINS_DIR/ClipDetection
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF CLIP Detection" \

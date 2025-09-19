@@ -41,20 +41,7 @@ RUSSIAN_SHORT_SAMPLE = "Где библиотека?"
 CHINESE_SHORT_SAMPLE = "你好，你叫什么名字？"
 SHORT_OUTPUT = "Where's the library?"
 
-# Note: Argos-Chinese translations have improved over time.
 SHORT_OUTPUT_CHINESE = "Hello. What's your name?"
-
-LONG_OUTPUT = (
-    "We hold as evident these truths: that all men are created equal, "
-    "that they are endowed by their Creator with certain inalienable rights, "
-    "which among them are life, liberty and the pursuit of happiness. "
-    "That in order to nurture these rights, governments are instituted among men, "
-    "which derive their legitimate powers from the consent of the governed. "
-    "Whenever a form of government becomes destroyer of these principles, "
-    "the people have the right to reform or abolish it and to institute a new government "
-    "that is founded on those principles, and to organize their powers in the way that in "
-    "their opinion will offer the greatest chance of achieving their security and happiness."
-)
 
 MED_OUTPUT = (
     "Considering that the recognition of the inherent dignity and equal and "
@@ -149,28 +136,6 @@ class TestArgosTranslation(unittest.TestCase):
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[0].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT, result[0].frame_locations[1].detection_properties['TRANSLATION'])
         self.assertEqual(SHORT_OUTPUT_CHINESE, result[0].frame_locations[2].detection_properties['TRANSLATION'])
-
-    def test_large_text(self):
-        comp = ArgosTranslationComponent()
-        job = mpf.GenericJob(
-            job_name='Test Sentence Length',
-            data_uri=str(TEST_DATA / 'spanish_long.txt'),
-            job_properties=dict(DEFAULT_SOURCE_LANGUAGE='ES'),
-            media_properties={},
-            feed_forward_track=None
-        )
-
-        result = comp.get_detections_from_generic(job)
-
-        self.assertEqual(1, len(result))
-        self.assertEqual('es', result[0].detection_properties['TRANSLATION_SOURCE_LANGUAGE'])
-
-        trans_result = result[0].detection_properties['TRANSLATION'].replace("nullify","nurture")
-        trans_result = trans_result.replace("founded on these principles","founded on those principles")
-
-        # TODO: Identify why the 1.0 spanish model occasionally switches words.
-        # In this case,  words for nurture/nullify, and these/those are sometimes switched depending on build environment.
-        self.assertEqual(LONG_OUTPUT, trans_result)
 
     def test_medium_text(self):
         comp = ArgosTranslationComponent()
