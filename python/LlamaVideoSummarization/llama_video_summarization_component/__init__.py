@@ -128,36 +128,40 @@ class LlamaVideoSummarizationComponent:
 
     def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str
                         ) -> Tuple[Union[dict, None], Union[str, None]]:
+        error = None
         response_json = None
 
         if not response:
             error = 'Empty response.'
-            log.warning(error)
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return None, error
 
-        try:
-            response_json = json.loads(response)
-        except ValueError as ve:
-            error = 'Response is not valid JSON.'
-            log.warning(error)
-            log.warning(str(ve))
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return response_json, error
+        if not error:
+            try:
+                response_json = json.loads(response)
+            except ValueError as ve:
+                error = f'Response is not valid JSON. {str(ve)}'
 
-        try:
-            validate(response_json, schema_json)
-        except ValidationError as ve:
-            error = 'Response JSON is not in the desired format.'
-            log.warning(error)
-            log.warning(str(ve))
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return response_json, error
+        if not error and response_json:
+            try:
+                validate(response_json, schema_json)
+            except ValidationError as ve:
+                error = f'Response JSON is not in the desired format. {str(ve)}'
         
-        return response_json, None
+        if not error and response_json:
+            try:
+                event_timeline = response_json['video_event_timeline']
+                for event in event_timeline:
+                    # update values for later use
+                    event["timestamp_start"] = _get_timestamp_value(event["timestamp_start"])
+                    event["timestamp_end"] = _get_timestamp_value(event["timestamp_end"])
+            except ValueError as ve:
+                error = f'Response JSON is not in the desired format. {str(ve)}'
+    
+        if error:
+            log.warning(error)
+            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+
+        return response_json, error
 
 
     def _check_timeline(self, target_threshold: float, accept_threshold: float, attempts: dict, max_attempts: int,
@@ -176,8 +180,8 @@ class LlamaVideoSummarizationComponent:
         hard_error = None
         soft_error = None
         for event in event_timeline:
-            timestamp_start = _get_timestamp_value(event["timestamp_start"])
-            timestamp_end = _get_timestamp_value(event["timestamp_end"])
+            timestamp_start = event["timestamp_start"]
+            timestamp_end = event["timestamp_end"]
 
             if timestamp_start < 0:
                 hard_error = (f'Timeline event start time of {timestamp_start} < 0.')
@@ -307,8 +311,8 @@ class LlamaVideoSummarizationComponent:
 
             for event in response_json['video_event_timeline']:
                 # get offset start/stop times in milliseconds
-                event_start_time = int(_get_timestamp_value(event['timestamp_start']) * 1000)
-                event_stop_time = int(_get_timestamp_value(event['timestamp_end']) * 1000)
+                event_start_time = int(event['timestamp_start'] * 1000)
+                event_stop_time = int(event['timestamp_end'] * 1000)
 
                 offset_start_frame = int((event_start_time * video_fps) / 1000)
                 offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1

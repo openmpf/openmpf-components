@@ -70,7 +70,7 @@ CAT_TIMELINE = {
         },
         {
             "timestamp_start": "5.0",
-            "timestamp_end": "6.8",
+            "timestamp_end": "6.8s",
             "description": "The cat looks back at the camera and then walks away."
         }
     ]
@@ -364,6 +364,59 @@ class TestComponent(unittest.TestCase):
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("not valid JSON", str(cm.exception))
 
+
+    def test_schema_check(self):
+        component = LlamaVideoSummarizationComponent()
+
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
+            {
+                "GENERATION_MAX_ATTEMPTS" : "1"
+            },
+            CAT_VIDEO_PROPERTIES, {})
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job, json.dumps(
+            {
+                "video_summary": "This is a video of a cat.",
+                "video_event_timeline": [
+                    {
+                        "timestamp_start": "0.00",
+                        "bad": "8.04",
+                        "description": "The cat is sitting on the cobblestone street, looking around."
+                    }
+                ]
+            })) # don't care about results
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("'timestamp_end' is a required property", str(cm.exception))
+
+
+    def test_invalid_timestamp(self):
+        component = LlamaVideoSummarizationComponent()
+
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
+            {
+                "GENERATION_MAX_ATTEMPTS" : "1"
+            },
+            CAT_VIDEO_PROPERTIES, {})
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job, json.dumps(
+            {
+                "video_summary": "This is a video of a cat.",
+                "video_event_timeline": [
+                    {
+                        "timestamp_start": "7:12",
+                        "timestamp_end": "8:04",
+                        "description": "The cat is sitting on the cobblestone street, looking around."
+                    }
+                ]
+            })) # don't care about results
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("could not convert string to float", str(cm.exception))
+
+
     def test_empty_response(self):
         component = LlamaVideoSummarizationComponent()
 
@@ -378,6 +431,7 @@ class TestComponent(unittest.TestCase):
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
+
 
     def test_timeline_integrity(self):
         component = LlamaVideoSummarizationComponent()
