@@ -381,7 +381,7 @@ class LlamaVideoSummarizationComponent:
 
 def _get_timestamp_value(seconds: Any) -> float:
     if isinstance(seconds, str):
-        if re.match(r"\s*\d+(\.\d*)?\s*[Ss]", seconds):
+        if re.match(r"\s*\d+(\.\d*)?\s*[Ss]?", seconds):
             secval = float(re.sub('s', '', seconds, flags=re.IGNORECASE))
         else:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Invalid timestamp: {seconds}')
