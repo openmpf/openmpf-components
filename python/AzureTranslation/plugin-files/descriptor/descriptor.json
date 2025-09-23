@@ -95,7 +95,7 @@
         },
         {
           "name": "SENTENCE_MODEL",
-          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model, Segment any Text (SaT) `sat-3l-sm` model, and Where's the Point (WtP) `wtp-bert-mini` model.",
           "type": "STRING",
           "defaultValue": "wtp-bert-mini"
         },
@@ -107,7 +107,7 @@
         },
         {
           "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
-          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`, or Azure language detection return a different, WtP-supported language option.",
+          "description": "More advanced WtP/SaT models will require a target language. This property sets the default language to use for sentence splitting, unless `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`, or Azure language detection return a different, WtP-supported language option.",
           "type": "STRING",
           "defaultValue": "en"
         },
