@@ -576,7 +576,7 @@ class NllbLanguageMapper:
                 return cls._iso_to_flores200[lang.lower()][script.lower()]
             else:
                 raise mpf.DetectionException(
-                    f'Source language/script combination ({lang}_{script}) is invalid or not supported',
+                    f'Language/script combination ({lang}_{script}) is invalid or not supported',
                 mpf.DetectionError.INVALID_PROPERTY)
         return cls._iso_default_script_flores200.get(lang.lower())
 
