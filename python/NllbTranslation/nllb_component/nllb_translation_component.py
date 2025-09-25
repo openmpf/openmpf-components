@@ -276,7 +276,7 @@ class JobConfig:
                 targetScript)
         except KeyError:
             logger.exception(
-                f'Unsupported script provided')
+                f'Unsupported target script provided')
             raise mpf.DetectionException(
                  f'Target script ({targetScript}) is unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
