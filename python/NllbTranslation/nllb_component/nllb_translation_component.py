@@ -267,10 +267,29 @@ class JobConfig:
         # default model, cached
         self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", DEFAULT_NLLB_MODEL)
 
-        # language to translate to
-        self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
-            mpf_util.get_property(props, 'TARGET_LANGUAGE', 'eng'),
-            mpf_util.get_property(props, 'TARGET_SCRIPT', 'Latn'))
+        # language/script to translate to
+        targetLanguage: str = mpf_util.get_property(props, 'TARGET_LANGUAGE', 'eng')
+        targetScript: str = mpf_util.get_property(props, 'TARGET_SCRIPT', 'Latn')
+        try:
+            self.translate_to_language: Optional[str] = NllbLanguageMapper.get_code(
+                targetLanguage,
+                targetScript)
+        except KeyError:
+            logger.exception(
+                f'Unsupported script provided')
+            raise mpf.DetectionException(
+                 f'Target script ({targetScript}) is unsupported',
+                mpf.DetectionError.INVALID_PROPERTY)
+        except:
+            logger.exception(
+                f'Failed to complete job due to the following exception:')
+            raise
+
+        if not self.translate_to_language:
+            logger.exception('Unsupported target language provided')
+            raise mpf.DetectionException(
+                f'Target language ({targetLanguage}) is not supported',
+                mpf.DetectionError.INVALID_PROPERTY)
 
         # get language to translate from
         ff_lang_props: list[str] = [
