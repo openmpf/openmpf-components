@@ -295,6 +295,22 @@ class TestNllbTranslation(unittest.TestCase):
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
 
+    def test_unsupported_target_language(self):
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE']="deu"
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT']="Latn"
+        test_generic_job_props['TARGET_LANGUAGE']="ABC"
+        test_generic_job_props['TARGET_SCRIPT']="Latn"
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT="Hello"))
+        job = mpf.GenericJob('Test Plaintext', 'test.txt', test_generic_job_props, {}, ff_track)
+        comp = NllbTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_generic(job))
+        self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+        self.assertEqual('Target language (ABC) is not supported (DetectionError.INVALID_PROPERTY)', str(cm.exception))
+
     def test_unsupported_source_script(self):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -308,6 +324,22 @@ class TestNllbTranslation(unittest.TestCase):
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+
+    def test_unsupported_target_script(self):
+        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
+        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE']="deu"
+        test_generic_job_props['DEFAULT_SOURCE_SCRIPT']="Latn"
+        test_generic_job_props['TARGET_LANGUAGE']="eng"
+        test_generic_job_props['TARGET_SCRIPT']="BadScript"
+
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))
+        job = mpf.GenericJob('Test Plaintext', 'test.txt', test_generic_job_props, {}, ff_track)
+        comp = NllbTranslationComponent()
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            list(comp.get_detections_from_generic(job))
+        self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+        self.assertEqual('Language/script combination (eng_BadScript) is invalid or not supported (DetectionError.INVALID_PROPERTY)', str(cm.exception))
 
     def test_invalid_script_lang_combination(self):
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
