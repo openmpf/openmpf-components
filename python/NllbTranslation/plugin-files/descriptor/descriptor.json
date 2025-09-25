@@ -82,13 +82,13 @@
         },
         {
           "name": "TARGET_LANGUAGE",
-          "description": "The ISO-639-3 language code for language and script that the input test should be translated to.",
+          "description": "The ISO-639-3 language code for language and script that the input text should be translated to.",
           "type": "STRING",
           "defaultValue": "eng"
         },
         {
           "name": "TARGET_SCRIPT",
-          "description": "The ISO-15924 language code for language and script that the input test should be translated to.",
+          "description": "The ISO-15924 language code for language and script that the input text should be translated to.",
           "type": "STRING",
           "defaultValue": "Latn"
         },
