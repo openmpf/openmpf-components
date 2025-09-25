@@ -294,6 +294,7 @@ class TestNllbTranslation(unittest.TestCase):
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+        self.assertEqual('Source language (ABC) is empty or unsupported (DetectionError.INVALID_PROPERTY)', str(cm.exception))
 
     def test_unsupported_target_language(self):
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -324,6 +325,7 @@ class TestNllbTranslation(unittest.TestCase):
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
+        self.assertEqual('Language/script combination (deu_BadScript) is invalid or not supported (DetectionError.INVALID_PROPERTY)', str(cm.exception))
 
     def test_unsupported_target_script(self):
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -353,7 +355,7 @@ class TestNllbTranslation(unittest.TestCase):
         with self.assertRaises(mpf.DetectionException) as cm:
             list(comp.get_detections_from_generic(job))
         self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
-        self.assertEqual('Source language/script combination (spa_Cyrl) is invalid or not supported', cm.exception.args[0])
+        self.assertEqual('Language/script combination (spa_Cyrl) is invalid or not supported (DetectionError.INVALID_PROPERTY)', str(cm.exception))
 
     def test_no_script_prop(self):
         #set default props
