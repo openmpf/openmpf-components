@@ -17,7 +17,7 @@
       "states": [
         "DETECTION",
         "DETECTION_TRANSLATION",
-        "DETECTION_TRANSLATION_Nllb"
+        "DETECTION_TRANSLATION_NLLB"
       ],
       "properties": [
         {
@@ -110,13 +110,13 @@
   "actions": [
     {
       "name": "NLLB TRANSLATION TEXT FILE ACTION",
-      "description": "Performs Nllb translation on a plain text file.",
+      "description": "Performs NLLB translation on a plain text file.",
       "algorithm": "NLLBTRANSLATION",
       "properties": []
     },
     {
       "name": "NLLB TRANSLATION (WITH FF REGION) ACTION",
-      "description": "Performs Nllb translation on feed-forward tracks and detections.",
+      "description": "Performs NLLB translation on feed-forward tracks and detections.",
       "algorithm": "NLLBTRANSLATION",
       "properties": [
         {
@@ -133,14 +133,14 @@
   "tasks": [
     {
       "name": "NLLB TRANSLATION TEXT FILE TASK",
-      "description": "Uses No Language Left Behind to perform translation on a plain text file.",
+      "description": "Uses NLLB to perform translation on a plain text file.",
       "actions": [
         "NLLB TRANSLATION TEXT FILE ACTION"
       ]
     },
     {
       "name": "NLLB TRANSLATION (WITH FF REGION) TASK",
-      "description": "Uses No Language Left Behindto perform translation on feed-forward tracks and detections.",
+      "description": "Uses NLLB to perform translation on feed-forward tracks and detections.",
       "actions": [
         "NLLB TRANSLATION (WITH FF REGION) ACTION"
       ]
@@ -149,9 +149,18 @@
   "pipelines": [
     {
       "name": "NLLB TRANSLATION TEXT FILE PIPELINE",
-      "description": "Performs Nllb translation on a plain text file.",
+      "description": "Performs NLLB translation on a plain text file.",
       "tasks": [
         "NLLB TRANSLATION TEXT FILE TASK"
+      ]
+    },
+    {
+      "name": "FASTTEXT LANGUAGE ID WITH NLLB TRANSLATION AND KEYWORD TAGGING TEXT FILE PIPELINE",
+      "description": "Uses FastText to perform language identification on a plain text file, then performs NLLB translation and keyword tagging.",
+      "tasks": [
+        "FASTTEXT LANGUAGE ID TEXT FILE TASK",
+        "NLLB TRANSLATION (WITH FF REGION) TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
       ]
     }
   ]
