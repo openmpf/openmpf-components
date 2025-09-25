@@ -35,7 +35,7 @@ import mpf_component_util as mpf_util
 from typing import Dict, Optional, Sequence, Mapping, TypeVar
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
-from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
+from nlp_text_splitter import SplitMode, TextSplitterModel, TextSplitter, WtpLanguageSettings
 
 logger = logging.getLogger('NllbTranslationComponent')
 
@@ -207,14 +207,16 @@ class NllbTranslationComponent:
                         0,
                         len,
                         text_splitter_model,
-                        wtp_lang)
+                        wtp_lang,
+                        split_mode=SplitMode.SENTENCE)
                 else:
                     input_text_sentences = TextSplitter.split(
                         text,
                         config.nllb_character_limit,
                         0,
                         len,
-                        text_splitter_model)
+                        text_splitter_model,
+                        split_mode=SplitMode.SENTENCE)
 
                 text_list = list(input_text_sentences)
                 logger.info(f'Input text split into {len(text_list)} sentences.')
