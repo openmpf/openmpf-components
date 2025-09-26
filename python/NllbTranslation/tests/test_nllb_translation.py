@@ -44,6 +44,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 class TestNllbTranslation(unittest.TestCase):
 
+    maxDiff = None
+
     #get descriptor.json file path
     cur_path: str = os.path.dirname(__file__)
     descriptorFile: str = os.path.join(cur_path, '../plugin-files/descriptor/descriptor.json')
