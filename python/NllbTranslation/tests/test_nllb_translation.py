@@ -480,24 +480,12 @@ class TestNllbTranslation(unittest.TestCase):
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
 
         # excerpt from https://www.gutenberg.org/ebooks/16443
-        pt_text="""Teimam de facto estes em que são indispensaveis os vividos raios do
-nosso desanuviado sol, ou a face desassombrada da lua no firmamento
-peninsular, onde não tem, como a de Londres--_a romper a custo um
-plumbeo céo_--para verterem alegrias na alma e mandarem aos semblantes o
-reflexo d'ellas; imaginam fatalmente perseguidos de _spleen_,
-irremediavelmente lugubres e soturnos, como se a cada momento saíssem
-das galerias subterraneas de uma mina de _pit-coul_, os nossos alliados
-inglezes.
+        pt_text="""Teimam de facto estes em que são indispensaveis os vividos raios do nosso desanuviado sol, ou a face desassombrada da lua no firmamento peninsular, onde não tem, como a de Londres--_a romper a custo um plumbeo céo_--para verterem alegrias na alma e mandarem aos semblantes o reflexo d'ellas; imaginam fatalmente perseguidos de _spleen_, irremediavelmente lugubres e soturnos, como se a cada momento saíssem das galerias subterraneas de uma mina de _pit-coul_, os nossos alliados inglezes.
+        
+        Como se enganam ou como pretendem enganar-nos!
+        
+        É esta uma illusão ou má fé, contra a qual ha muito reclama debalde a indelevel e accentuada expressão de beatitude, que transluz no rosto illuminado dos homens de além da Mancha, os quaes parece caminharem entre nós, envolvidos em densa atmosphera de perenne contentamento, satisfeitos do mundo, satisfeitos dos homens e, muito especialmente, satisfeitos de si."""
 
-Como se enganam ou como pretendem enganar-nos!
-
-É esta uma illusão ou má fé, contra a qual ha muito reclama debalde a
-indelevel e accentuada expressão de beatitude, que transluz no rosto
-illuminado dos homens de além da Mancha, os quaes parece caminharem
-entre nós, envolvidos em densa atmosphera de perenne contentamento,
-satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
-satisfeitos de si.
-"""
         pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable, to pour joy into the soul and send to the semblances the reflection of them; they imagine fatally pursued from _spleen_,  hopelessly gloomy and sullen, as if at every moment they were emerging from the subterranean galleries of a pit-coal mine, our British allies. How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which much is vainly complained the unlevel and accentuated expression of bliss, which shines through on the face. The European Parliament has been a great help to the people of Europe in the past, and it is a great help to us in the present."
 
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
