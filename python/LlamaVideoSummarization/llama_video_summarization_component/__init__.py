@@ -99,7 +99,8 @@ class LlamaVideoSummarizationComponent:
         segment_start_time = job_config['segment_start_time']
         segment_stop_time = job_config['segment_stop_time']
 
-        response_json = {}
+        response_json = None
+        acceptable_json = None
         error = None
         while max(attempts.values()) < max_attempts:
             response = self.child_process.send_job_get_response(job_config)
@@ -108,21 +109,24 @@ class LlamaVideoSummarizationComponent:
                 continue
 
             if timeline_check_target_threshold != -1:
-                error = self._check_timeline(
-                    timeline_check_target_threshold, timeline_check_acceptable_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, response_json)
+                acceptable, error = self._check_timeline(
+                    timeline_check_target_threshold, timeline_check_acceptable_threshold,
+                    attempts, max_attempts, segment_start_time, segment_stop_time, response_json)
+                if acceptable:
+                    acceptable_json = response_json
                 if error is not None:
                     continue
 
             break
 
         if error:
-            acceptable_timeline = self._fetch_acceptable_response()
-            if acceptable_timeline is not None:
-                return acceptable_timeline
+            if acceptable_json is not None:
+                log.info('Couldn\'t satisfy target threshold. Falling back to response that satisfies acceptable threshold.')
+                return acceptable_json
             else:
                 raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
 
-        # if no error, then response_json should be valid
+        # if no error, then response_json should be valid and meet target criteria
         return response_json # type: ignore
 
 
@@ -166,16 +170,13 @@ class LlamaVideoSummarizationComponent:
 
     def _check_timeline(self, target_threshold: float, accept_threshold: float, attempts: dict, max_attempts: int,
                         segment_start_time: float, segment_stop_time: float, response_json: dict
-                        ) -> Union[str, None]:
+                        ) -> Tuple[bool, Union[str, None]]:
 
         event_timeline = response_json['video_event_timeline'] # type: ignore
 
-        # start with passing checks, then fail as secondary checks are conducted
         acceptable_checks = dict(
-            before_seg_start = True,
-            after_seg_stop = True,
-            after_seg_start = True,
-            before_seg_stop = True)
+            near_seg_start = False,
+            near_seg_stop = False)
 
         hard_error = None
         soft_error = None
@@ -195,31 +196,17 @@ class LlamaVideoSummarizationComponent:
                 hard_error = (f'Timeline event end time is less than event start time. '
                          f'{timestamp_end} < {timestamp_start}.')
                 break
-            
-            if (segment_start_time - timestamp_start) > target_threshold:
-                soft_error = (f'Timeline event start time occurs too soon before segment start time. '
-                         f'({segment_start_time} - {timestamp_start}) > {target_threshold}.')
-                if (segment_start_time - timestamp_start) > accept_threshold:
-                    acceptable_checks['before_seg_start'] = False
-                    break
-
-            if (timestamp_end - segment_stop_time) > target_threshold:
-                soft_error = (f'Timeline event end time occurs too late after segment stop time. '
-                         f'({timestamp_end} - {segment_stop_time}) > {target_threshold}.')
-                if (timestamp_end - segment_stop_time) > accept_threshold:
-                    acceptable_checks['after_seg_stop'] = False
-                    break
 
         minmax_errors = []
         if not hard_error:
             min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
+            
             if abs(segment_start_time - min_event_start) > target_threshold:
-
                 minmax_errors.append((f'Min timeline event start time not close enough to segment start time. '
                          f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.'))
-                if abs(segment_start_time - min_event_start) > accept_threshold:
-                    acceptable_checks['after_seg_start'] = False
+                acceptable_checks['near_seg_start'] = \
+                    not (abs(segment_start_time - min_event_start) > accept_threshold)
 
             max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
@@ -227,12 +214,10 @@ class LlamaVideoSummarizationComponent:
             if abs(max_event_end - segment_stop_time) > target_threshold:
                 minmax_errors.append((f'Max timeline event end time not close enough to segment stop time. '
                             f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.'))
-                if abs(max_event_end - segment_stop_time) > accept_threshold:
-                    acceptable_checks['before_seg_stop'] = False
+                acceptable_checks['near_seg_stop'] = \
+                    not (abs(max_event_end - segment_stop_time) > accept_threshold)
 
-        if not hard_error:
-            if list({v for v in acceptable_checks.values()}) == [True]:
-                self._store_acceptable_response(response_json)
+        acceptable = not hard_error and all(acceptable_checks.values())
 
         if len(minmax_errors) > 0:
             soft_error = minmax_errors.pop()
@@ -247,15 +232,9 @@ class LlamaVideoSummarizationComponent:
             log.warning(error)
             log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
-            return error
+        
+        return acceptable, error
 
-        return None
-
-    def _store_acceptable_response(self, response_json: dict) -> None:
-        self.acceptable_timeline = response_json
-
-    def _fetch_acceptable_response(self) -> list:
-        return self.acceptable_timeline
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
         start_frame = job.start_frame
@@ -379,6 +358,7 @@ class LlamaVideoSummarizationComponent:
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
+
 def _get_timestamp_value(seconds: Any) -> float:
     if isinstance(seconds, str):
         if re.match(r"\s*\d+(\.\d*)?\s*[Ss]?", seconds):
@@ -388,6 +368,7 @@ def _get_timestamp_value(seconds: Any) -> float:
     else:
         secval = float(seconds)
     return secval
+
 
 def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> dict:
     process_fps = mpf_util.get_property(
@@ -454,12 +435,14 @@ class ChildProcess:
                     env=env)
             self._socket = parent_socket.makefile('rwb')
 
+
     def __del__(self):
         print("Terminating subprocess...")
         self._socket.close()
         self._proc.terminate()
         self._proc.wait()
         print("Subprocess terminated")
+
 
     def send_job_get_response(self, config: dict):
         job_bytes = pickle.dumps(config)
