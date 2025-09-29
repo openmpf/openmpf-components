@@ -45,7 +45,6 @@ class LlamaVideoSummarizationComponent:
 
     def __init__(self):
         self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py', str(log.getEffectiveLevel())])
-        self.acceptable_timeline = None
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         try:
