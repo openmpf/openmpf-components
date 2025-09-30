@@ -34,7 +34,7 @@ import subprocess
 import re
 
 from jsonschema import validate, ValidationError
-from typing import Any, Iterable, List, Mapping, Tuple, Union
+from typing import Any, cast, Iterable, List, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -110,7 +110,7 @@ class LlamaVideoSummarizationComponent:
             if timeline_check_target_threshold != -1:
                 acceptable, error = self._check_timeline(
                     timeline_check_target_threshold, timeline_check_acceptable_threshold,
-                    attempts, max_attempts, segment_start_time, segment_stop_time, response_json)
+                    attempts, max_attempts, segment_start_time, segment_stop_time, cast(dict, response_json))
                 if acceptable:
                     acceptable_json = response_json
                 if error is not None:
@@ -204,8 +204,9 @@ class LlamaVideoSummarizationComponent:
             if abs(segment_start_time - min_event_start) > target_threshold:
                 minmax_errors.append((f'Min timeline event start time not close enough to segment start time. '
                          f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.'))
-                acceptable_checks['near_seg_start'] = \
-                    not (abs(segment_start_time - min_event_start) > accept_threshold)
+                
+            acceptable_checks['near_seg_start'] = \
+                not (abs(segment_start_time - min_event_start) > accept_threshold)
 
             max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
@@ -213,8 +214,9 @@ class LlamaVideoSummarizationComponent:
             if abs(max_event_end - segment_stop_time) > target_threshold:
                 minmax_errors.append((f'Max timeline event end time not close enough to segment stop time. '
                             f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.'))
-                acceptable_checks['near_seg_stop'] = \
-                    not (abs(max_event_end - segment_stop_time) > accept_threshold)
+
+            acceptable_checks['near_seg_stop'] = \
+                not (abs(max_event_end - segment_stop_time) > accept_threshold)
 
         acceptable = not hard_error and all(acceptable_checks.values())
 
@@ -360,7 +362,7 @@ class LlamaVideoSummarizationComponent:
 
 def _get_timestamp_value(seconds: Any) -> float:
     if isinstance(seconds, str):
-        if re.match(r"\s*\d+(\.\d*)?\s*[Ss]?", seconds):
+        if re.match(r"^\s*\d+(\.\d*)?\s*[Ss]?$", seconds):
             secval = float(re.sub('s', '', seconds, flags=re.IGNORECASE))
         else:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Invalid timestamp: {seconds}')
