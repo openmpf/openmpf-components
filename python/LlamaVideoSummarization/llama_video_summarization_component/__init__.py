@@ -65,8 +65,7 @@ class LlamaVideoSummarizationComponent:
 
             if job_config['timeline_check_target_threshold'] < 0 and \
                     job_config['timeline_check_acceptable_threshold'] >= 0:
-                raise mpf.DetectionError.INVALID_PROPERTY.exception(
-                    'TIMELINE_CHECK_TARGET_THRESHOLD must be >= 0 when TIMELINE_CHECK_ACCEPTABLE_THRESHOLD >= 0.')
+                log.warning('TIMELINE_CHECK_ACCEPTABLE_THRESHOLD will be ignored since TIMELINE_CHECK_TARGET_THRESHOLD < 0.')
 
             if job_config['timeline_check_acceptable_threshold'] < job_config['timeline_check_target_threshold']:
                 raise mpf.DetectionError.INVALID_PROPERTY.exception(
