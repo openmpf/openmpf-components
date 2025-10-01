@@ -65,13 +65,13 @@
                 },
                 {
                     "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
-                    "description": "Specifies the number of seconds that video events can occur before or after video segment bounds. If exceeded, another attempt will be made to generate the output. See also the TIMELINE_CHECK_THRESHOLD_ACCEPTABLE property. Set to -1 to disable check.",
+                    "description": "Specifies the number of seconds that video events can occur before or after video segment bounds. If exceeded, another attempt will be made to generate the output. See also the TIMELINE_CHECK_THRESHOLD_ACCEPTABLE property. Set to < 0 to disable check (e.g. -1).",
                     "type": "INT",
                     "defaultValue": "10"
                 },
                 {
                     "name": "TIMELINE_CHECK_ACCEPTABLE_THRESHOLD",
-                    "description": "A secondary timeline validation threshold, in seconds that specifies the number of seconds video events can occur before or after video segment bounds, which will result in an \"acceptable\" timeline. Additional attempts will be made to generate a timeline within the \"desired\" range of TIMELINE_CHECK_TARGET_THRESHOLD, until GENERATION_MAX_ATTEMPTS is reached, after which the \"acceptable\" timeline is returned, or the component responds with an error. Set to -1 to disable check.",
+                    "description": "A secondary timeline validation threshold, in seconds that specifies the number of seconds video events can occur before or after video segment bounds, which will result in an \"acceptable\" timeline. Additional attempts will be made to generate a timeline within the \"desired\" range of TIMELINE_CHECK_TARGET_THRESHOLD, until GENERATION_MAX_ATTEMPTS is reached, after which the \"acceptable\" timeline is returned, or the component responds with an error. Set to < 0 to disable check (e.g. -1).",
                     "type": "INT",
                     "defaultValue": "30"
                 },

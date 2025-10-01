@@ -63,6 +63,11 @@ class LlamaVideoSummarizationComponent:
 
             job_config = _parse_properties(job.job_properties, segment_start_time)
 
+            if job_config['timeline_check_target_threshold'] < 0 and \
+                    job_config['timeline_check_acceptable_threshold'] >= 0:
+                raise mpf.DetectionError.INVALID_PROPERTY.exception(
+                    'TIMELINE_CHECK_TARGET_THRESHOLD must be >= 0 when TIMELINE_CHECK_ACCEPTABLE_THRESHOLD >= 0.')
+
             if job_config['timeline_check_acceptable_threshold'] < job_config['timeline_check_target_threshold']:
                 raise mpf.DetectionError.INVALID_PROPERTY.exception(
                     'TIMELINE_CHECK_ACCEPTABLE_THRESHOLD must be >= TIMELINE_CHECK_TARGET_THRESHOLD.')
@@ -107,7 +112,7 @@ class LlamaVideoSummarizationComponent:
             if error is not None:
                 continue
 
-            if timeline_check_target_threshold != -1:
+            if timeline_check_target_threshold >= 0:
                 acceptable, error = self._check_timeline(
                     timeline_check_target_threshold, timeline_check_acceptable_threshold,
                     attempts, max_attempts, segment_start_time, segment_stop_time, cast(dict, response_json))
@@ -201,22 +206,21 @@ class LlamaVideoSummarizationComponent:
             min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
             
-            if abs(segment_start_time - min_event_start) > target_threshold:
-                minmax_errors.append((f'Min timeline event start time not close enough to segment start time. '
-                         f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.'))
-                
-            acceptable_checks['near_seg_start'] = \
-                not (abs(segment_start_time - min_event_start) > accept_threshold)
-
             max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
+            if abs(segment_start_time - min_event_start) > target_threshold:
+                minmax_errors.append((f'Min timeline event start time not close enough to segment start time. '
+                                      f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.'))
+
             if abs(max_event_end - segment_stop_time) > target_threshold:
                 minmax_errors.append((f'Max timeline event end time not close enough to segment stop time. '
-                            f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.'))
+                                      f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.'))
+            
+            if accept_threshold >= 0:
+                acceptable_checks['near_seg_start'] = abs(segment_start_time - min_event_start) <= accept_threshold
 
-            acceptable_checks['near_seg_stop'] = \
-                not (abs(max_event_end - segment_stop_time) > accept_threshold)
+                acceptable_checks['near_seg_stop'] = abs(max_event_end - segment_stop_time) <= accept_threshold
 
         acceptable = not hard_error and all(acceptable_checks.values())
 
