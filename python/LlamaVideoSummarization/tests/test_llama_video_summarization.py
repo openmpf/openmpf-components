@@ -207,10 +207,10 @@ class TestComponent(unittest.TestCase):
     
 
     def assert_detection_region(self, detection, frame_width, frame_height):    
-        self.assertEquals(0, detection.x_left_upper)
-        self.assertEquals(0, detection.y_left_upper)
-        self.assertEquals(frame_width, detection.width)
-        self.assertEquals(frame_height, detection.height)
+        self.assertEqual(0, detection.x_left_upper)
+        self.assertEqual(0, detection.y_left_upper)
+        self.assertEqual(frame_width, detection.width)
+        self.assertEqual(frame_height, detection.height)
 
 
     def assert_first_middle_last_detections(self, track, frame_width, frame_height):
@@ -597,7 +597,7 @@ class TestComponent(unittest.TestCase):
         drone_timeline_segment_1["video_event_timeline"][0]["timestamp_start"] += 11.0
         drone_timeline_segment_1["video_event_timeline"][2]["timestamp_end"] += 20.0
         job1_results = self.run_patched_job(component, job1, json.dumps(drone_timeline_segment_1))
-        self.assertEquals(4, len(job1_results))
+        self.assertEqual(4, len(job1_results))
 
 
         job2 = mpf.VideoJob(
@@ -621,7 +621,7 @@ class TestComponent(unittest.TestCase):
         drone_timeline_segment_2["video_event_timeline"][0]["timestamp_end"] = 178.0
         drone_timeline_segment_2["video_event_timeline"][-1]["timestamp_end"] = 325.0
         job2_results = self.run_patched_job(component, job2, json.dumps(drone_timeline_segment_2))
-        self.assertEquals(5, len(job2_results))
+        self.assertEqual(5, len(job2_results))
 
 
 if __name__ == "__main__":
