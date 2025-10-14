@@ -8,12 +8,12 @@ To accommodate smaller deployment enviroments, this component can use smaller NL
 
 # Recommended System Requirements
 
-- **GPU (recommended for default 3.3B model)**  
-  - NVIDIA GPU with CUDA support  
-  - At least **24 GB of GPU VRAM**  
+- **GPU (recommended for default 3.3B model)**
+  - NVIDIA GPU with CUDA support
+  - At least **24 GB of GPU VRAM**
 
-- **CPU-only (not recommended for 3.3B model unless sufficient memory is available)**  
-  - At least **32 GB of system RAM**  
+- **CPU-only (not recommended for 3.3B model unless sufficient memory is available)**
+  - At least **32 GB of system RAM**
 
 ### Example Model Requirements
 
@@ -47,15 +47,22 @@ The below properties can be optionally provided to alter the behavior of the com
 
 - `NLLB_MODEL`: Specifies which No Language Left Behind (NLLB) model to use. The default model is `facebook/nllb-200-3.3B` and is included in the pre-built NLLB Translation docker image. If this property is configured with a different model, the component will attempt to download the specified model from Hugging Face. See [Recommended System Requirements](#recommended-system-requirements) for additional information.
 
-- `SENTENCE_MODEL`: Specifies the desired WtP or spaCy sentence detection model. For CPU
-  and runtime considerations, the author of WtP recommends using `wtp-bert-mini`. More
-  advanced WtP models that use GPU resources (up to ~8 GB) are also available. See list of
-  WtP model names
-  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models). The
-  only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+- `SENTENCE_MODEL`: Specifies the desired SaT/WtP or spaCy sentence detection model. For CPU
+  and runtime considerations, the authors of SaT/WtP recommends using `sat-3l-sm` or `wtp-bert-mini`.
+  More advanced SaT/WtP models that use GPU resources (up to ~8 GB for WtP) are also available.
 
-  Review list of languages supported by WtP
-  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages).
+  See list of model names below:
+
+  - [WtP Models](https://github.com/segment-any-text/wtpsplit/tree/1.3.0?tab=readme-ov-file#available-models)
+  - [SaT Models](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models).
+
+    Please note, the only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+
+  Review list of languages supported by SaT/WtP below:
+
+  - [WtP Models](https://github.com/segment-any-text/wtpsplit/tree/1.3.0?tab=readme-ov-file#supported-languages)
+  - [SaT Models](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages)
+
   Review models and languages supported by spaCy [here](https://spacy.io/models).
 
 - `SENTENCE_SPLITTER_CHAR_COUNT`: Specifies maximum number of characters to process
@@ -87,209 +94,209 @@ The below properties can be optionally provided to alter the behavior of the com
 # Language Identifiers
 The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
 
-| ISO-639-3 | ISO-15924  |              Language              
+| ISO-639-3 | ISO-15924  |              Language
 | --------- | ---------- | ----------------------------------
-|    ace    |    Arab    |   Acehnese Arabic                  
-|    ace    |    Latn    |   Acehnese Latin                    
-|    acm    |    Arab    |   Mesopotamian Arabic               
-|    acq    |    Arab    |   Ta’izzi-Adeni Arabic             
-|    aeb    |    Arab    |   Tunisian Arabic                   
-|    afr    |    Latn    |   Afrikaans                         
-|    ajp    |    Arab    |   South Levantine Arabic            
-|    aka    |    Latn    |   Akan                              
-|    amh    |    Ethi    |   Amharic                           
-|    apc    |    Arab    |   North Levantine Arabic           
-|    arb    |    Arab    |   Modern Standard Arabic      
+|    ace    |    Arab    |   Acehnese Arabic
+|    ace    |    Latn    |   Acehnese Latin
+|    acm    |    Arab    |   Mesopotamian Arabic
+|    acq    |    Arab    |   Ta’izzi-Adeni Arabic
+|    aeb    |    Arab    |   Tunisian Arabic
+|    afr    |    Latn    |   Afrikaans
+|    ajp    |    Arab    |   South Levantine Arabic
+|    aka    |    Latn    |   Akan
+|    amh    |    Ethi    |   Amharic
+|    apc    |    Arab    |   North Levantine Arabic
+|    arb    |    Arab    |   Modern Standard Arabic
 |    arb    |    Latn    |   Modern Standard Arabic (Romanized)
-|    ars    |    Arab    |   Najdi Arabic    
-|    ary    |    Arab    |   Moroccan Arabic    
-|    arz    |    Arab    |   Egyptian Arabic    
-|    asm    |    Beng    |   Assamese   
-|    ast    |    Latn    |   Asturian   
-|    awa    |    Deva    |   Awadhi 
-|    ayr    |    Latn    |   Central Aymara 
-|    azb    |    Arab    |   South Azerbaijani  
-|    azj    |    Latn    |   North Azerbaijani  
-|    bak    |    Cyrl    |   Bashkir    
-|    bam    |    Latn    |   Bambara    
-|    ban    |    Latn    |   Balinese   
-|    bel    |    Cyrl    |   Belarusian 
-|    bem    |    Latn    |   Bemba  
-|    ben    |    Beng    |   Bengali    
-|    bho    |    Deva    |   Bhojpuri   
-|    bjn    |    Arab    |   Banjar (Arabic script) 
-|    bjn    |    Latn    |   Banjar (Latin script)  
-|    bod    |    Tibt    |   Standard Tibetan   
-|    bos    |    Latn    |   Bosnian    
-|    bug    |    Latn    |   Buginese   
-|    bul    |    Cyrl    |   Bulgarian  
-|    cat    |    Latn    |   Catalan    
-|    ceb    |    Latn    |   Cebuano    
-|    ces    |    Latn    |   Czech  
-|    cjk    |    Latn    |   Chokwe 
-|    ckb    |    Arab    |   Central Kurdish    
-|    crh    |    Latn    |   Crimean Tatar  
-|    cym    |    Latn    |   Welsh  
-|    dan    |    Latn    |   Danish 
-|    deu    |    Latn    |   German 
-|    dik    |    Latn    |   Southwestern Dinka 
-|    dyu    |    Latn    |   Dyula  
-|    dzo    |    Tibt    |   Dzongkha   
-|    ell    |    Grek    |   Greek  
-|    eng    |    Latn    |   English    
-|    epo    |    Latn    |   Esperanto  
-|    est    |    Latn    |   Estonian   
-|    eus    |    Latn    |   Basque 
-|    ewe    |    Latn    |   Ewe    
-|    fao    |    Latn    |   Faroese    
-|    fij    |    Latn    |   Fijian 
-|    fin    |    Latn    |   Finnish    
-|    fon    |    Latn    |   Fon    
-|    fra    |    Latn    |   French 
-|    fur    |    Latn    |   Friulian   
-|    fuv    |    Latn    |   Nigerian Fulfulde  
-|    gla    |    Latn    |   Scottish Gaelic    
-|    gle    |    Latn    |   Irish  
-|    glg    |    Latn    |   Galician   
-|    grn    |    Latn    |   Guarani    
-|    guj    |    Gujr    |   Gujarati   
-|    hat    |    Latn    |   Haitian Creole 
-|    hau    |    Latn    |   Hausa  
-|    heb    |    Hebr    |   Hebrew 
-|    hin    |    Deva    |   Hindi  
-|    hne    |    Deva    |   Chhattisgarhi  
-|    hrv    |    Latn    |   Croatian   
-|    hun    |    Latn    |   Hungarian  
-|    hye    |    Armn    |   Armenian   
-|    ibo    |    Latn    |   Igbo   
-|    ilo    |    Latn    |   Ilocano    
-|    ind    |    Latn    |   Indonesian 
-|    isl    |    Latn    |   Icelandic  
-|    ita    |    Latn    |   Italian    
-|    jav    |    Latn    |   Javanese   
-|    jpn    |    Jpan    |   Japanese   
-|    kab    |    Latn    |   Kabyle 
-|    kac    |    Latn    |   Jingpho    
-|    kam    |    Latn    |   Kamba  
-|    kan    |    Knda    |   Kannada    
-|    kas    |    Arab    |   Kashmiri (Arabic script)          
-|    kas    |    Deva    |   Kashmiri (Devanagari script)   
-|    kat    |    Geor    |   Georgian                       
-|    knc    |    Arab    |   Central Kanuri (Arabic script)  
-|    knc    |    Latn    |   Central Kanuri (Latin script)  
-|    kaz    |    Cyrl    |   Kazakh 
-|    kbp    |    Latn    |   Kabiyè 
-|    kea    |    Latn    |   Kabuverdianu   
-|    khm    |    Khmr    |   Khmer  
-|    kik    |    Latn    |   Kikuyu 
-|    kin    |    Latn    |   Kinyarwanda    
-|    kir    |    Cyrl    |   Kyrgyz 
-|    kmb    |    Latn    |   Kimbundu   
-|    kmr    |    Latn    |   Northern Kurdish   
-|    kon    |    Latn    |   Kikongo    
-|    kor    |    Hang    |   Korean 
-|    lao    |    Laoo    |   Lao    
-|    lij    |    Latn    |   Ligurian   
-|    lim    |    Latn    |   Limburgish 
-|    lin    |    Latn    |   Lingala    
-|    lit    |    Latn    |   Lithuanian 
-|    lmo    |    Latn    |   Lombard    
-|    ltg    |    Latn    |   Latgalian  
-|    ltz    |    Latn    |   Luxembourgish  
-|    lua    |    Latn    |   Luba-Kasai 
-|    lug    |    Latn    |   Ganda  
-|    luo    |    Latn    |   Luo    
-|    lus    |    Latn    |   Mizo   
-|    lvs    |    Latn    |   Standard Latvian   
-|    mag    |    Deva    |   Magahi 
-|    mai    |    Deva    |   Maithili   
-|    mal    |    Mlym    |   Malayalam  
-|    mar    |    Deva    |   Marathi    
-|    min    |    Arab    |   Minangkabau (Arabic script)    
-|    min    |    Latn    |   Minangkabau (Latin script) 
-|    mkd    |    Cyrl    |   Macedonian 
-|    plt    |    Latn    |   Plateau Malagasy   
-|    mlt    |    Latn    |   Maltese    
-|    mni    |    Beng    |   Meitei (Bengali script)    
-|    khk    |    Cyrl    |   Halh Mongolian 
-|    mos    |    Latn    |   Mossi  
-|    mri    |    Latn    |   Maori  
-|    mya    |    Mymr    |   Burmese    
-|    nld    |    Latn    |   Dutch  
-|    nno    |    Latn    |   Norwegian Nynorsk  
-|    nob    |    Latn    |   Norwegian Bokmål   
-|    npi    |    Deva    |   Nepali 
-|    nso    |    Latn    |   Northern Sotho 
-|    nus    |    Latn    |   Nuer   
-|    nya    |    Latn    |   Nyanja 
-|    oci    |    Latn    |   Occitan    
-|    gaz    |    Latn    |   West Central Oromo 
-|    ory    |    Orya    |   Odia   
-|    pag    |    Latn    |   Pangasinan 
-|    pan    |    Guru    |   Eastern Panjabi    
-|    pap    |    Latn    |   Papiamento 
-|    pes    |    Arab    |   Western Persian    
-|    pol    |    Latn    |   Polish 
-|    por    |    Latn    |   Portuguese 
-|    prs    |    Arab    |   Dari   
-|    pbt    |    Arab    |   Southern Pashto    
-|    quy    |    Latn    |   Ayacucho Quechua   
-|    ron    |    Latn    |   Romanian   
-|    run    |    Latn    |   Rundi  
-|    rus    |    Cyrl    |   Russian    
-|    sag    |    Latn    |   Sango  
-|    san    |    Deva    |   Sanskrit   
-|    sat    |    Olck    |   Santali    
-|    scn    |    Latn    |   Sicilian   
-|    shn    |    Mymr    |   Shan   
-|    sin    |    Sinh    |   Sinhala    
-|    slk    |    Latn    |   Slovak 
-|    slv    |    Latn    |   Slovenian  
-|    smo    |    Latn    |   Samoan 
-|    sna    |    Latn    |   Shona  
-|    snd    |    Arab    |   Sindhi 
-|    som    |    Latn    |   Somali 
-|    sot    |    Latn    |   Southern Sotho 
-|    spa    |    Latn    |   Spanish    
-|    als    |    Latn    |   Tosk Albanian  
-|    srd    |    Latn    |   Sardinian  
-|    srp    |    Cyrl    |   Serbian    
-|    ssw    |    Latn    |   Swati  
-|    sun    |    Latn    |   Sundanese  
-|    swe    |    Latn    |   Swedish    
-|    swh    |    Latn    |   Swahili    
-|    szl    |    Latn    |   Silesian   
-|    tam    |    Taml    |   Tamil  
-|    tat    |    Cyrl    |   Tatar  
-|    tel    |    Telu    |   Telugu 
-|    tgk    |    Cyrl    |   Tajik  
-|    tgl    |    Latn    |   Tagalog    
-|    tha    |    Thai    |   Thai   
-|    tir    |    Ethi    |   Tigrinya   
-|    taq    |    Latn    |   Tamasheq (Latin script)    
-|    taq    |    Tfng    |   Tamasheq (Tifinagh script) 
-|    tpi    |    Latn    |   Tok Pisin  
-|    tsn    |    Latn    |   Tswana 
-|    tso    |    Latn    |   Tsonga 
-|    tuk    |    Latn    |   Turkmen    
-|    tum    |    Latn    |   Tumbuka    
-|    tur    |    Latn    |   Turkish    
-|    twi    |    Latn    |   Twi    
-|    tzm    |    Tfng    |   Central Atlas Tamazight    
-|    uig    |    Arab    |   Uyghur 
-|    ukr    |    Cyrl    |   Ukrainian  
-|    umb    |    Latn    |   Umbundu    
-|    urd    |    Arab    |   Urdu   
-|    uzn    |    Latn    |   Northern Uzbek 
-|    vec    |    Latn    |   Venetian   
-|    vie    |    Latn    |   Vietnamese 
-|    war    |    Latn    |   Waray  
-|    wol    |    Latn    |   Wolof  
-|    xho    |    Latn    |   Xhosa  
-|    ydd    |    Hebr    |   Eastern Yiddish    
-|    yor    |    Latn    |   Yoruba 
-|    yue    |    Hant    |   Yue Chinese    
-|    zho    |    Hans    |   Chinese (Simplified)   
-|    zho    |    Hant    |   Chinese (Traditional)  
-|    zsm    |    Latn    |   Standard Malay 
-|    zul    |    Latn    |   Zulu   
+|    ars    |    Arab    |   Najdi Arabic
+|    ary    |    Arab    |   Moroccan Arabic
+|    arz    |    Arab    |   Egyptian Arabic
+|    asm    |    Beng    |   Assamese
+|    ast    |    Latn    |   Asturian
+|    awa    |    Deva    |   Awadhi
+|    ayr    |    Latn    |   Central Aymara
+|    azb    |    Arab    |   South Azerbaijani
+|    azj    |    Latn    |   North Azerbaijani
+|    bak    |    Cyrl    |   Bashkir
+|    bam    |    Latn    |   Bambara
+|    ban    |    Latn    |   Balinese
+|    bel    |    Cyrl    |   Belarusian
+|    bem    |    Latn    |   Bemba
+|    ben    |    Beng    |   Bengali
+|    bho    |    Deva    |   Bhojpuri
+|    bjn    |    Arab    |   Banjar (Arabic script)
+|    bjn    |    Latn    |   Banjar (Latin script)
+|    bod    |    Tibt    |   Standard Tibetan
+|    bos    |    Latn    |   Bosnian
+|    bug    |    Latn    |   Buginese
+|    bul    |    Cyrl    |   Bulgarian
+|    cat    |    Latn    |   Catalan
+|    ceb    |    Latn    |   Cebuano
+|    ces    |    Latn    |   Czech
+|    cjk    |    Latn    |   Chokwe
+|    ckb    |    Arab    |   Central Kurdish
+|    crh    |    Latn    |   Crimean Tatar
+|    cym    |    Latn    |   Welsh
+|    dan    |    Latn    |   Danish
+|    deu    |    Latn    |   German
+|    dik    |    Latn    |   Southwestern Dinka
+|    dyu    |    Latn    |   Dyula
+|    dzo    |    Tibt    |   Dzongkha
+|    ell    |    Grek    |   Greek
+|    eng    |    Latn    |   English
+|    epo    |    Latn    |   Esperanto
+|    est    |    Latn    |   Estonian
+|    eus    |    Latn    |   Basque
+|    ewe    |    Latn    |   Ewe
+|    fao    |    Latn    |   Faroese
+|    fij    |    Latn    |   Fijian
+|    fin    |    Latn    |   Finnish
+|    fon    |    Latn    |   Fon
+|    fra    |    Latn    |   French
+|    fur    |    Latn    |   Friulian
+|    fuv    |    Latn    |   Nigerian Fulfulde
+|    gla    |    Latn    |   Scottish Gaelic
+|    gle    |    Latn    |   Irish
+|    glg    |    Latn    |   Galician
+|    grn    |    Latn    |   Guarani
+|    guj    |    Gujr    |   Gujarati
+|    hat    |    Latn    |   Haitian Creole
+|    hau    |    Latn    |   Hausa
+|    heb    |    Hebr    |   Hebrew
+|    hin    |    Deva    |   Hindi
+|    hne    |    Deva    |   Chhattisgarhi
+|    hrv    |    Latn    |   Croatian
+|    hun    |    Latn    |   Hungarian
+|    hye    |    Armn    |   Armenian
+|    ibo    |    Latn    |   Igbo
+|    ilo    |    Latn    |   Ilocano
+|    ind    |    Latn    |   Indonesian
+|    isl    |    Latn    |   Icelandic
+|    ita    |    Latn    |   Italian
+|    jav    |    Latn    |   Javanese
+|    jpn    |    Jpan    |   Japanese
+|    kab    |    Latn    |   Kabyle
+|    kac    |    Latn    |   Jingpho
+|    kam    |    Latn    |   Kamba
+|    kan    |    Knda    |   Kannada
+|    kas    |    Arab    |   Kashmiri (Arabic script)
+|    kas    |    Deva    |   Kashmiri (Devanagari script)
+|    kat    |    Geor    |   Georgian
+|    knc    |    Arab    |   Central Kanuri (Arabic script)
+|    knc    |    Latn    |   Central Kanuri (Latin script)
+|    kaz    |    Cyrl    |   Kazakh
+|    kbp    |    Latn    |   Kabiyè
+|    kea    |    Latn    |   Kabuverdianu
+|    khm    |    Khmr    |   Khmer
+|    kik    |    Latn    |   Kikuyu
+|    kin    |    Latn    |   Kinyarwanda
+|    kir    |    Cyrl    |   Kyrgyz
+|    kmb    |    Latn    |   Kimbundu
+|    kmr    |    Latn    |   Northern Kurdish
+|    kon    |    Latn    |   Kikongo
+|    kor    |    Hang    |   Korean
+|    lao    |    Laoo    |   Lao
+|    lij    |    Latn    |   Ligurian
+|    lim    |    Latn    |   Limburgish
+|    lin    |    Latn    |   Lingala
+|    lit    |    Latn    |   Lithuanian
+|    lmo    |    Latn    |   Lombard
+|    ltg    |    Latn    |   Latgalian
+|    ltz    |    Latn    |   Luxembourgish
+|    lua    |    Latn    |   Luba-Kasai
+|    lug    |    Latn    |   Ganda
+|    luo    |    Latn    |   Luo
+|    lus    |    Latn    |   Mizo
+|    lvs    |    Latn    |   Standard Latvian
+|    mag    |    Deva    |   Magahi
+|    mai    |    Deva    |   Maithili
+|    mal    |    Mlym    |   Malayalam
+|    mar    |    Deva    |   Marathi
+|    min    |    Arab    |   Minangkabau (Arabic script)
+|    min    |    Latn    |   Minangkabau (Latin script)
+|    mkd    |    Cyrl    |   Macedonian
+|    plt    |    Latn    |   Plateau Malagasy
+|    mlt    |    Latn    |   Maltese
+|    mni    |    Beng    |   Meitei (Bengali script)
+|    khk    |    Cyrl    |   Halh Mongolian
+|    mos    |    Latn    |   Mossi
+|    mri    |    Latn    |   Maori
+|    mya    |    Mymr    |   Burmese
+|    nld    |    Latn    |   Dutch
+|    nno    |    Latn    |   Norwegian Nynorsk
+|    nob    |    Latn    |   Norwegian Bokmål
+|    npi    |    Deva    |   Nepali
+|    nso    |    Latn    |   Northern Sotho
+|    nus    |    Latn    |   Nuer
+|    nya    |    Latn    |   Nyanja
+|    oci    |    Latn    |   Occitan
+|    gaz    |    Latn    |   West Central Oromo
+|    ory    |    Orya    |   Odia
+|    pag    |    Latn    |   Pangasinan
+|    pan    |    Guru    |   Eastern Panjabi
+|    pap    |    Latn    |   Papiamento
+|    pes    |    Arab    |   Western Persian
+|    pol    |    Latn    |   Polish
+|    por    |    Latn    |   Portuguese
+|    prs    |    Arab    |   Dari
+|    pbt    |    Arab    |   Southern Pashto
+|    quy    |    Latn    |   Ayacucho Quechua
+|    ron    |    Latn    |   Romanian
+|    run    |    Latn    |   Rundi
+|    rus    |    Cyrl    |   Russian
+|    sag    |    Latn    |   Sango
+|    san    |    Deva    |   Sanskrit
+|    sat    |    Olck    |   Santali
+|    scn    |    Latn    |   Sicilian
+|    shn    |    Mymr    |   Shan
+|    sin    |    Sinh    |   Sinhala
+|    slk    |    Latn    |   Slovak
+|    slv    |    Latn    |   Slovenian
+|    smo    |    Latn    |   Samoan
+|    sna    |    Latn    |   Shona
+|    snd    |    Arab    |   Sindhi
+|    som    |    Latn    |   Somali
+|    sot    |    Latn    |   Southern Sotho
+|    spa    |    Latn    |   Spanish
+|    als    |    Latn    |   Tosk Albanian
+|    srd    |    Latn    |   Sardinian
+|    srp    |    Cyrl    |   Serbian
+|    ssw    |    Latn    |   Swati
+|    sun    |    Latn    |   Sundanese
+|    swe    |    Latn    |   Swedish
+|    swh    |    Latn    |   Swahili
+|    szl    |    Latn    |   Silesian
+|    tam    |    Taml    |   Tamil
+|    tat    |    Cyrl    |   Tatar
+|    tel    |    Telu    |   Telugu
+|    tgk    |    Cyrl    |   Tajik
+|    tgl    |    Latn    |   Tagalog
+|    tha    |    Thai    |   Thai
+|    tir    |    Ethi    |   Tigrinya
+|    taq    |    Latn    |   Tamasheq (Latin script)
+|    taq    |    Tfng    |   Tamasheq (Tifinagh script)
+|    tpi    |    Latn    |   Tok Pisin
+|    tsn    |    Latn    |   Tswana
+|    tso    |    Latn    |   Tsonga
+|    tuk    |    Latn    |   Turkmen
+|    tum    |    Latn    |   Tumbuka
+|    tur    |    Latn    |   Turkish
+|    twi    |    Latn    |   Twi
+|    tzm    |    Tfng    |   Central Atlas Tamazight
+|    uig    |    Arab    |   Uyghur
+|    ukr    |    Cyrl    |   Ukrainian
+|    umb    |    Latn    |   Umbundu
+|    urd    |    Arab    |   Urdu
+|    uzn    |    Latn    |   Northern Uzbek
+|    vec    |    Latn    |   Venetian
+|    vie    |    Latn    |   Vietnamese
+|    war    |    Latn    |   Waray
+|    wol    |    Latn    |   Wolof
+|    xho    |    Latn    |   Xhosa
+|    ydd    |    Hebr    |   Eastern Yiddish
+|    yor    |    Latn    |   Yoruba
+|    yue    |    Hant    |   Yue Chinese
+|    zho    |    Hans    |   Chinese (Simplified)
+|    zho    |    Hant    |   Chinese (Traditional)
+|    zsm    |    Latn    |   Standard Malay
+|    zul    |    Latn    |   Zulu

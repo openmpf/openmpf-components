@@ -19,6 +19,13 @@ is used in a deployment or embedded within another project, it is requested
 that you send an email to opensource@mitre.org in order to let us know where
 this software is being used.
 
+
+The "No Language Left Behind" (NLLB) models on Hugging Face are distributed
+under the CC-BY-NC-4.0 license (Creative Commons Attribution-NonCommercial 4.0),
+hence they must be downloaded and run separately under non-commercial restrictions.
+
+The code within this repository falls under Apache 2.0 License.
+
 The nlp_text_splitter utlity uses the following sentence detection libraries:
 
 *****************************************************************************
