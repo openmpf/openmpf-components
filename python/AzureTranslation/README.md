@@ -103,13 +103,20 @@ this model lacks support handling for Chinese punctuation.
 
 - `SENTENCE_MODEL`: Specifies the desired SaT/WtP or spaCy sentence detection model. For CPU
   and runtime considerations, the authors of SaT/WtP recommends using `sat-3l-sm` or `wtp-bert-mini`.
-  More advanced SaT/WtP models that use GPU resources (up to ~8 GB for WtP) are also available. See list of
-  model names
-  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models). The
-  only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+  More advanced SaT/WtP models that use GPU resources (up to ~8 GB for WtP) are also available.
 
-  Review list of languages supported by SaT/WtP
-  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages).
+  See list of model names below:
+
+  - [WtP Models](https://github.com/segment-any-text/wtpsplit/tree/1.3.0?tab=readme-ov-file#available-models)
+  - [SaT Models](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models).
+
+    Please note, the only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+
+  Review list of languages supported by SaT/WtP below:
+
+  - [WtP Models](https://github.com/segment-any-text/wtpsplit/tree/1.3.0?tab=readme-ov-file#supported-languages)
+  - [SaT Models](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages)
+
   Review models and languages supported by spaCy [here](https://spacy.io/models).
 
 - `SENTENCE_SPLITTER_CHAR_COUNT`: Specifies maximum number of characters to process
