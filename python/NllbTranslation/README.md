@@ -75,6 +75,17 @@ The below properties can be optionally provided to alter the behavior of the com
   sentence splitter algorithm. Currently, only WtP supports model threshold adjustments by
   input language.
 
+- `SENTENCE_SPLITTER_MODE`: Specifies text splitting behavior, options include:
+  - `DEFAULT` : Splits text into chunks based on the `SENTENCE_SPLITTER_CHAR_COUNT` limit.
+  - `SENTENCE`: Splits text at detected sentence boundaries. This mode creates more sentence breaks than `DEFAULT`, which is more focused on avoiding text splits unless the chunk size is reached.
+
+- `SENTENCE_SPLITTER_NEWLINE_BEHAVIOR`: Specifies how individual newlines between characters should be handled when splitting text. Options include:
+  - `GUESS` (default): Automatically replace newlines with either spaces or remove them, depending on the detected script between newlines.
+  - `SPACE`: Always replaces newlines with a space, regardless of script.
+  - `REMOVE`: Always removes newlines entirely, joining the adjacent characters directly.
+  - `NONE`: Leaves newlines as-is in the input text.
+  Please note that multiple adjacent newlines are treated as a manual text divide, across all settings. This is to ensure subtitles and other singular text examples are properly separated from other text during translation.
+
 - `SENTENCE_MODEL_CPU_ONLY`: If set to TRUE, only use CPU resources for the sentence
   detection model. If set to FALSE, allow sentence model to also use GPU resources.
   For most runs using spaCy `xx_sent_ud_sm` or `wtp-bert-mini` models, GPU resources

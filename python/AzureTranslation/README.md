@@ -118,6 +118,10 @@ this model lacks support handling for Chinese punctuation.
   lengths
   [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
 
+- `SENTENCE_SPLITTER_MODE`: Specifies text splitting behavior, options include:
+  - `DEFAULT` : Splits text into chunks based on the `SENTENCE_SPLITTER_CHAR_COUNT` limit.
+  - `SENTENCE`: Splits text at detected sentence boundaries. This mode creates more sentence breaks than `DEFAULT`, which is more focused on avoiding text splits unless the chunk size is reached.
+
 - `SENTENCE_SPLITTER_INCLUDE_INPUT_LANG`: Specifies whether to pass input language to
   sentence splitter algorithm. Currently, only SaT/WtP supports model threshold adjustments by
   input language.

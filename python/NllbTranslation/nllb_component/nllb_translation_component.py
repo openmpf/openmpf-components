@@ -61,7 +61,7 @@ class NllbTranslationComponent:
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         logger.info(f'Received audio job.')
         return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track, video_job=False)
-    
+
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
         return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track, video_job=True)
@@ -127,7 +127,7 @@ class NllbTranslationComponent:
                                                 src_lang=config.translate_from_language, device_map=self._model.device)
             elapsed = time.time() - start
             logger.debug(f"Successfully loaded tokenizer in {elapsed} seconds.")
-    
+
     def _load_model(self, model_name: str = None, config: Dict[str, str] = None) -> None:
         try:
             if model_name is None:
@@ -135,10 +135,10 @@ class NllbTranslationComponent:
                     model_name = DEFAULT_NLLB_MODEL
                 else:
                     model_name = config.nllb_model
-            
+
             model_path = '/models/' + model_name
             offload_folder = model_path + '/.weights'
-            
+
             if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
                 # model is stored locally; we do not need to load the tokenizer here
                 logger.info(f"Loading model from local directory: {model_path}")
@@ -154,7 +154,7 @@ class NllbTranslationComponent:
                 logger.debug(f"Saving model in {model_path}")
                 self._model.save_pretrained(model_path)
                 self._tokenizer.save_pretrained(model_path)
-    
+
         except Exception:
             logger.exception(
                 f'Failed to complete job due to the following exception:')
@@ -207,14 +207,18 @@ class NllbTranslationComponent:
                         0,
                         len,
                         text_splitter_model,
-                        wtp_lang)
+                        wtp_lang,
+                        split_mode=config._sentence_split_mode,
+                        newline_behavior=config._newline_behavior)
                 else:
                     input_text_sentences = TextSplitter.split(
                         text,
                         config.nllb_character_limit,
                         0,
                         len,
-                        text_splitter_model)
+                        text_splitter_model,
+                        split_mode=config._sentence_split_mode,
+                        newline_behavior=config._newline_behavior)
 
                 text_list = list(input_text_sentences)
                 logger.info(f'Input text split into {len(text_list)} sentences.')
@@ -263,6 +267,12 @@ class JobConfig:
                 prop_type=str
             ).split(',')
         ]
+
+        self._sentence_split_mode = mpf_util.get_property(
+            props, 'SENTENCE_SPLITTER_MODE', 'DEFAULT')
+
+        self._newline_behavior = mpf_util.get_property(
+            props, 'SENTENCE_SPLITTER_NEWLINE_BEHAVIOR', 'GUESS')
 
         # default model, cached
         self.nllb_model = mpf_util.get_property(props, "NLLB_MODEL", DEFAULT_NLLB_MODEL)
@@ -344,7 +354,7 @@ class JobConfig:
                 f'Failed to complete job due to the following exception:')
             raise
 
-        
+
         if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
             raise mpf.DetectionException(

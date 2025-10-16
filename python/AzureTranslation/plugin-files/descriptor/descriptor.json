@@ -71,9 +71,15 @@
         },
         {
           "name": "STRIP_NEW_LINE_BEHAVIOR",
-          "description": "The translation endpoint treats newline characters as sentence boundaries. To prevent this newlines can be removed from the input text. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
+          "description": "The translation endpoint and text splitter treat newline characters as sentence boundaries. To prevent this newlines can be removed from the input text. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
           "type": "STRING",
           "defaultValue": "GUESS"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_MODE",
+          "description": "Determines how text is split: `DEFAULT` mode splits text into chunks based on the character limit, while `SENTENCE` mode splits text strictly at sentence boundaries (may yield smaller segments), unless the character limit is reached.",
+          "type": "STRING",
+          "defaultValue": "DEFAULT"
         },
         {
           "name": "DETECT_BEFORE_TRANSLATE",
