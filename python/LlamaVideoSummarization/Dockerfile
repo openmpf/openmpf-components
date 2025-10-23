@@ -28,22 +28,22 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} as base
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS base
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
     --mount=type=tmpfs,target=/tmp \
     apt-get update; \
     apt-get upgrade -y; \
-    apt-get install --no-install-recommends -y wget ca-certificates gnupg2; \
-    wget --ca-directory=/etc/ssl/certs -O- 'https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xba6932366a755776' \
-        | apt-key add -; \
-    echo 'deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu focal main' \
-        > /etc/apt/sources.list.d/deadsnakes.list; \
-    apt-get update; \
-    apt-get install --no-install-recommends -y \
-        python3.10 python3.10-venv libpython3.10; \
-    python3.10 -m ensurepip --upgrade --default-pip
+    apt-get install --no-install-recommends -y ca-certificates;
+
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
+
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+RUN uv python install 3.10
+
+ENV PATH="/root/.local/bin/:$PATH"
 
 RUN --mount=type=bind,source=subprocess/requirements.txt,target=/tmp/requirements.txt \
     mkdir -p /llama/venv; \
@@ -51,7 +51,7 @@ RUN --mount=type=bind,source=subprocess/requirements.txt,target=/tmp/requirement
     /llama/venv/bin/pip install --cert /etc/ssl/certs/ca-certificates.crt -r /tmp/requirements.txt
 
 # https://huggingface.co/DAMO-NLP-SG/VideoLLaMA3-7B/tree/fd2ad62f4cec8814750a908774c199681dbb89fd
-ENV MODEL_REVISION fd2ad62f4cec8814750a908774c199681dbb89fd
+ENV MODEL_REVISION=fd2ad62f4cec8814750a908774c199681dbb89fd
 
 RUN . /llama/venv/bin/activate; \
     pip install "huggingface_hub[hf_transfer]"; \
@@ -75,7 +75,7 @@ LABEL org.label-schema.license="Apache 2.0" \
 
 
 # Optional build target for running unit tests with a GPU
-FROM base as gpu_test
+FROM base AS gpu_test
 
 COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
 COPY tests/data /tests/data
@@ -84,4 +84,4 @@ ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py", "TestComponent
 
 
 # By default Docker builds the final stage
-FROM base as final
+FROM base AS final
