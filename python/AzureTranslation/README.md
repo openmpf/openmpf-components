@@ -87,26 +87,36 @@ must be provided. Neither has a default value.
 The following settings control the behavior of dividing input text into acceptable chunks
 for processing.
 
-Through preliminary investigation, we identified the [WtP library ("Where's the
+Through preliminary investigation, we identified the [SaT/WtP library ("Segment any Text" / "Where's the
 Point")](https://github.com/bminixhofer/wtpsplit) and [spaCy's multilingual sentence
 detection model](https://spacy.io/models) for identifying sentence breaks
 in a large section of text.
 
-WtP models are trained to split up multilingual text by sentence without the need of an
+SaT/WtP models are trained to split up multilingual text by sentence without the need of an
 input language tag. The disadvantage is that the most accurate WtP models will need ~3.5
-GB of GPU memory. On the other hand, spaCy has a single multilingual sentence detection
+GB of GPU memory. SaT models are a more recent addition and considered to be a more accurate
+set of sentence segmentation models; their resource costs are similar to WtP.
+
+On the other hand, spaCy has a single multilingual sentence detection
 that appears to work better for splitting up English text in certain cases, unfortunately
 this model lacks support handling for Chinese punctuation.
 
-- `SENTENCE_MODEL`: Specifies the desired WtP or spaCy sentence detection model. For CPU
-  and runtime considerations, the author of WtP recommends using `wtp-bert-mini`. More
-  advanced WtP models that use GPU resources (up to ~8 GB) are also available. See list of
-  WtP model names
-  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models). The
-  only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+- `SENTENCE_MODEL`: Specifies the desired SaT/WtP or spaCy sentence detection model. For CPU
+  and runtime considerations, the authors of SaT/WtP recommends using `sat-3l-sm` or `wtp-bert-mini`.
+  More advanced SaT/WtP models that use GPU resources (up to ~8 GB for WtP) are also available.
 
-  Review list of languages supported by WtP
-  [here](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages).
+  See list of model names below:
+
+  - [WtP Models](https://github.com/segment-any-text/wtpsplit/tree/1.3.0?tab=readme-ov-file#available-models)
+  - [SaT Models](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#available-models).
+
+    Please note, the only available spaCy model (for text with unknown language) is `xx_sent_ud_sm`.
+
+  Review list of languages supported by SaT/WtP below:
+
+  - [WtP Models](https://github.com/segment-any-text/wtpsplit/tree/1.3.0?tab=readme-ov-file#supported-languages)
+  - [SaT Models](https://github.com/bminixhofer/wtpsplit?tab=readme-ov-file#supported-languages)
+
   Review models and languages supported by spaCy [here](https://spacy.io/models).
 
 - `SENTENCE_SPLITTER_CHAR_COUNT`: Specifies maximum number of characters to process
@@ -115,16 +125,20 @@ this model lacks support handling for Chinese punctuation.
   lengths
   [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
 
+- `SENTENCE_SPLITTER_MODE`: Specifies text splitting behavior, options include:
+  - `DEFAULT` : Splits text into chunks based on the `SENTENCE_SPLITTER_CHAR_COUNT` limit.
+  - `SENTENCE`: Splits text at detected sentence boundaries. This mode creates more sentence breaks than `DEFAULT`, which is more focused on avoiding text splits unless the chunk size is reached.
+
 - `SENTENCE_SPLITTER_INCLUDE_INPUT_LANG`: Specifies whether to pass input language to
-  sentence splitter algorithm. Currently, only WtP supports model threshold adjustments by
+  sentence splitter algorithm. Currently, only SaT/WtP supports model threshold adjustments by
   input language.
 
 - `SENTENCE_MODEL_CPU_ONLY`: If set to TRUE, only use CPU resources for the sentence
   detection model. If set to FALSE, allow sentence model to also use GPU resources.
-  For most runs using spaCy `xx_sent_ud_sm` or `wtp-bert-mini` models, GPU resources
+  For most runs using spaCy `xx_sent_ud_sm`, `sat-3l-sm`, or `wtp-bert-mini` models, GPU resources
   are not required. If using more advanced WtP models like `wtp-canine-s-12l`,
   it is recommended to set `SENTENCE_MODEL_CPU_ONLY=FALSE` to improve performance.
-  That model can use up to ~3.5 GB of GPU memory.
+  That WtP model can use up to ~3.5 GB of GPU memory.
 
   Please note, to fully enable this option, you must also rebuild the Docker container
   with the following change: Within the Dockerfile, set `ARG BUILD_TYPE=gpu`.

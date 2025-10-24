@@ -65,12 +65,14 @@ class TestAcsTranslation(unittest.TestCase):
 
     mock_server: ClassVar['MockServer']
     wtp_model: ClassVar['TextSplitterModel']
+    sat_model: ClassVar['TextSplitterModel']
     spacy_model: ClassVar['TextSplitterModel']
 
     @classmethod
     def setUpClass(cls):
         cls.mock_server = MockServer()
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
+        cls.sat_model = TextSplitterModel("sat-3l-sm", "cpu", "en")
         cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
 
 
@@ -609,6 +611,79 @@ class TestAcsTranslation(unittest.TestCase):
         text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
         TranslationClient(get_test_properties(), self.wtp_model).add_translations(detection_props)
+
+        self.assertEqual(5, len(detection_props))
+        self.assertEqual(text, detection_props['TEXT'])
+
+        expected_translation = (TEST_DATA / 'split-sentence/art-war-translation.txt') \
+            .read_text().strip()
+        self.assertEqual(expected_translation, detection_props['TRANSLATION'])
+        self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
+
+        self.assertEqual('fake-lang', detection_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(1.0,
+            float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+
+        detect_request_text = self.get_request_body()[0]['Text']
+        self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
+
+        expected_chunk_lengths = [88, 118, 116, 106]
+        self.assertEqual(sum(expected_chunk_lengths), len(text))
+
+        # Due to an incorrect language detection, newlines are
+        # not properly replaced for Chinese text, and
+        # additional whitespace is present in the text.
+        # This alters the behavior of WtP sentence splitting.
+        translation_request1 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
+        self.assertTrue(translation_request1.startswith('兵者，'))
+        self.assertTrue(translation_request1.endswith('而不危也；'))
+        self.assertNotIn('\n', translation_request1,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request1,
+                      'Spaces should be kept due to incorrect language detection.')
+
+        translation_request2 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
+        self.assertTrue(translation_request2.startswith('天者，陰陽'))
+        self.assertTrue(translation_request2.endswith('兵眾孰強？'))
+        self.assertNotIn('\n', translation_request2,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request2,
+                      'Spaces should be kept due to incorrect language detection.')
+
+        translation_request3 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
+        self.assertTrue(translation_request3.startswith('士卒孰練？'))
+        self.assertTrue(translation_request3.endswith('亂而取之， '))
+        self.assertNotIn('\n', translation_request3,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request3,
+                      'Spaces should be kept due to incorrect language detection.')
+
+        translation_request4 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
+        self.assertTrue(translation_request4.startswith('實而備之，'))
+        self.assertTrue(translation_request4.endswith('勝負見矣。 '))
+        self.assertNotIn('\n', translation_request4,
+                         'Newlines were not properly removed')
+        self.assertIn(' ', translation_request4,
+                      'Spaces should be kept due to incorrect language detection.')
+
+
+    @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
+    def test_split_sat_unknown_lang(self, _):
+        # Check that the text splitter does not have an issue
+        # processing an unknown detected language.
+        self.set_results_file('invalid-lang-detect-result.json')
+        self.set_results_file('split-sentence/art-of-war-translation-1.json')
+        self.set_results_file('split-sentence/art-of-war-translation-2.json')
+        self.set_results_file('split-sentence/art-of-war-translation-3.json')
+        self.set_results_file('split-sentence/art-of-war-translation-4.json')
+
+        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
+        detection_props = dict(TEXT=text)
+        TranslationClient(get_test_properties(), self.sat_model).add_translations(detection_props)
 
         self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])

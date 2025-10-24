@@ -71,9 +71,15 @@
         },
         {
           "name": "STRIP_NEW_LINE_BEHAVIOR",
-          "description": "The translation endpoint treats newline characters as sentence boundaries. To prevent this newlines can be removed from the input text. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
+          "description": "The translation endpoint and text splitter treat newline characters as sentence boundaries. To prevent this newlines can be removed from the input text. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
           "type": "STRING",
           "defaultValue": "GUESS"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_MODE",
+          "description": "Determines how text is split: `DEFAULT` mode splits text into chunks based on the character limit, while `SENTENCE` mode splits text strictly at sentence boundaries (may yield smaller segments), unless the character limit is reached.",
+          "type": "STRING",
+          "defaultValue": "DEFAULT"
         },
         {
           "name": "DETECT_BEFORE_TRANSLATE",
@@ -95,7 +101,7 @@
         },
         {
           "name": "SENTENCE_MODEL",
-          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model, Segment any Text (SaT) `sat-3l-sm` model, and Where's the Point (WtP) `wtp-bert-mini` model.",
           "type": "STRING",
           "defaultValue": "wtp-bert-mini"
         },
@@ -107,7 +113,7 @@
         },
         {
           "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
-          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`, or Azure language detection return a different, WtP-supported language option.",
+          "description": "More advanced WtP/SaT models will require a target language. This property sets the default language to use for sentence splitting, unless `FROM_LANGUAGE`, `SUGGESTED_FROM_LANGUAGE`, or Azure language detection return a different, WtP-supported language option.",
           "type": "STRING",
           "defaultValue": "en"
         },
