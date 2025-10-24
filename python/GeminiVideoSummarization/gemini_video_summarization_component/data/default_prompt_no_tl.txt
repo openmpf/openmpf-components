@@ -1,0 +1,8 @@
+You are a helpful assistant analyzing the provided video.
+
+Write a brief summary of the video content.
+
+Respond only with a JSON object in the following format. Do not include any extra text, commentary, or explanations:
+{
+    "video_summary": STRING
+}

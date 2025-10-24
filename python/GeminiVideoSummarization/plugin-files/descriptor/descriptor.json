@@ -1,0 +1,156 @@
+{
+    "componentName": "GeminiVideoSummarization",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "GeminiVideoSummarization",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "GeminiVideo",
+        "description": "Gemini prompt response generation.",
+        "actionType": "DETECTION",
+        "trackType": "TEXT",
+        "mediaTypes":"VIDEO",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_TEXT",
+                "DETECTION_TEXT_GEMINI_VIDEO"
+            ],
+            "properties": [
+                {
+                    "name": "GENERATION_PROMPT_PATH",
+                    "description": "Path to a custom a file which contains the prompt that Gemini will use on the video.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "MODEL_NAME",
+                    "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-2.5-pro'.",
+                    "type": "STRING",
+                    "defaultValue": "gemini-2.5-flash"
+                },
+                {
+                    "name": "GOOGLE_APPLICATION_CREDENTIALS",
+                    "description": "Path to a JSON file containing your GCP credentials for Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "PROJECT_ID",
+                    "description": "The project identifier to access Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "BUCKET_NAME",
+                    "description": "The name of the bucket to store data for the project.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_PREFIX",
+                    "description": "A prefix for labels.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_USER",
+                    "description": "The user accessing the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_PURPOSE",
+                    "description": "The purpose of using the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "Two kinds of checks are performed on the model response: 1) response is not empty and has valid JSON in the correct format, and 2) the response timeline falls within the video segment length determined by the model. Each check has a separate counter. This value specifies the maximum number of attempts for each check. Each failed check results in another attempt to regenerate the response.",
+                    "type": "INT",
+                    "defaultValue": "5"
+                },
+                {
+                    "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
+                    "description": "Specifies the number of seconds that video events can occur before or after a segments' bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "type": "INT",
+                    "defaultValue": "10"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "description": "Default segment length is 120 seconds. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "120"
+                },
+                {
+                    "name": "VFR_TARGET_SEGMENT_LENGTH",
+                    "description": "Default segment length is 120 seconds. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "120"
+                },
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "description": "The value for determining how to interpret TARGET_SEGMENT_LENGTH, VFR_TARGET_SEGMENT_LENGTH, MIN_SEGMENT_LENGTH, and VFR_MIN_SEGMENT_LENGTH. The value has to be SECONDS for this component.",
+                    "type": "STRING",
+                    "defaultValue": "SECONDS"
+                },
+                {
+                    "name": "MERGE_TRACKS",
+                    "description": "In the context of videos, when set to true, attempt to merge tracks from the entire video.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "QUALITY_SELECTION_PROPERTY",
+                    "description": "The detection property to be used to rank the quality of a track and the quality of the detections in a track. This property would be used, for example, to select the exemplar detection for a track.",
+                    "type": "STRING",
+                    "defaultValue": "EXEMPLAR"
+                },
+                {
+                    "name": "PROCESS_FPS",
+                    "description": "Specifies the number of frames per second of video to process.",
+                    "type": "FLOAT",
+                    "defaultValue": "1.0"
+                },
+                {
+                    "name": "ENABLE_TIMELINE",
+                    "description": "When set to 1, generate a timeline of events for the video. When set to 0, does not generate a timeline.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                }                
+            ]
+        }
+    },
+    "actions": [
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION ACTION",
+            "description": "Runs Gemini with a prompt for the provided video.",
+            "algorithm": "GeminiVideo",
+            "properties": []
+        }
+    ],
+    "tasks": [
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION TASK",
+            "description": "Runs Gemini video summarization.",
+            "actions": [
+                "GEMINI VIDEO SUMMARIZATION ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE",
+            "description": "Runs Gemini video summarization.",
+            "tasks": [
+                "GEMINI VIDEO SUMMARIZATION TASK"
+            ]
+        }
+    ]
+}
