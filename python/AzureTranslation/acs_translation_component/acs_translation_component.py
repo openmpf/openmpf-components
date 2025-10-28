@@ -471,6 +471,10 @@ class SentenceSplitter:
                                                      "en")
         nlp_model_setting = mpf_util.get_property(job_properties, "SENTENCE_MODEL_CPU_ONLY", True)
 
+        self._sentence_splitter_mode = mpf_util.get_property(job_properties,
+                                                            "SENTENCE_SPLITTER_MODE",
+                                                            "DEFAULT")
+
         if not nlp_model_setting:
             nlp_model_setting = "cuda"
         else:
@@ -500,14 +504,18 @@ class SentenceSplitter:
                 self._num_boundary_chars,
                 get_azure_char_count,
                 self._sentence_model,
-                from_lang)
+                from_lang,
+                split_mode=self._sentence_splitter_mode,
+                newline_behavior='NONE') # This component already uses a newline filtering step.
         else:
             divided_text_list = TextSplitter.split(
                 text,
                 TranslationClient.DETECT_MAX_CHARS,
                 self._num_boundary_chars,
                 get_azure_char_count,
-                self._sentence_model)
+                self._sentence_model,
+                split_mode=self._sentence_splitter_mode,
+                newline_behavior='NONE') # This component already uses a newline filtering step.
 
         chunks = list(divided_text_list)
 
