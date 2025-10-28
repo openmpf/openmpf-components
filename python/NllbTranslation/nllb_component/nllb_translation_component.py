@@ -32,7 +32,7 @@ import os
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from typing import Dict, Optional, Sequence, Mapping, TypeVar
+from typing import Dict, Optional, Sequence, Mapping, TypeVar, Callable
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
@@ -53,6 +53,9 @@ class NllbTranslationComponent:
     def __init__(self) -> None:
         self._load_model()
         self._tokenizer = None
+        self._tokenizer_sizer = None
+        self._current_model_name = None
+        self._use_token_length = None
 
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -169,6 +172,15 @@ class NllbTranslationComponent:
             self._tokenizer = None
             self._load_model(config=config)
 
+    def _get_text_size_function(self, config: Dict[str, str]) -> Callable[[str], int]:
+        if config.use_token_length:
+            count_tokens: Callable[[str], int] = (
+                lambda txt: len(self._tokenizer(txt)["input_ids"])
+            )
+            return count_tokens
+        else:
+            return len
+
     def _add_translations(self, ff_track: T_FF_OBJ, config: Dict[str, str]) -> None:
         for prop_name in config.props_to_translate:
             text_to_translate = ff_track.detection_properties.get(prop_name, None)
@@ -179,19 +191,23 @@ class NllbTranslationComponent:
                 if not config.translate_all_ff_properties:
                     break
 
-    def _get_translation(self, config: Dict[str, str], text_to_translate: str) -> str:
+    def _get_translation(self, config: Dict[str, str], text_to_translate: Dict[str, str]) -> str:
         # make sure the model loaded matches model set in job config
         self._check_model(config)
         self._load_tokenizer(config)
+        get_size_fn = self._get_text_size_function(config)
 
         logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}')
         for prop_to_translate, text in text_to_translate.items():
-            # split input text into a list of sentences to support max translation length of 360 characters
-            logger.info(f'Translating character limit set to: {config.nllb_character_limit}')
-            if len(text) < config.nllb_character_limit:
+            if config.use_token_length:
+                text_limit = config.nllb_token_limit
+            else:
+                text_limit = config.nllb_character_limit
+            current_text_size = get_size_fn(text)
+            logger.info(f'Translation size limit set to: {text_limit} ({"tokens" if config.use_token_length else "characters"})')
+            if current_text_size <= text_limit:
                 text_list = [text]
             else:
-                # split input values & model
                 wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(
                     NllbLanguageMapper.get_normalized_iso(config.translate_from_language))
                 if wtp_lang is None:
@@ -199,13 +215,17 @@ class NllbTranslationComponent:
 
                 text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
 
-                logger.info(f'Text to translate is larger than the {config.nllb_character_limit} character limit, splitting into smaller sentences.')
+                if config.use_token_length:
+                    logger.info(f'Text size ({current_text_size}) exceeds configured limit of ({config.nllb_token_limit}) tokens, splitting into smaller sentences.')
+                else:
+                    logger.info(f'Text size ({current_text_size}) exceeds configured limit of ({config.nllb_character_limit}) characters, splitting into smaller sentences.')
+
                 if config._incl_input_lang:
                     input_text_sentences = TextSplitter.split(
                         text,
-                        config.nllb_character_limit,
+                        text_limit,
                         0,
-                        len,
+                        get_size_fn,
                         text_splitter_model,
                         wtp_lang,
                         split_mode=config._sentence_split_mode,
@@ -213,9 +233,9 @@ class NllbTranslationComponent:
                 else:
                     input_text_sentences = TextSplitter.split(
                         text,
-                        config.nllb_character_limit,
+                        text_limit,
                         0,
-                        len,
+                        get_size_fn,
                         text_splitter_model,
                         split_mode=config._sentence_split_mode,
                         newline_behavior=config._newline_behavior)
@@ -230,8 +250,12 @@ class NllbTranslationComponent:
                 if should_translate(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
                     translated_tokens = self._model.generate(
-                        **inputs, forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1], max_length=config.nllb_character_limit)
-                    sentence_translation: str = self._tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
+                        **inputs,
+                        forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1],
+                        max_length=text_limit)
+
+                    sentence_translation: str = self._tokenizer.batch_decode(
+                        translated_tokens, skip_special_tokens=True)[0]
 
                     translations.append(sentence_translation)
                     logger.debug(f'Translated:\n{sentence.strip()}\nto:\n{sentence_translation.strip()}')
@@ -361,6 +385,8 @@ class JobConfig:
                 f'Source language ({sourceLanguage}) is empty or unsupported',
                 mpf.DetectionError.INVALID_PROPERTY)
 
+        self.use_token_length = mpf_util.get_property(props, 'USE_NLLB_TOKEN_LENGTH', True)
+        self.nllb_token_limit = mpf_util.get_property(props, 'NLLB_TRANSLATION_TOKEN_LIMIT', 512)
         # set translation limit. default to 360 if no value set
         self.nllb_character_limit = mpf_util.get_property(props, 'SENTENCE_SPLITTER_CHAR_COUNT', 360)
 

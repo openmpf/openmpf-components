@@ -66,10 +66,26 @@ The below properties can be optionally provided to alter the behavior of the com
   Review models and languages supported by spaCy [here](https://spacy.io/models).
 
 - `SENTENCE_SPLITTER_CHAR_COUNT`: Specifies maximum number of characters to process
-  through sentence/text splitter. Default to 500 characters as we only need to process a
+  through sentence/text splitter. Default to 360 characters as we only need to process a
   subsection of text to determine an appropriate split. (See discussion of potential char
   lengths
-  [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
+  [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters)).
+
+  - `USE_NLLB_TOKEN_LENGTH`: When set to `TRUE`, the component measures input size in tokens (as produced by the
+  currently-loaded NLLB model tokenizer) instead of characters.
+  Set to `FALSE` to switch to the character-count limit specified by `SENTENCE_SPLITTER_CHAR_COUNT`.
+
+- `NLLB_TRANSLATION_TOKEN_LIMIT`: Specifies the maximum number of tokens allowed per chunk before text is split.
+  This property is only used when `USE_NLLB_TOKEN_LENGTH` is set to `True` and effectively replaces
+  `SENTENCE_SPLITTER_CHAR_COUNT` when active.
+
+  Based on the current models available:
+  - https://huggingface.co/facebook/nllb-200-3.3B
+  - https://huggingface.co/facebook/nllb-200-1.3B
+  - https://huggingface.co/facebook/nllb-200-distilled-1.3B
+  - https://huggingface.co/facebook/nllb-200-distilled-600M
+
+  - The recommended token limit is 512 tokens, across all four NLLB models.
 
 - `SENTENCE_SPLITTER_INCLUDE_INPUT_LANG`: Specifies whether to pass input language to
   sentence splitter algorithm. Currently, only WtP supports model threshold adjustments by

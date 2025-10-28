@@ -416,6 +416,7 @@ class TestNllbTranslation(unittest.TestCase):
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '25'
         test_generic_job_props['SENTENCE_MODEL'] = 'wtp-bert-mini'
 
@@ -454,6 +455,7 @@ class TestNllbTranslation(unittest.TestCase):
 
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '39'
 
          # excerpt from https://www.gutenberg.org/ebooks/16443
@@ -476,6 +478,7 @@ class TestNllbTranslation(unittest.TestCase):
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_MODE'] = 'DEFAULT'
         test_generic_job_props['SENTENCE_SPLITTER_NEWLINE_BEHAVIOR'] = 'GUESS'
 
@@ -537,6 +540,7 @@ satisfeitos de si.
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'arz'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Arab'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '100'
         test_generic_job_props['SENTENCE_SPLITTER_INCLUDE_INPUT_LANG'] = 'True'
 

@@ -57,6 +57,18 @@
           "defaultValue": "360"
         },
         {
+          "name": "USE_NLLB_TOKEN_LENGTH",
+          "description": "If true, the text splitter uses NLLB tokenizer token counts instead of character counts defined by `SENTENCE_SPLITTER_CHAR_COUNT`.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "NLLB_TRANSLATION_TOKEN_LIMIT",
+          "description": "Max tokens allowed per translation chunk if using token-based splitting, enabled when `USE_NLLB_TOKEN_LENGTH=TRUE`. Based on the available models, the max recommended limit is 512 tokens.",
+          "type": "INT",
+          "defaultValue": "512"
+        },
+        {
           "name": "SENTENCE_MODEL",
           "description":  "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model, Segment any Text (SaT) `sat-3l-sm` model, and Where's the Point (WtP) `wtp-bert-mini` model.",
           "type": "STRING",
