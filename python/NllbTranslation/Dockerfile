@@ -28,60 +28,51 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS base
 
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update; \
-    apt-get upgrade -y; \
-    apt-get install --no-install-recommends -y ca-certificates;
+# To use only CPU resources, update
+# below line to BUILD_TYPE=cpu
+ARG BUILD_TYPE=gpu
 
-COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ARG BUILD_TYPE
+WORKDIR /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
+RUN if [[ "${BUILD_TYPE}" == "gpu" ]]; \
+    then ./install.sh --gpu; \
+    else ./install.sh; fi;
 
-RUN uv python install 3.10
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS download_model
 
-ENV PATH="/root/.local/bin/:$PATH"
+# download nllb model
+ARG MODEL_NAME=facebook/nllb-200-3.3B
+ARG MODEL_REVISION=1a07f7d195896b2114afcb79b7b57ab512e7b43e
+RUN pip install -U "huggingface_hub[cli]"; \
+    hf download $MODEL_NAME \
+    --local-dir /models/$MODEL_NAME \
+    --revision $MODEL_REVISION; \
+    rm -rf /models/$MODEL_NAME/.[^.]*;
 
-RUN --mount=type=bind,source=subprocess/requirements.txt,target=/tmp/requirements.txt \
-    mkdir -p /llama/venv; \
-    python3.10 -m venv /llama/venv; \
-    /llama/venv/bin/pip install --cert /etc/ssl/certs/ca-certificates.crt -r /tmp/requirements.txt
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 
-# https://huggingface.co/DAMO-NLP-SG/VideoLLaMA3-7B/tree/fd2ad62f4cec8814750a908774c199681dbb89fd
-ENV MODEL_REVISION=fd2ad62f4cec8814750a908774c199681dbb89fd
+COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+COPY --from=build /opt/wtp /opt/wtp
+COPY --from=download_model /models /models
 
-RUN . /llama/venv/bin/activate; \
-    pip install "huggingface_hub[hf_transfer]"; \
-    pip install hf_transfer; \
-    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download "DAMO-NLP-SG/VideoLLaMA3-7B" --revision ${MODEL_REVISION}
-
-COPY subprocess/summarize_video.py /llama/summarize_video.py
-
-ARG RUN_TESTS=true
-
+ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
     install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_llama_video_summarization.py; fi
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_nllb_translation.py; fi
+
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF LLaMA Video Summarization" \
+      org.label-schema.name="OpenMPF No Language Left Behind Translation" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
 
+FROM cpu_component AS gpu_component
 
-# Optional build target for running unit tests with a GPU
-FROM base AS gpu_test
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
-COPY tests/data /tests/data
-ENV USE_MOCKS=False
-ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py", "TestComponent.test_multiple_videos"]
-
-
-# By default Docker builds the final stage
-FROM base AS final
+FROM ${BUILD_TYPE}_component
