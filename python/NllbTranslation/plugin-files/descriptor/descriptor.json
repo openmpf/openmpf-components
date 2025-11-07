@@ -124,7 +124,7 @@
           "value": "REGION"
         },
         {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "name": "IS_ANNOTATOR",
           "value": "TRUE"
         }
       ]
