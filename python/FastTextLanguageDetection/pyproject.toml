@@ -33,7 +33,7 @@ name = "FastTextLanguageDetection"
 version = "9.0"
 dependencies = [
     "mpf_component_api>=9.0",
-    "fasttext"
+    "fasttext",
     "numpy<2"
 ]
 
