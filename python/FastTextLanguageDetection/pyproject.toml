@@ -34,6 +34,7 @@ version = "9.0"
 dependencies = [
     "mpf_component_api>=9.0",
     "fasttext"
+    "numpy<2"
 ]
 
 [project.entry-points."mpf.exported_component"]

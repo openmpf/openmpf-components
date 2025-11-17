@@ -28,68 +28,60 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-
-FROM openmpf/openmpf_argos_translation_models:1.9.1-to-eng AS argos_models
-
-
-
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS base
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
     --mount=type=tmpfs,target=/tmp \
-    apt-get update && apt-get install -y --no-install-recommends cmake pkg-config make
+    apt-get update; \
+    apt-get upgrade -y; \
+    apt-get install --no-install-recommends -y ca-certificates;
 
+COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
 
-RUN pip3 install --no-cache-dir 'argostranslate==1.9.1'
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 
-RUN --mount=target=.,readwrite install-component.sh
+RUN uv python install 3.10
 
+ENV PATH="/root/.local/bin/:$PATH"
 
+RUN --mount=type=bind,source=subprocess/requirements.txt,target=/tmp/requirements.txt \
+    mkdir -p /llama/venv; \
+    python3.10 -m venv /llama/venv; \
+    /llama/venv/bin/pip install --cert /etc/ssl/certs/ca-certificates.crt -r /tmp/requirements.txt
 
-FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG} AS setup_models
+# https://huggingface.co/DAMO-NLP-SG/VideoLLaMA3-7B/tree/fd2ad62f4cec8814750a908774c199681dbb89fd
+ENV MODEL_REVISION=fd2ad62f4cec8814750a908774c199681dbb89fd
 
-COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+RUN . /llama/venv/bin/activate; \
+    pip install "huggingface_hub[hf_transfer]"; \
+    pip install hf_transfer; \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download "DAMO-NLP-SG/VideoLLaMA3-7B" --revision ${MODEL_REVISION}
 
-# To include a language model add *<ISO_LANG>_en* to the cp command.
-# Refer to README for list of supported languages
-RUN --mount=from=argos_models,source=/models,target=/all-models \
-    --mount=source=setup_models/argos_model_installer.py,target=/opt/argos_model_installer.py \
-    cd /all-models; \
-    mkdir /models; \
-    cp -- *de_en* *fr_en* *ru_en* *zh_en* *zt_en* *es_en* *ar_en* *ko_en* *fa_en* /models; \
-    python3 /opt/argos_model_installer.py /models; \
-    rm -r /models;
+COPY subprocess/summarize_video.py /llama/summarize_video.py
 
-RUN argospm update
+ARG RUN_TESTS=true
 
-# Another option for downloading language models is to add lines below for languages of interest:
-# RUN argospm install translate-<INPUT_ISO_LANG>_en
-# RUN argospm install translate-es_en
-
-# Please note that argospm may download models that require a newer version of argostranslate.
-
-
-FROM build AS run_tests
-
-ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
-    --mount=from=setup_models,source=/root/.local/share/argos-translate,target=/root/.local/share/argos-translate \
-<<eot
-    if [ "${RUN_TESTS,,}" == true ]; then
-        python tests/test_argos_translation.py
-    fi
-eot
-
-
-FROM setup_models
-
-COPY --from=run_tests $PLUGINS_DIR/ArgosTranslation $PLUGINS_DIR/ArgosTranslation
-
+    install-component.sh; \
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_llama_video_summarization.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Argos Translation" \
+      org.label-schema.name="OpenMPF LLaMA Video Summarization" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+
+
+# Optional build target for running unit tests with a GPU
+FROM base AS gpu_test
+
+COPY tests/test_llama_video_summarization.py /tests/test_llama_video_summarization.py
+COPY tests/data /tests/data
+ENV USE_MOCKS=False
+ENTRYPOINT ["python", "/tests/test_llama_video_summarization.py", "TestComponent.test_multiple_videos"]
+
+
+# By default Docker builds the final stage
+FROM base AS final

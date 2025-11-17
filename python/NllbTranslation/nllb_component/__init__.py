@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.2
-
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -7,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2022 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2024 The MITRE Corporation                                      #
+# Copyright 2022 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -26,26 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-ARG BUILD_REGISTRY
-ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
-
-ARG RUN_TESTS=false
-
-RUN pip install --no-cache-dir openai-whisper==20240930
-
-RUN python -c 'import whisper; whisper.load_model("base")'
-RUN python -c 'import whisper; whisper.load_model("base.en")'
-RUN python -c 'import whisper; whisper.load_model("tiny")'
-RUN python -c 'from tiktoken_ext.openai_public import gpt2; gpt2()'
-
-RUN --mount=target=.,readwrite \
-    install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_whisper_detection.py; fi
-
-LABEL org.label-schema.license="Apache 2.0" \
-      org.label-schema.name="OpenMPF Whisper Speech Detection" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.url="https://openmpf.github.io" \
-      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
-      org.label-schema.vendor="MITRE"
+from .nllb_translation_component import NllbTranslationComponent

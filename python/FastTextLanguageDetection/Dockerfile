@@ -43,7 +43,7 @@ RUN mkdir --parents /opt/fasttext/models \
 
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
-RUN pip install --no-cache-dir fasttext
+RUN pip install --no-cache-dir fasttext 'numpy<2'
 
 ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
