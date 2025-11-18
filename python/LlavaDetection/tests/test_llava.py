@@ -350,11 +350,11 @@ class TestLlava(unittest.TestCase):
                 self.assertTrue("LLAVA" in ff_location.detection_properties)
             else:
                 self.assertTrue("LLAVA" not in ff_location.detection_properties)
-
-    def test_ignore_results(self):
+    
+    def test_unsure_results(self):
         ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
         job = mpf.ImageJob(
-            job_name='test-ignore',
+            job_name='test-unsure',
             data_uri=self._get_test_file('person.jpg'),
             job_properties=dict(
                 OLLAMA_SERVER='localhost:11434',
@@ -366,6 +366,24 @@ class TestLlava(unittest.TestCase):
         )
         component = LlavaComponent()
 
+        expected_detection_properties = {
+            'CLASSIFICATION' : 'PERSON',
+            'LLAVA PERSON ACTION PERFORMED' : 'Walking',
+            'LLAVA PERSON BACKGROUND' :
+                '{"describe": "The woman is walking indoors, possibly in a corridor or hall. The background is out of focus and does not provide any specific information."}',
+            'LLAVA PERSON CLOTHING' : '{"upper body clothing": "black top", "lower body clothing": "black pants"}',
+            'LLAVA PERSON ESTIMATED GENDER' : 'female',
+            'LLAVA PERSON OBJECT IN HAND' : '{"type": "bag", "color": "dark", "describe": "Person is carrying a large dark bag."}',
+            'LLAVA PERSON SHOE' : '{"type": "sneakers", "color": "white", "describe": "Woman is wearing white sneakers"}',
+            'LLAVA PERSON TYPE' : 'civilian',
+            'LLAVA PERSON NEST LEVEL 1 LEVEL 1' : 'valid',
+            'LLAVA PERSON NEST LEVEL 1 NEST LEVEL 2 LEVEL 2' : 'valid',
+            'LLAVA PERSON NEST LEVEL 1 NEST LEVEL 2 NEST LEVEL 3' : '{"level 3": "valid"}',
+            'LLAVA PERSON OTHER NOTABLE CHARACTERISTICS NORMAL' : 'behavior',
+            'LLAVA PERSON OTHER NOTABLE CHARACTERISTICS BEHAVIOR' : 'normal',
+            'ANNOTATED BY LLAVA' : True
+        }
+
         def side_effect_function(model, prompt, images):
             with open(os.path.join(os.path.dirname(__file__), 'data', 'outputs', f"{job.job_name}-output.txt")) as f:
                 response = f.read()
@@ -373,11 +391,83 @@ class TestLlava(unittest.TestCase):
             return {"response": f"{response}"}
 
         result = self.run_patched_job(component, job, side_effect_function)[0]
-        
-        for key, value in result.detection_properties.items():
-            if key.startswith("LLAVA"):
-                self.assertTrue(value.strip().lower() != 'unsure')
-    
+
+        self.assertEqual(result.detection_properties, expected_detection_properties)
+
+    def test_visible_results(self):
+        ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+        job = mpf.ImageJob(
+            job_name='test-visible',
+            data_uri=self._get_test_file('person.jpg'),
+            job_properties=dict(
+                OLLAMA_SERVER='localhost:11434',
+                JSON_PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_json_prompts.json'),
+                ENABLE_JSON_PROMPT_FORMAT='True' 
+            ),
+            media_properties={},
+            feed_forward_location=ff_loc
+        )
+        component = LlavaComponent()
+
+        expected_detection_properties = {
+            'CLASSIFICATION' : 'PERSON',
+            'LLAVA PERSON CLOTHING HEADWEAR' :
+                '[{"type": "hoodie", "color": "black", "location": "head", "description": "A black hood that is pulled up."}]',
+            'LLAVA PERSON CLOTHING TOP LAYER' :
+                '{"type": "jacket", "color": "black", "location": "torso", "description": "A dark colored jacket covering the torso."}',
+            'LLAVA PERSON CLOTHING LOWER LAYER' :
+                '{"color": "dark", "location": "pants", "description": "Dark-colored pants that are only partially visible."}',
+            'LLAVA PERSON ESTIMATED AGE RANGE' : 'adult',
+            'LLAVA PERSON ESTIMATED GENDER' : 'male',
+            'LLAVA PERSON PERSON WEARING SHOE' : 'True',
+            'LLAVA PERSON SHOE' : '{"type": "sneaker", "color": "black", "description": "Black sneaker on the foot."}',
+            'LLAVA PERSON HEAD FEATURES BALD' : 'True',
+            'LLAVA PERSON HEAD FEATURES HEAD COVER TYPE' : 'hoodie',
+            'LLAVA PERSON ACTION PERFORMED' : 'walking',
+            'LLAVA PERSON BACKGROUND' : '{"describe": "The person is in a building with an indoor surface visible behind them.", "type": "indoors"}',
+            'ANNOTATED BY LLAVA' : True
+        }
+
+        def side_effect_function(model, prompt, images):
+            with open(os.path.join(os.path.dirname(__file__), 'data', 'outputs', f"{job.job_name}-output.txt")) as f:
+                response = f.read()
+
+            return {"response": f"{response}"}
+
+        result = self.run_patched_job(component, job, side_effect_function)[0]
+
+        self.assertEqual(result.detection_properties, expected_detection_properties)
+
+    def test_ignore_person_results(self):
+        ff_loc = mpf.ImageLocation(0, 0, 347, 374, -1, dict(CLASSIFICATION="PERSON"))
+        job = mpf.ImageJob(
+            job_name='test-ignore-person',
+            data_uri=self._get_test_file('person.jpg'),
+            job_properties=dict(
+                OLLAMA_SERVER='localhost:11434',
+                JSON_PROMPT_CONFIGURATION_PATH=self._get_test_file('custom_json_prompts.json'),
+                ENABLE_JSON_PROMPT_FORMAT='True' 
+            ),
+            media_properties={},
+            feed_forward_location=ff_loc
+        )
+        component = LlavaComponent()
+
+        expected_detection_properties = {
+            'CLASSIFICATION' : 'PERSON',
+            'ANNOTATED BY LLAVA' : True
+        }
+
+        def side_effect_function(model, prompt, images):
+            with open(os.path.join(os.path.dirname(__file__), 'data', 'outputs', f"{job.job_name}-output.txt")) as f:
+                response = f.read()
+
+            return {"response": f"{response}"}
+
+        result = self.run_patched_job(component, job, side_effect_function)[0]
+
+        self.assertEqual(result.detection_properties, expected_detection_properties)
+
     def test_get_frames(self):
         component = LlavaComponent()
         self.assertEqual(component._get_frames_to_process([], 1), [])

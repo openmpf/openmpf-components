@@ -41,6 +41,9 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('LlavaComponent')
 
+IGNORE_WORDS = ('unsure', 'none', 'false', 'no', 'unclear', 'n/a', 'unspecified', 'unknown', 'unreadable', 'not visible', 'none visible')
+IGNORE_PREFIXES = tuple([s + ' ' for s in IGNORE_WORDS])
+
 class LlavaComponent:
     detection_type = 'CLASS'
 
@@ -179,8 +182,9 @@ class LlavaComponent:
                                 response_json = json.loads(response)
                                 self._update_detection_properties(ff_location.detection_properties, response_json)
                                 json_failed = False
-                            except:
-                                logger.warning(f"LLaVA failed to produce valid JSON output. Failed {json_attempts} of {self.json_limit} attempts.")
+                            except Exception as e:
+                                logger.warning(f"LLaVA failed to produce valid JSON output: {e}")
+                                logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
                                 continue
                         if json_failed:
                             logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
@@ -193,7 +197,7 @@ class LlavaComponent:
             if classification in prompts_to_use:
                 for tag, prompt in prompts_to_use[classification].items():
                     json_attempts, json_failed = 0, True
-                    while (json_attempts <= self.json_limit) and (json_failed):
+                    while (json_attempts < self.json_limit) and (json_failed):
                         json_attempts += 1
                         response = self._get_ollama_response_json(prompt, encoded)
                         try:
@@ -201,8 +205,9 @@ class LlavaComponent:
                             response_json = json.loads(response)
                             self._update_detection_properties(job_feed_forward.detection_properties, response_json)
                             json_failed = False
-                        except:
-                            logger.warning(f"LLaVA failed to produce valid JSON output. Failed {json_attempts} of {self.json_limit} attempts.")
+                        except Exception as e:
+                            logger.warning(f"LLaVA failed to produce valid JSON output: {e}")
+                            logger.warning(f"Failed {json_attempts} of {self.json_limit} attempts.")
                             continue
                     if json_failed:
                         logger.warning(f"Using last full LLaVA response instead of parsed JSON output.")
@@ -212,8 +217,12 @@ class LlavaComponent:
         return [job_feed_forward]
 
     def _update_detection_properties(self, detection_properties, response_json):
-        ignore_words = ['unsure', 'none', 'false', 'no', 'unclear', '']
-        key_list = self._get_keys(response_json)
+
+        # TODO: Implement this generically to work with any class. Specify rollup class in prompt JSON file.
+        is_person = ('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() == 'person')
+        is_vehicle = ('CLASSIFICATION' in detection_properties) and (detection_properties['CLASSIFICATION'].lower() in ['car', 'truck', 'bus'])
+
+        key_list = self._get_keys(response_json, is_vehicle) # TODO: flatten should be an algorithm property or specified in the prompts file
         key_vals = dict()
         keywords = []
         for key_str in key_list:
@@ -221,40 +230,82 @@ class LlavaComponent:
             key, val = " ".join([s.upper() for s in split_key[:-1]]), split_key[-1]
             key_vals[key] = val
 
-        if ('LLAVA VISIBLE PERSON' not in key_vals) or (key_vals['LLAVA VISIBLE PERSON'].strip().lower() not in ignore_words):
-            for key, val in key_vals.items():
-                if ('VISIBLE' in key) and (val.strip().lower() in ignore_words):
-                    keywords.append(key.split(' VISIBLE ')[1])
-                    key_vals.pop(key)
+        ignore_person = is_person and ('LLAVA VISIBLE PERSON' in key_vals) and (self._ignore(key_vals['LLAVA VISIBLE PERSON']))
+        ignore_vehicle = is_vehicle and ('LLAVA VISIBLE VEHICLE' in key_vals) and (self._ignore(key_vals['LLAVA VISIBLE VEHICLE']))
 
+        if not ignore_person and not ignore_vehicle:
+            tmp_key_vals = dict(key_vals)
+            for key, val in key_vals.items():
+                if 'VISIBLE' in key:
+                    tmp_key_vals.pop(key)
+                    if self._ignore(val):
+                        keywords.append(key.split(' VISIBLE ')[1])
+            key_vals = tmp_key_vals
+
+            tmp_key_vals = dict(key_vals)
             for keyword in keywords:
                 pattern = re.compile(fr'\b{keyword}\b')
                 for key_to_remove in filter(pattern.search, key_vals):
-                    key_vals.pop(key_to_remove)
+                    tmp_key_vals.pop(key_to_remove, None)
+            key_vals = tmp_key_vals
             
+            tmp_key_vals = dict(key_vals)
             for key, val in key_vals.items():
-                if val.strip().lower() in ignore_words:
-                    key_vals.pop(key)
+                if self._ignore(val):
+                    tmp_key_vals.pop(key)
+            key_vals = tmp_key_vals
             
             detection_properties.update(key_vals)
-            detection_properties['ANNOTATED BY LLAVA'] = True
 
-    def _get_keys(self, response_json):
-        if isinstance(response_json, list) or isinstance(response_json, str):
+        detection_properties['ANNOTATED BY LLAVA'] = True
+        logger.debug(f"{detection_properties=}")
+
+    def _get_keys(self, response_json, flatten):
+        if not response_json:
+            yield f'||none'
+
+        elif isinstance(response_json, (str, bool)):
+            yield f'||{response_json}'
+
+        elif isinstance(response_json, list):
             yield f'||{json.dumps(response_json)}'
+
         elif isinstance(response_json, dict):
             if self._is_lowest_level(response_json):
-                yield f'||{json.dumps(response_json)}'
+
+                tmp_response_json = dict(response_json)
+                for key, val in response_json.items():
+                    if self._ignore(val):
+                        tmp_response_json.pop(key)
+                response_json = tmp_response_json
+
+                if not response_json:
+                    yield f'||none'
+                elif flatten:
+                    yield from (f'||{key}||{val}' for key, val in response_json.items())
+                else:
+                    yield f'||{json.dumps(response_json)}'
+
             else:
                 for key, value in response_json.items():
-                    yield from (f'||{key}{p}' for p in self._get_keys(value))
-        
+                    if self._ignore(key):
+                        yield f'||none'
+                    else:
+                        yield from (f'||{key}{p}' for p in self._get_keys(value, flatten))
+    
     @staticmethod
     def _is_lowest_level(response_json):
         for key, val in response_json.items():
             if not isinstance(val, str):
                 return False
         return True
+    
+    @staticmethod
+    def _ignore(input):
+        return not input or \
+            input.strip().lower() in IGNORE_WORDS or \
+            input.strip().lower().startswith(IGNORE_PREFIXES)
+
 
     def _get_feed_forward_detections(self, job_feed_forward, reader, config, is_video_job=False):
         self._update_prompts(config.prompt_config_path, config.json_prompt_config_path)
@@ -290,9 +341,9 @@ class LlavaComponent:
             if self.client is None or host_url != self.host_url:
                 self.host_url = host_url
                 self.client = ollama.Client(host=self.host_url)
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not instantiate Ollama Client. Make sure OLLAMA_SERVER is set correctly: ",
+                f"Could not instantiate Ollama Client. Make sure OLLAMA_SERVER is set correctly: {e}",
                 mpf.DetectionError.NETWORK_ERROR
             )
 
@@ -346,11 +397,12 @@ class LlavaComponent:
         try:
             self.video_process_timer.start()
             response = self.client.generate(self.model, prompt, images=[encoded_image])['response']
+            logger.debug(f"Ollama response:\n{response}")
             self.video_process_timer.pause()
             return response
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not communicate with Ollama server: ",
+                f"Could not communicate with Ollama server: {e}",
                 mpf.DetectionError.NETWORK_ERROR
             )
         
@@ -359,13 +411,15 @@ class LlavaComponent:
             encoded = self._encode_image(image)
             for tag, prompt in prompt_dict.items():
                 video_process_timer.start()
-                detection_properties[tag] = self.client.generate(self.model, prompt, images=[encoded])['response']
+                response = self.client.generate(self.model, prompt, images=[encoded])['response']
+                logger.debug(f"Ollama response:\n{response}")
+                detection_properties[tag] = response
                 video_process_timer.pause()
             detection_properties['ANNOTATED BY LLAVA'] = True
             
-        except:
+        except Exception as e:
             raise mpf.DetectionException(
-                "Could not communicate with Ollama server: ",
+                f"Could not communicate with Ollama server: {e}",
                 mpf.DetectionError.NETWORK_ERROR
                 )
 
