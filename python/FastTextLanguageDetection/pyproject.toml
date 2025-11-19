@@ -34,7 +34,6 @@ version = "9.0"
 dependencies = [
     "mpf_component_api>=9.0",
     "fasttext",
-    "huggingface_hub",
     "numpy<2"
 ]
 
