@@ -26,13 +26,18 @@
 
 import os
 import json
-import subprocess
 import logging
 from typing import Iterable, Mapping, Tuple, Union
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+from google import genai
+from google.genai import types
+from google.genai.types import Part
+from google.cloud import storage
+from google.genai.errors import ClientError
 
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
@@ -67,6 +72,7 @@ class GeminiVideoSummarizationComponent:
         self.label_prefix = config.label_prefix
         self.label_user = config.label_user
         self.label_purpose = config.label_purpose
+
         fps = config.process_fps
         enable_timeline=config.enable_timeline
 
@@ -86,7 +92,8 @@ class GeminiVideoSummarizationComponent:
 
         while max(attempts.values()) < max_attempts:
             error= None
-            response = self._get_gemini_response(model_name, job.data_uri, prompt, segment_start_time, segment_stop_time, fps)
+            response = self._get_gemini_response(job, prompt, model_name, fps)
+            logger.info(f'Gemini response received.: {response}')
             if '```json\n' in response and '```' in response:
                 try:
                     response = response.split('```json\n')[1].split('```')[0]
@@ -132,7 +139,7 @@ class GeminiVideoSummarizationComponent:
 
         segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
         video_fps = float(job.media_properties['FPS'])
-        segment_start_time = job.start_frame / float(job.media_properties['FPS'])
+        segment_start_time = job.start_frame / video_fps
         
         frame_width = 0
         frame_height = 0
@@ -361,51 +368,95 @@ class GeminiVideoSummarizationComponent:
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {e}") 
 
-    def _get_gemini_response(self, model_name, data_uri, prompt, start, stop, fps):
-        process = None
+    def _get_gemini_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
         try:
-            process = subprocess.Popen([
-                "/gemini-subprocess/venv/bin/python3",
-                "/gemini-subprocess/gemini-process-video.py",
-                "-m", model_name,
-                "-d", data_uri,
-                "-p", prompt,
-                "-c", self.google_application_credentials,
-                "-i", self.project_id,
-                "-b", self.bucket_name,
-                "-l", self.label_prefix,
-                "-u", self.label_user,
-                "-r", self.label_purpose,
-                "-s", str(start),
-                "-e", str(stop),
-                "-f", str(fps)
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE)
-            stdout, stderr = process.communicate()
-        except Exception as e:
-            raise mpf.DetectionException(
-                f"Subprocess error: {e}",
-                mpf.DetectionError.DETECTION_FAILED)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.google_application_credentials
 
-        if process.returncode == 0:
-            response = stdout.decode()
-            logger.info(response)
-            return response
-        
-        stderr_decoded = stderr.decode()
-        if self._is_rate_limit_error(stderr_decoded):
-            logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
-            ex = mpf.DetectionException(
-                f"Subprocess failed due to rate limiting: {stderr_decoded}",
+            # GCP resources
+            USER = self.label_user
+            PURPOSE = self.label_purpose
+            LABEL_PREFIX = self.label_prefix
+            PROJECT_ID = self.project_id
+            BUCKET_NAME = self.bucket_name
+
+            PROMPT = prompt
+            MODEL = model_name
+
+            # Video segment storage information
+            FILE_PATH = job.data_uri
+            FILE_NAME = os.path.basename(FILE_PATH)
+            STORAGE_PATH = USER + "/" + FILE_NAME
+
+            VIDEO_FPS = float(job.media_properties['FPS'])
+            SEGMENT_START = job.start_frame / VIDEO_FPS
+            SEGMENT_STOP = job.stop_frame / VIDEO_FPS
+
+            # Uploads file to GCP bucket
+            client = storage.Client(project=PROJECT_ID)
+            bucket = client.bucket(BUCKET_NAME)
+            blob = bucket.blob(STORAGE_PATH)
+            blob.upload_from_filename(FILE_PATH)
+
+            file_uri = f"gs://{BUCKET_NAME}/{STORAGE_PATH}"
+
+            # Generate Gemini response
+            genai_client = genai.Client(
+                project=PROJECT_ID,
+                location="global",
+                vertexai=True
+            )
+
+            content_config = None
+            if USER and LABEL_PREFIX and PURPOSE:
+                content_config = types.GenerateContentConfig(
+                    labels={
+                        LABEL_PREFIX + "user": USER,
+                        LABEL_PREFIX + "purpose": PURPOSE,
+                        LABEL_PREFIX + "modality": "video"
+                    }
+                )
+
+            response = genai_client.models.generate_content(
+                model=MODEL,
+                contents=types.Content(
+                    role='user',
+                    parts=[
+                        Part(
+                            file_data=types.FileData(
+                                file_uri=file_uri,
+                                mime_type='video/mp4'
+                            ),
+                            video_metadata=types.VideoMetadata(
+                                start_offset=f"{SEGMENT_START}s",
+                                end_offset=f"{SEGMENT_STOP}s",
+                                fps=fps
+                            )
+                        ),
+                        Part(
+                            text=PROMPT
+                        )
+                    ],
+                ),
+                config=content_config
+            )
+            return response.text
+
+        except ClientError as e:
+            if hasattr(e, 'code') and e.code == 429:
+                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
+                ex = mpf.DetectionException(
+                    "Gemini API rate limit (429 Too Many Requests)",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
+                ex.rate_limit = True
+                raise ex
+            raise
+        except Exception as e:
+            logger.error(f"Error in _get_gemini_response: {e}")
+            raise mpf.DetectionException(
+                f"Gemini API call failed: {e}",
                 mpf.DetectionError.DETECTION_FAILED
             )
-            ex.rate_limit = True
-            raise ex
-        raise mpf.DetectionException(
-            f"Subprocess failed: {stderr_decoded}",
-            mpf.DetectionError.DETECTION_FAILED
-        )
 
 def _read_file(path: str) -> str:
     try:
