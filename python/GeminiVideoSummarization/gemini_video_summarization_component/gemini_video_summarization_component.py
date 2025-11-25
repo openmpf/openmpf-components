@@ -427,8 +427,8 @@ class GeminiVideoSummarizationComponent:
                                 mime_type='video/mp4'
                             ),
                             video_metadata=types.VideoMetadata(
-                                start_offset=f"{SEGMENT_START}s",
-                                end_offset=f"{SEGMENT_STOP}s",
+                                start_offset=f"{SEGMENT_START:.2f}s",
+                                end_offset=f"{SEGMENT_STOP:.2f}s",
                                 fps=fps
                             )
                         ),
