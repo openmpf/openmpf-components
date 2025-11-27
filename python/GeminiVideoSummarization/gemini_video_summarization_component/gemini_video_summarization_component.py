@@ -130,6 +130,9 @@ class GeminiVideoSummarizationComponent:
         wait=wait_random_exponential(multiplier=2, max=32, min=4),
         # Stops retrying after the total time waiting >=60s, checks after each attempt
         stop=stop_after_delay(60),
+        # Retries if it detects an exception AND rate_limit is true
+        # If e.rate_limit exists, getattr returns its actual value (True or False)
+        # Else if e.rate_limit does NOT exist, getattr returns False
         retry=retry_if_exception(lambda e: isinstance(e, mpf.DetectionException) and getattr(e, 'rate_limit', False))
     )
 
