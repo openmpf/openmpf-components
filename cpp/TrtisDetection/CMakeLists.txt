@@ -36,7 +36,7 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo)  # build release version with debug symbols
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 4.9.0 EXACT REQUIRED PATHS /opt/opencv-4.9.0
+find_package(OpenCV 4.13.0 EXACT REQUIRED PATHS /opt/opencv-4.13.0
     COMPONENTS opencv_core)
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)

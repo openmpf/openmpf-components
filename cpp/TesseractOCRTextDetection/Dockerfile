@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.20
 
 #############################################################################
 # NOTICE                                                                    #
@@ -28,7 +28,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} AS build_component
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
@@ -78,7 +78,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTe
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} AS install_component
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
@@ -88,7 +88,7 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 
 COPY --from=build_component /etc/ImageMagick-6/policy.xml /etc/ImageMagick-6/policy.xml
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
+ENV LD_LIBRARY_PATH=$PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS_DIR/TesseractOCRTextDetection
 
@@ -98,7 +98,7 @@ COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
 COPY --from=build_component $BUILD_DIR/tessdata_model_updater \
                             /opt/mpf/tessdata_model_updater
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/TesseractOCRTextDetection/lib
+ENV LD_LIBRARY_PATH=$PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Tesseract OCR Text Detection" \

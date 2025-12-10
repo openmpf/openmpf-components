@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.20
 
 #############################################################################
 # NOTICE                                                                    #
@@ -28,7 +28,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} AS build_component
 
 RUN --mount=target=. build-component.sh
 
@@ -36,17 +36,21 @@ ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectionTest; fi
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as ocv_dnn_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} AS ocv_dnn_component
 
-COPY --from=build_component /usr/lib/x86_64-linux-gnu/libcudnn_ops_infer.so.8 /usr/lib/x86_64-linux-gnu/
-
-COPY --from=build_component /usr/lib/x86_64-linux-gnu/libcudnn_cnn_infer.so.8 /usr/lib/x86_64-linux-gnu/
+COPY --from=build_component \
+    /usr/lib/x86_64-linux-gnu/libcudnn_ops.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_cnn.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_graph.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_engines_runtime_compiled.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_engines_precompiled.so.9 \
+    /usr/lib/x86_64-linux-gnu/
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvDnnDetection $PLUGINS_DIR/OcvDnnDetection
 
 COPY --from=build_component $BUILD_DIR/libmpfOcvDnnDetection.so $PLUGINS_DIR/OcvDnnDetection/lib/
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvDnnDetection/lib
+ENV LD_LIBRARY_PATH=$PLUGINS_DIR/OcvDnnDetection/lib
 
 LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Deep Neural Network (DNN) Classification" \
@@ -56,7 +60,7 @@ LABEL org.label-schema.license="Mixed" \
       org.label-schema.vendor="MITRE"
 
 
-FROM ocv_dnn_component as sample_executable
+FROM ocv_dnn_component AS sample_executable
 
 COPY --from=build_component $BUILD_DIR/sample_ocv_dnn_classifier /opt/mpf/
 
@@ -64,7 +68,7 @@ COPY --from=build_component $BUILD_DIR/test/data /opt/mpf/test-data
 
 RUN ln -s /opt/mpf/plugins /opt/mpf/plugin
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvDnnDetection/lib
+ENV LD_LIBRARY_PATH=$PLUGINS_DIR/OcvDnnDetection/lib
 
 ENTRYPOINT ["/opt/mpf/sample_ocv_dnn_classifier"]
 

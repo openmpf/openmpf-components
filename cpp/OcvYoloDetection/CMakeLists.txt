@@ -55,7 +55,7 @@ set(DLIB_DIR /apps/source/dlib-sources/dlib-19.20/dlib)
 include(${DLIB_DIR}/cmake)
 set_property(TARGET dlib PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-find_package(OpenCV 4.9.0 EXACT REQUIRED COMPONENTS opencv_dnn opencv_videoio opencv_tracking)
+find_package(OpenCV 4.13.0 EXACT REQUIRED COMPONENTS opencv_dnn opencv_videoio opencv_tracking)
 
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)

@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.20
 
 #############################################################################
 # NOTICE                                                                    #
@@ -30,13 +30,13 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
 # Download weights in separate stage so they don't need to be re-downloaded when base images change.
-FROM ubuntu:20.04 as download_dependencies
+FROM ubuntu:24.04 AS download_dependencies
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
     --mount=type=tmpfs,target=/tmp \
     apt-get update; \
-    apt-get install --no-install-recommends -y wget ca-certificates;
+    apt-get install --no-install-recommends -y wget ca-certificates bzip2;
 
 RUN mkdir /weights \
     && cd /weights \
@@ -49,12 +49,11 @@ RUN mkdir --parents /apps/source/dlib-sources; \
 
 
 RUN mkdir /opt/triton \
-    && wget -O- https://github.com/triton-inference-server/server/releases/download/v2.11.0/v2.11.0_ubuntu2004.clients.tar.gz \
+    && wget -O- https://github.com/triton-inference-server/server/releases/download/v2.55.0/v2.55.0_ubuntu2404.clients.tar.gz \
         | tar --extract --gzip --directory /opt/triton lib include
 
 
-
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} AS build_component
 
 ENV TRITON_SUPPORT=ON
 
@@ -78,19 +77,24 @@ RUN --mount=target=. \
     fi
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} AS install_component
 
 COPY --from=download_dependencies /weights $PLUGINS_DIR/OcvYoloDetection/models
 
-COPY --from=build_component /usr/lib/x86_64-linux-gnu/libcudnn_ops_infer.so.8 /usr/lib/x86_64-linux-gnu/
+COPY --from=build_component \
+    /usr/lib/x86_64-linux-gnu/libcudnn_ops.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_cnn.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_graph.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_engines_runtime_compiled.so.9 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_engines_precompiled.so.9 \
+    /usr/lib/x86_64-linux-gnu/
 
-COPY --from=build_component /usr/lib/x86_64-linux-gnu/libcudnn_cnn_infer.so.8 /usr/lib/x86_64-linux-gnu/
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvYoloDetection $PLUGINS_DIR/OcvYoloDetection
 
 COPY --from=build_component $BUILD_DIR/libmpfOcvYoloDetection.so $PLUGINS_DIR/OcvYoloDetection/lib/
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvYoloDetection/lib
+ENV LD_LIBRARY_PATH=$PLUGINS_DIR/OcvYoloDetection/lib
 
 LABEL org.label-schema.license="Mixed" \
       org.label-schema.name="OpenMPF OpenCV Yolo Detection" \
