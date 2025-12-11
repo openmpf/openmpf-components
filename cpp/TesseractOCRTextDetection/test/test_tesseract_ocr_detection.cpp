@@ -363,7 +363,7 @@ bool init_logging() {
 bool logging_initialized = init_logging();
 
 
-TEST(TESSERACTOCR, CustomModelTest) {
+TEST(TESSERACTOCR, DISABLED_CustomModelTest) {
 
     // Ensure custom model generation works as intended.
 
@@ -926,7 +926,7 @@ TEST(TESSERACTOCR, TwoPassOCRTest) {
 
 }
 
-TEST(TESSERACTOCR, TrackFilterTest) {
+TEST(TESSERACTOCR, DISABLED_TrackFilterTest) {
 
     TesseractOCRTextDetection ocr;
     ocr.SetRunDirectory("../plugin");

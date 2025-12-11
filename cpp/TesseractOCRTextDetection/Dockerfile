@@ -56,22 +56,25 @@ RUN --mount=type=tmpfs,target=/tmp \
 RUN --mount=type=tmpfs,target=/tmp \
     mkdir -p /tmp/tesseract \
     && cd /tmp/tesseract \
-    && wget -O- 'https://github.com/tesseract-ocr/tesseract/archive/4.1.1.tar.gz' \
+    && wget -O- 'https://github.com/tesseract-ocr/tesseract/archive/5.0.0.tar.gz' \
         | tar --extract --gzip \
-    && mkdir -p tesseract-4.1.1/build \
-    && cd tesseract-4.1.1/build \
-    && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. \
+    && mkdir -p tesseract-5.0.0/build \
+    && cd tesseract-5.0.0/build \
+    && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 \
+        -DCMAKE_INSTALL_PREFIX:PATH=/usr/local \
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+        .. \
     && make install -j $(nproc) \
-    && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharset.h /usr/local/include/tesseract/ \
-    && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/errcode.h /usr/local/include/tesseract/ \
-    && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharmap.h /usr/local/include/tesseract/ \
-    && cp /tmp/tesseract/tesseract-4.1.1/src/arch/intsimdmatrix.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-5.0.0/src/ccutil/unicharset.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-5.0.0/src/ccutil/errcode.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-5.0.0/src/ccutil/helpers.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-5.0.0/src/ccutil/serialis.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-5.0.0/src/ccutil/unicharmap.h /usr/local/include/tesseract/ \
+    && cp /tmp/tesseract/tesseract-5.0.0/src/arch/intsimdmatrix.h /usr/local/include/tesseract/ \
     && ldconfig
 
 
-RUN --mount=target=.  \
-    patch /etc/ImageMagick-6/policy.xml ImageMagick-policy.patch; \
-    build-component.sh;
+RUN --mount=target=. build-component.sh
 
 ARG RUN_TESTS=false
 RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./TesseractOCRTextDetectionTest; fi
@@ -86,8 +89,6 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
     apt-get update; \
     apt-get install --no-install-recommends -y ghostscript libmagickcore-6.q16-6
 
-COPY --from=build_component /etc/ImageMagick-6/policy.xml /etc/ImageMagick-6/policy.xml
-
 ENV LD_LIBRARY_PATH=$PLUGINS_DIR/TesseractOCRTextDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS_DIR/TesseractOCRTextDetection
@@ -95,8 +96,8 @@ COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS
 COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
                             $PLUGINS_DIR/TesseractOCRTextDetection/lib/
 
-COPY --from=build_component $BUILD_DIR/tessdata_model_updater \
-                            /opt/mpf/tessdata_model_updater
+# COPY --from=build_component $BUILD_DIR/tessdata_model_updater \
+#                             /opt/mpf/tessdata_model_updater
 
 ENV LD_LIBRARY_PATH=$PLUGINS_DIR/TesseractOCRTextDetection/lib
 

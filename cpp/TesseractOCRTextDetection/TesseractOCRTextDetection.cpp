@@ -31,6 +31,7 @@
 #include <future>
 #include <iostream>
 #include <random>
+#include <thread>
 
 #include <boost/regex.hpp>
 #include <boost/locale.hpp>
@@ -749,7 +750,7 @@ string TesseractOCRTextDetection::process_osd_lang(const string &script_type, co
 // Get OSD orientation scores and convert them into ROTATION values.
 // Both the scaled imi image and unscaled imi_original image are also needed since vertical rotations may result in
 // changes to the original image rescaling. The final rescaled image will be stored in imi_scaled.
-bool TesseractOCRTextDetection::get_OSD_rotation(OSResults *results, cv::Mat &imi_scaled, cv::Mat &imi_original,
+bool TesseractOCRTextDetection::get_OSD_rotation(tesseract::OSResults *results, cv::Mat &imi_scaled, cv::Mat &imi_original,
                                                  int &rotation, const MPFJob &job, OCR_filter_settings &ocr_fset) {
 
     switch (results->best_result.orientation_id) {
@@ -797,7 +798,7 @@ bool TesseractOCRTextDetection::get_OSD_rotation(OSResults *results, cv::Mat &im
     return true;
 }
 
-void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi, const MPFJob &job,
+void TesseractOCRTextDetection::get_OSD(tesseract::OSBestResult &best_result, cv::Mat &imi, const MPFJob &job,
                                         OCR_filter_settings &ocr_fset,
                                         Properties &detection_properties,
                                         string &tessdata_script_dir, set<string> &missing_languages) {
@@ -807,8 +808,8 @@ void TesseractOCRTextDetection::get_OSD(OSBestResult &best_result, cv::Mat &imi,
     pair<int, string> tess_api_key = make_pair(oem, ocr_fset.model_dir + "/" + "osd");
     set<string> found_languages;
     string run_dir = GetRunDirectory();
-    OSResults original_results, fallback_results;
-    OSResults *results;
+    tesseract::OSResults original_results, fallback_results;
+    tesseract::OSResults *results;
 
     // Preserve a copy for images that may swap width and height. Rescaling will be performed based on new dimensions.
     cv::Mat imi_copy = imi.clone();
@@ -1370,7 +1371,7 @@ vector<MPFImageLocation> TesseractOCRTextDetection::process_image_job(const MPFJ
 
     if (ocr_fset.psm == 0 || ocr_fset.enable_osd) {
 
-        OSBestResult os_best_result;
+        tesseract::OSBestResult os_best_result;
         get_OSD(os_best_result, image_data, job, ocr_fset, osd_detection_properties,
                 tessdata_script_dir, missing_languages);
 
@@ -1541,7 +1542,7 @@ void TesseractOCRTextDetection::process_parallel_pdf_pages(PDF_page_inputs &page
         thread_var[index].osd_track_results = MPFGenericTrack(-1.0);
         thread_var[index].tessdata_script_dir = "";
         if (page_inputs.ocr_fset.enable_osd) {
-            OSBestResult os_best_result;
+            tesseract::OSBestResult os_best_result;
             // Reset to original specified language before processing OSD.
             page_inputs.ocr_fset.tesseract_lang = page_inputs.default_lang;
             set<string> missing_languages;
@@ -1630,7 +1631,7 @@ void TesseractOCRTextDetection::process_serial_pdf_pages(PDF_page_inputs &page_i
         MPFGenericTrack osd_track_results(-1);
         string tessdata_script_dir = "";
         if (page_inputs.ocr_fset.psm == 0 || page_inputs.ocr_fset.enable_osd) {
-            OSBestResult os_best_result;
+            tesseract::OSBestResult os_best_result;
             // Reset to original specified language before processing OSD.
             page_inputs.ocr_fset.tesseract_lang = page_inputs.default_lang;
             set<string> missing_languages;
@@ -1795,7 +1796,7 @@ void TessApiWrapper::Clear() {
     tess_api_.Clear();
 }
 
-bool TessApiWrapper::DetectOS(OSResults *results) {
+bool TessApiWrapper::DetectOS(tesseract::OSResults *results) {
     return tess_api_.DetectOS(results);
 }
 

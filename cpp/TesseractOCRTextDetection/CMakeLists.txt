@@ -39,7 +39,7 @@ find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
 find_package( Leptonica 1.75.0 REQUIRED )
-find_package( Tesseract 4.1.1 REQUIRED )
+find_package( Tesseract 5.0.0 REQUIRED )
 find_package(ImageMagick REQUIRED COMPONENTS Magick++)
 
 find_package(Boost 1.53.0 COMPONENTS regex locale filesystem)
@@ -66,12 +66,14 @@ configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDe
 
 
 add_subdirectory(test)
-add_subdirectory(model_updater_tesseract_src)
+
+# TODO: Figure out where the model updater files came from and update them to Tesseract 5.
+# add_subdirectory(model_updater_tesseract_src)
 
 # Build executable
 add_executable(sample_tesseract_ocr_detector sample_tesseract_ocr_detector.cpp)
 target_link_libraries(sample_tesseract_ocr_detector mpfTesseractOCRTextDetection)
 
 # Build executable
-add_executable              (tessdata_model_updater tessdata_model_updater.cpp)
-target_link_libraries       (tessdata_model_updater libtesseract ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${Boost_LIBRARIES})
+# add_executable              (tessdata_model_updater tessdata_model_updater.cpp)
+# target_link_libraries       (tessdata_model_updater libtesseract ${Tesseract_LIBRARIES} ${Leptonica_LIBRARIES} ${Boost_LIBRARIES})
