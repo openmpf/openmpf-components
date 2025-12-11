@@ -74,7 +74,7 @@ bool OcvDnnDetection::Init() {
                 .RegisterPathField("synset_txt", &ModelSettings::synset_file);
     }
     catch (const std::exception &ex) {
-        LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what())
+        LOG4CXX_ERROR(logger_, "Failed to initialize ModelsIniParser due to: " << ex.what());
         return false;
     }
 
