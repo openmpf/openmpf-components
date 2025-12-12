@@ -49,7 +49,6 @@ from pkg_resources import resource_filename
 import pandas as pd
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
-logger.setLevel('INFO')
 
 class QwenSpeechSummaryComponent:
 
@@ -96,9 +95,9 @@ class QwenSpeechSummaryComponent:
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
-        logger.info(f'Received feed forward video job.')
+        print(f'Received feed forward video job.')
 
-        logger.info('Received all tracks video job: %s', video_job)
+        print('Received all tracks video job: %s', video_job)
 
         config = JobConfig(video_job.job_properties)
         if config.prompt_template:
@@ -148,7 +147,7 @@ class QwenSpeechSummaryComponent:
 
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
-        logger.info(f'Received audio job.')
+        print(f'Received audio job.')
 
         raise Exception('Getting 1 track at a time is going to be rough')
 
@@ -171,7 +170,7 @@ class JobConfig:
             self.classifiers_path = os.path.expandvars(self.classifiers_file)
 
         if not os.path.exists(self.classifiers_path):
-            logger.exception('Failed to complete job due incorrect file path for the qwen classifiers path: '
+            print('Failed to complete job due incorrect file path for the qwen classifiers path: '
                              f'"{self.classifiers_path}"')
             raise mpf.DetectionException(
                 'Invalid path provided for qwen classifiers path: '
@@ -190,10 +189,10 @@ def run_component_test():
         mpf.VideoTrack(0, 1, -100, {}, track['trackProperties']) for media in json.loads(input)['media'] for speech in media['output']['SPEECH'] for track in speech['tracks'] # type: ignore
     ])
 
-    logger.info('About to call get_detections_from_video')
+    print('About to call get_detections_from_video')
     results = list(qsc.get_detections_from_all_video_tracks(job))
-    logger.info('get_detections_from_image found: %s detections', len(results))
-    logger.info('get_detections_from_image results: %s', results)
+    print('get_detections_from_image found: %s detections', len(results))
+    print('get_detections_from_image results: %s', results)
 
 
 
