@@ -97,7 +97,7 @@ class QwenSpeechSummaryComponent:
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
         print(f'Received feed forward video job.')
 
-        print('Received all tracks video job: %s', video_job)
+        #print('Received all tracks video job: {video_job}')
 
         config = JobConfig(video_job.job_properties)
         if config.prompt_template:
@@ -191,8 +191,8 @@ def run_component_test():
 
     print('About to call get_detections_from_video')
     results = list(qsc.get_detections_from_all_video_tracks(job))
-    print('get_detections_from_image found: %s detections', len(results))
-    print('get_detections_from_image results: %s', results)
+    print(f'get_detections_from_image found: {len(results)} detections')
+    print(f'get_detections_from_image results: {results}')
 
 
 
