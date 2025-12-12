@@ -28,9 +28,11 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM openmpf/openmpf_python_executor_ssb:latest
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-RUN pip3 install --no-cache-dir 'pandas transformers>=4.51.0 accelerate pydantic openai jinja2'
+RUN apt-get update && apt-get install -y git-core && \
+    git clone https://github.com/openmpf/openmpf-python-component-sdk -b develop && \
+    pip3 install --no-cache-dir openmpf-python-component-sdk/detection/api openmpf-python-component-sdk/detection/component_util 'transformers>=4.51.0' accelerate pydantic openai jinja2 
 
 ARG RUN_TESTS=false
 

@@ -26,8 +26,6 @@
 
 import logging
 
-import uuid
-
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
@@ -35,22 +33,23 @@ from typing import Sequence, Dict, Mapping
 
 from openai import OpenAI
 from transformers import AutoTokenizer
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, PackageLoader
 import os, sys
 
 import json
 
 # No local model loading; using remote API
-from schema import response_format, StructuredResponse
+from .schema import response_format, StructuredResponse
 
-from llm_util.classifiers import get_classifier_lines
-from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
-from llm_util.input_cleanup import clean_input_json, convert_tracks_to_csv
+from .llm_util.classifiers import get_classifier_lines
+from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+from .llm_util.input_cleanup import clean_input_json, convert_tracks_to_csv
 
 from pkg_resources import resource_filename
 import pandas as pd
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
+logger.setLevel('INFO')
 
 class QwenSpeechSummaryComponent:
 
@@ -96,17 +95,21 @@ class QwenSpeechSummaryComponent:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
-        self.env = Environment(loader = FileSystemLoader('templates'))
-        self.template = self.env.get_template('prompt.jinja')
-
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received feed forward video job.')
 
         logger.info('Received all tracks video job: %s', video_job)
-        random_uuid = uuid.uuid4()
+
+        config = JobConfig(video_job.job_properties)
+        if config.prompt_template:
+            self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+            self.template = self.env.get_template(os.path.basename(config.prompt_template))
+        else:
+            self.env = Environment(loader = FileSystemLoader(os.path.realpath(resource_filename(__name__, 'templates'))))
+            self.template = self.env.get_template('prompt.jinja')
+
 
         if video_job.feed_forward_tracks is not None:
-            config = JobConfig(video_job.job_properties)
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
 
             input = convert_tracks_to_csv(video_job.feed_forward_tracks)
@@ -154,14 +157,15 @@ class JobConfig:
         # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
 
+        self.prompt_template = mpf_util.get_property(props, 'PROMPT_TEMPLATE', None)
+
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
 
         self.classifiers_file = \
-            mpf_util.get_property(props, 'CLASSIFIERS_FILE', "llm_util/classifiers.json")
+            mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json")
 
-        self.classifications_file = ""
-        if "$" not in self.classifiers_file and "/" not in self.classifiers_file:
+        if "$" not in self.classifiers_file and '/' not in self.classifiers_file:
             self.classifiers_path = os.path.realpath(resource_filename(__name__, self.classifiers_file))
         else:
             self.classifiers_path = os.path.expandvars(self.classifiers_file)
@@ -177,7 +181,7 @@ class JobConfig:
 def run_component_test():
     qsc = QwenSpeechSummaryComponent()
     input = None
-    with open(os.path.join(os.path.dirname(sys.argv[0]), 'input', 'test.json')) as f:
+    with open(os.path.join(os.path.dirname(sys.argv[0]), 'test_data', 'test.json')) as f:
         input = f.read()
     before = len(input)
     input = clean_input_json(input.replace("\r\n", "\n"))
