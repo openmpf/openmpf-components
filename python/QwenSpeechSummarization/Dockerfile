@@ -38,6 +38,8 @@ ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
+    # make sure the tokenizer is available offline
+    /opt/mpf/plugin-venv/bin/python3 -c 'from qwen_speech_summarization_component.qwen_speech_summarization_component import QwenSpeechSummaryComponent; QwenSpeechSummaryComponent()'; \
     if [ "${RUN_TESTS,,}" == true ]; then python qwen_speech_summarization_component/qwen_speech_summarization_component.py; fi
 
 
