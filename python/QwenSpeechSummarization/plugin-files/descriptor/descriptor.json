@@ -1,0 +1,84 @@
+{
+  "componentName": "QwenSpeechSummarization",
+  "componentVersion": "1.0",
+  "middlewareVersion": "1.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "QwenSpeechSummarization",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "QWENSPEECHSUMMARIZATION",
+    "description": "Uses Qwen3 to summarize speech",
+    "actionType": "DETECTION",
+    "trackType": "TEXT",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_QWEN_SPEECH_SUMMARIZATION"
+      ],
+      "properties": [
+        {
+          "name": "CLASSIFIERS_LIST",
+          "description": "Comma-separated list of classifiers to include in the summary output.",
+          "type": "STRING",
+          "defaultValue": "ALL"
+        },
+        {
+          "name": "CLASSIFIERS_FILE",
+          "description": "The package-relative OR absolute filename of the classifiers json file",
+          "type": "STRING",
+          "defaultValue": "input/classifiers.json"
+        },
+        {
+          "name": "ENABLE_DEBUG",
+          "description": "If true, each detection will include extra debug output.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "algorithm": "QWENSPEECHSUMMARIZATION",
+      "properties": [
+        {"name": "FEED_FORWARD_ALL_TRACKS", "value": true},
+        {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION TASK",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "actions": [
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION PIPELINES",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "tasks": [
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "DYNAMIC SPEECH AZURE ONLY WITH TRANSLATION PIPELINE",
+      "description": "Runs VISTA speaker detection on audio or video, and passes to Azure for transcription. Then translates transcript to English using Azure. Keyword tagging is performed on all TRANSCRIPT and TRANSLATION results.",
+      "tasks": [
+        "VISTA SPEAKER DETECTION (AZURE ONLY) TASK",
+        "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER TASK",
+        "AZURE TRANSLATION (WITH FF REGION) TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK",
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+      ]
+    }
+  ]
+}

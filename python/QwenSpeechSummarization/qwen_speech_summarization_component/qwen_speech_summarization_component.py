@@ -1,0 +1,197 @@
+#############################################################################
+# NOTICE                                                                    #
+#                                                                           #
+# This software (or technical data) was produced for the U.S. Government    #
+# under contract, and is subject to the Rights in Data-General Clause       #
+# 52.227-14, Alt. IV (DEC 2007).                                            #
+#                                                                           #
+# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+#############################################################################
+
+#############################################################################
+# Copyright 2023 The MITRE Corporation                                      #
+#                                                                           #
+# Licensed under the Apache License, Version 2.0 (the "License");           #
+# you may not use this file except in compliance with the License.          #
+# You may obtain a copy of the License at                                   #
+#                                                                           #
+#    http://www.apache.org/licenses/LICENSE-2.0                             #
+#                                                                           #
+# Unless required by applicable law or agreed to in writing, software       #
+# distributed under the License is distributed on an "AS IS" BASIS,         #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  #
+# See the License for the specific language governing permissions and       #
+# limitations under the License.                                            #
+#############################################################################
+
+import logging
+
+import uuid
+
+import mpf_component_api as mpf
+import mpf_component_util as mpf_util
+
+from typing import Sequence, Dict, Mapping
+
+from openai import OpenAI
+from transformers import AutoTokenizer
+from jinja2 import Environment, FileSystemLoader
+import os, sys
+
+import json
+
+# No local model loading; using remote API
+from schema import response_format, StructuredResponse
+
+from llm_util.classifiers import get_classifier_lines
+from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+from llm_util.input_cleanup import clean_input_json, convert_tracks_to_csv
+
+from pkg_resources import resource_filename
+import pandas as pd
+
+logger = logging.getLogger('QwenSpeechSummaryComponent')
+
+class QwenSpeechSummaryComponent:
+
+    def get_output(self, classifiers, input):
+        prompt = self.template.render(input = input, classifiers=classifiers)
+        stream = self.client.chat.completions.create(
+            model=self.client_model_name, #model_name ## for ollama
+            # reasoning_effort='none',
+            messages=[
+                {"role": "user", "content": prompt, "reasponse_format": response_format}
+            ],
+            temperature=0,
+            stream=True,
+            max_tokens=32768,
+            timeout=300,
+        )
+        content = ""
+        for event in stream:
+            if event.choices[0].finish_reason != None:
+                break
+            if event.object == "chat.completion.chunk":
+                if hasattr(event.choices[0].delta, 'reasoning'):
+                    print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
+                if len(event.choices[0].delta.content) > 0:
+                    content += event.choices[0].delta.content
+        return content
+
+    def __init__(self):
+        # TODO: parameterize these
+        self.model_name = "qwen3:30b-a3b-instruct-2507-q4_K_M"
+        self.model_name_hf = "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+
+        self.chunk_size = 10000
+        self.overlap = 500
+
+        # vllm
+        self.base_url="http://vllm:11434/v1"
+        self.client_model_name = self.model_name_hf
+
+        # Set OpenAI API base URL
+        self.client = OpenAI(base_url=self.base_url, api_key="whatever")
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
+        self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
+
+        self.env = Environment(loader = FileSystemLoader('templates'))
+        self.template = self.env.get_template('prompt.jinja')
+
+    def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
+        logger.info(f'Received feed forward video job.')
+
+        logger.info('Received all tracks video job: %s', video_job)
+        random_uuid = uuid.uuid4()
+
+        if video_job.feed_forward_tracks is not None:
+            config = JobConfig(video_job.job_properties)
+            classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
+
+            input = convert_tracks_to_csv(video_job.feed_forward_tracks)
+
+            summaries = []
+            chunks = split_csv_into_chunks(self.tokenizer, input, self.chunk_size, self.overlap)
+            nchunks = len(chunks)
+            for idx,chunk in enumerate(chunks):
+                print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
+                content = self.get_output(classifiers, chunk)
+                summaries += [json.loads(content)]
+            if nchunks == 1:
+                final_summary = summaries[0]
+            else:
+                final_summary = summarize_summaries(self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+
+            return [mpf.VideoTrack(
+                    video_job.start_frame,
+                    video_job.stop_frame,
+                    -1,
+                    {},
+                    {
+                        'TEXT': final_summary['summary'],
+                        **{k.upper(): ', '.join(v) for (k,v) in final_summary['entities'].items()}
+                    }
+                ),
+                *list(
+                    map(
+                        lambda classifier: mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier['confidence'], {}, {'CLASSIFICATION': classifier['classification'], 'REASONING': classifier['reasoning']}),final_summary['classifications']
+                    )
+                )
+            ]
+
+        else:
+            raise Exception("the roof")
+
+
+    def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
+        logger.info(f'Received audio job.')
+
+        raise Exception('Getting 1 track at a time is going to be rough')
+
+class JobConfig:
+    def __init__(self, props: Mapping[str, str]):
+        # if debug is true will return which corpus sentences triggered the match
+        self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.enabled_classifiers = \
+            mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
+
+        self.classifiers_file = \
+            mpf_util.get_property(props, 'CLASSIFIERS_FILE', "llm_util/classifiers.json")
+
+        self.classifications_file = ""
+        if "$" not in self.classifiers_file and "/" not in self.classifiers_file:
+            self.classifiers_path = os.path.realpath(resource_filename(__name__, self.classifiers_file))
+        else:
+            self.classifiers_path = os.path.expandvars(self.classifiers_file)
+
+        if not os.path.exists(self.classifiers_path):
+            logger.exception('Failed to complete job due incorrect file path for the qwen classifiers path: '
+                             f'"{self.classifiers_path}"')
+            raise mpf.DetectionException(
+                'Invalid path provided for qwen classifiers path: '
+                f'"{self.classifiers_path}"',
+                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
+
+def run_component_test():
+    qsc = QwenSpeechSummaryComponent()
+    input = None
+    with open(os.path.join(os.path.dirname(sys.argv[0]), 'input', 'test.json')) as f:
+        input = f.read()
+    before = len(input)
+    input = clean_input_json(input.replace("\r\n", "\n"))
+
+    job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {}, {}, [
+        mpf.VideoTrack(0, 1, -100, {}, track['trackProperties']) for media in json.loads(input)['media'] for speech in media['output']['SPEECH'] for track in speech['tracks'] # type: ignore
+    ])
+
+    logger.info('About to call get_detections_from_video')
+    results = list(qsc.get_detections_from_all_video_tracks(job))
+    logger.info('get_detections_from_image found: %s detections', len(results))
+    logger.info('get_detections_from_image results: %s', results)
+
+
+
+if __name__ == '__main__':
+    run_component_test()
