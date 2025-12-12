@@ -132,6 +132,8 @@ class QwenSpeechSummaryComponent:
                     {},
                     {
                         'TEXT': final_summary['summary'],
+                        'PRIMARY TOPIC': final_summary['primary_topic'],
+                        'OTHER TOPICS': ', '.join(final_summary['other_topics']),
                         **{k.upper(): ', '.join(v) for (k,v) in final_summary['entities'].items()}
                     }
                 ),
