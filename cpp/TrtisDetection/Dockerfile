@@ -34,8 +34,10 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \
     --mount=type=tmpfs,target=/tmp \
     apt-get update; \
-    apt-get install --no-install-recommends -y git zlib1g-dev libssl-dev libcurl4-openssl-dev
+    apt-get install --no-install-recommends -y \
+        git zlib1g-dev libssl-dev libcurl4-openssl-dev curl unzip
 
+RUN ln --symbolic /usr/bin/python3 /usr/bin/python
 
 RUN --mount=type=tmpfs,target=/tmp \
     cd /tmp \
@@ -53,6 +55,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     && cd /tmp/grpc/cmake/build \
     && cmake3 -DgRPC_INSTALL=ON \
               -DgRPC_BUILD_TESTS=OFF \
+              -DgRPC_BENCHMARK_PROVIDER=none \
               -DgRPC_PROTOBUF_PROVIDER=package \
               -DgRPC_ZLIB_PROVIDER=package \
               -DgRPC_CARES_PROVIDER=package \
@@ -65,15 +68,17 @@ RUN --mount=type=tmpfs,target=/tmp \
 RUN --mount=type=tmpfs,target=/tmp \
     mkdir /tmp/aws-sdk-cpp \
     && cd /tmp/aws-sdk-cpp \
-    && wget -O- 'https://github.com/aws/aws-sdk-cpp/archive/1.8.48.tar.gz' \
+    && wget -O- 'https://github.com/aws/aws-sdk-cpp/archive/1.9.379.tar.gz' \
         | tar --extract --gzip \
-    && cd aws-sdk-cpp-1.8.48 \
+    && cd aws-sdk-cpp-1.9.379 \
+    && ./prefetch_crt_dependency.sh \
     && mkdir build \
     && cd build \
     && cmake3 -DCMAKE_BUILD_TYPE=Release \
              -DBUILD_ONLY="s3" \
-             -DCMAKE_C_FLAGS="-Wno-unused-variable -Wno-unused-parameter" \
-             -DCMAKE_CXX_FLAGS="-Wno-unused-variable -Wno-unused-parameter" .. \
+             -DENABLE_TESTING=OFF \
+             -DCMAKE_C_FLAGS="-Wno-unused-variable -Wno-unused-parameter -Wno-error=deprecated-declarations" \
+             -DCMAKE_CXX_FLAGS="-Wno-unused-variable -Wno-unused-parameter -Wno-error=deprecated-declarations" .. \
     && make --jobs "$(nproc)" install;
 
 

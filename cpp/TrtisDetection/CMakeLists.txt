@@ -41,7 +41,6 @@ find_package(OpenCV 4.13.0 EXACT REQUIRED PATHS /opt/opencv-4.13.0
 find_package(mpfComponentInterface REQUIRED)
 find_package(mpfDetectionComponentApi REQUIRED)
 find_package(mpfComponentUtils REQUIRED)
-find_library(request REQUIRED)
 find_package(CURL REQUIRED)
 
 set(BUILD_SHARED_LIBS ON)  # make AWS use shared linking
