@@ -30,18 +30,16 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-RUN apt-get update && apt-get install -y git-core && \
-    git clone https://github.com/openmpf/openmpf-python-component-sdk -b develop && \
-    pip3 install --no-cache-dir openmpf-python-component-sdk/detection/api openmpf-python-component-sdk/detection/component_util 'transformers>=4.51.0' accelerate pydantic openai jinja2 
-
-ARG RUN_TESTS=false
+ARG RUN_TESTS=true
+RUN set -x; DEPS="transformers>=4.51.0 accelerate pydantic openai jinja2"; \
+    if [ "${RUN_TESTS,,}" == true ]; then DEPS="$DEPS pytest"; fi; \
+    pip3 install --no-cache-dir $DEPS
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     # make sure the tokenizer is available offline
     /opt/mpf/plugin-venv/bin/python3 -c 'from qwen_speech_summarization_component.qwen_speech_summarization_component import QwenSpeechSummaryComponent; QwenSpeechSummaryComponent()'; \
-    if [ "${RUN_TESTS,,}" == true ]; then python qwen_speech_summarization_component/qwen_speech_summarization_component.py; fi
-
+    if [ "${RUN_TESTS,,}" == true ]; then pytest qwen_speech_summarization_component; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Qwen Speech Summarization" \

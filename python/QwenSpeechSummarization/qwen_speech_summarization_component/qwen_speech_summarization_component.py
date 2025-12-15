@@ -76,7 +76,7 @@ class QwenSpeechSummaryComponent:
                     content += event.choices[0].delta.content
         return content
 
-    def __init__(self):
+    def __init__(self, clientFactory=None):
         # TODO: parameterize these
         self.model_name = "qwen3:30b-a3b-instruct-2507-q4_K_M"
         self.model_name_hf = "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
@@ -89,7 +89,10 @@ class QwenSpeechSummaryComponent:
         self.client_model_name = self.model_name_hf
 
         # Set OpenAI API base URL
-        self.client = OpenAI(base_url=self.base_url, api_key="whatever")
+        if not clientFactory:
+            self.client = OpenAI(base_url=self.base_url, api_key="whatever")
+        else:
+            self.client = clientFactory()
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
@@ -179,10 +182,10 @@ class JobConfig:
                 f'"{self.classifiers_path}"',
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
-def run_component_test():
-    qsc = QwenSpeechSummaryComponent()
+def run_component_test(clientFactory = None):
+    qsc = QwenSpeechSummaryComponent(clientFactory)
     input = None
-    with open(os.path.join(os.path.dirname(sys.argv[0]), 'test_data', 'test.json')) as f:
+    with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.json')) as f:
         input = f.read()
     before = len(input)
     input = clean_input_json(input.replace("\r\n", "\n"))
@@ -191,10 +194,11 @@ def run_component_test():
         mpf.VideoTrack(0, 1, -100, {}, track['trackProperties']) for media in json.loads(input)['media'] for speech in media['output']['SPEECH'] for track in speech['tracks'] # type: ignore
     ])
 
-    print('About to call get_detections_from_video')
+    print('About to call get_detections_from_all_video_tracks')
     results = list(qsc.get_detections_from_all_video_tracks(job))
-    print(f'get_detections_from_image found: {len(results)} detections')
-    print(f'get_detections_from_image results: {results}')
+    print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
+    print(f'get_detections_from_all_video_tracks results: {results}')
+    return results
 
 
 

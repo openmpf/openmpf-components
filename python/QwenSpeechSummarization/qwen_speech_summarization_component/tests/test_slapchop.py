@@ -1,4 +1,4 @@
-from qwen_summary_component.llm_util.slapchop import split_array_into_chunks, split_csv_into_chunks, _chunk_within_limits, summarize_summaries
+from qwen_speech_summarization_component.llm_util.slapchop import split_array_into_chunks, split_csv_into_chunks, _chunk_within_limits, summarize_summaries
 import json
 
 def test_chunk_within_limits():
