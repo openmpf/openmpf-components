@@ -54,7 +54,7 @@
   ],
   "tasks": [
     {
-      "name": "QWEN SPEECH SUMMARIZATION TASK",
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK",
       "description": "Performs Qwen summarization Video|Audio tracks.",
       "actions": [
         "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
