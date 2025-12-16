@@ -146,7 +146,8 @@ class QwenSpeechSummaryComponent:
             ]
 
         else:
-            raise Exception("the roof")
+            the_roof = Exception("Received no feed forward tracks")
+            raise the_roof
 
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
