@@ -77,15 +77,13 @@ class QwenSpeechSummaryComponent:
         return content
 
     def __init__(self, clientFactory=None):
-        # TODO: parameterize these
-        self.model_name = "qwen3:30b-a3b-instruct-2507-q4_K_M"
-        self.model_name_hf = "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
         self.chunk_size = 10000
         self.overlap = 500
 
         # vllm
-        self.base_url="http://vllm:11434/v1"
+        self.base_url=f"{os.environ.get('VLLM_URI', 'http://vllm:11434/v1')}"
         self.client_model_name = self.model_name_hf
 
         # Set OpenAI API base URL

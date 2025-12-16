@@ -41,6 +41,9 @@ RUN --mount=target=.,readwrite \
     /opt/mpf/plugin-venv/bin/python3 -c 'from qwen_speech_summarization_component.qwen_speech_summarization_component import QwenSpeechSummaryComponent; QwenSpeechSummaryComponent()'; \
     if [ "${RUN_TESTS,,}" == true ]; then pytest qwen_speech_summarization_component; fi
 
+ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+ENV VLLM_MODEL="${VLLM_MODEL}"
+
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Qwen Speech Summarization" \
       org.label-schema.schema-version="1.0" \
