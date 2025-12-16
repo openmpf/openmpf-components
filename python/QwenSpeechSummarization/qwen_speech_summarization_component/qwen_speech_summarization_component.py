@@ -129,7 +129,7 @@ class QwenSpeechSummaryComponent:
             results = [mpf.VideoTrack(
                     video_job.start_frame,
                     video_job.stop_frame,
-                    1,
+                    -1,
                     {},
                     {
                         'TEXT': final_summary['summary'],
@@ -146,6 +146,7 @@ class QwenSpeechSummaryComponent:
             ]
             print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
             print(f'get_detections_from_all_video_tracks results: {results}')
+            return results
 
         else:
             the_roof = Exception("Received no feed forward tracks")
