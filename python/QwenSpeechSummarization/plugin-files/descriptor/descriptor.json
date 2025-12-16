@@ -30,7 +30,7 @@
           "name": "CLASSIFIERS_FILE",
           "description": "The package-relative OR absolute filename of the classifiers json file",
           "type": "STRING",
-          "defaultValue": "input/classifiers.json"
+          "defaultValue": "classifiers.json"
         },
         {
           "name": "ENABLE_DEBUG",
