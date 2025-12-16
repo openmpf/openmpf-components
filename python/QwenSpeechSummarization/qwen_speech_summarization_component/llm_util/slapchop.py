@@ -1,11 +1,34 @@
+#############################################################################
+# NOTICE                                                                    #
+#                                                                           #
+# This software (or technical data) was produced for the U.S. Government    #
+# under contract, and is subject to the Rights in Data-General Clause       #
+# 52.227-14, Alt. IV (DEC 2007).                                            #
+#                                                                           #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
+#############################################################################
+
+#############################################################################
+# Copyright 2025 The MITRE Corporation                                      #
+#                                                                           #
+# Licensed under the Apache License, Version 2.0 (the "License");           #
+# you may not use this file except in compliance with the License.          #
+# You may obtain a copy of the License at                                   #
+#                                                                           #
+#    http://www.apache.org/licenses/LICENSE-2.0                             #
+#                                                                           #
+# Unless required by applicable law or agreed to in writing, software       #
+# distributed under the License is distributed on an "AS IS" BASIS,         #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  #
+# See the License for the specific language governing permissions and       #
+# limitations under the License.                                            #
+#############################################################################
+
 from typing import Any, List
 import pandas as pd
 import io
 import json
 from math import inf
-
-# TODO: interrogate model to get the token limit
-# TODO: AVAILABLE_TOKENS_FOR_INPUT ~= REAL_MAX_TOKENS - tokens(UNTEMPLATED_PROMPT) - tokens(FORMATTED_CLASSIFIERS)
 
 def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_count_at_boundaries: List[int], min_grouping: int|None, get_partial_chunk = None, convert_chunk_for_output = lambda x: x):
     if not min_grouping:
@@ -103,7 +126,6 @@ def summarize_summaries(tokenizer, get_output, chunk_size, overlap, summaries):
     if len(summaries) == 1:
         return summaries[0]
 
-    # TODO: evaluate minimum grouping factors?
     chunks = split_array_into_chunks(tokenizer, summaries, chunk_size, overlap, min_grouping=2)
     results = []
     for chunk in chunks:
