@@ -86,7 +86,7 @@ def convert_tracks_to_csv(input: List[mpf.VideoTrack]|List[mpf.AudioTrack]):
             "gender": track.detection_properties['GENDER'] if 'GENDER' in track.detection_properties else None,
             "start_timestamp": 0, #TODO
             "end_timestamp": 1, #TODO
-            "english_text": track.detection_properties['TRANSLATION'] if 'SKIPPED TRANSLATION' not in track.detection_properties else track.detection_properties['TRANSCRIPT'],
+            "english_text": track.detection_properties['TRANSLATION'] if 'TRANSLATION' in track.detection_properties else track.detection_properties['TRANSCRIPT'],
             "original_language": track.detection_properties['DECODED_LANGUAGE'] if 'DECODED_LANGUAGE' in track.detection_properties else None,
         })
     output = buffer.getvalue()
