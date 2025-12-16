@@ -82,12 +82,12 @@ def convert_tracks_to_csv(input: List[mpf.VideoTrack]|List[mpf.AudioTrack]):
     writer.writeheader()
     for track in input:
         writer.writerow({
-            "speaker_id": track.detection_properties['SPEAKER_ID'] if not 'LONG_SPEAKER_ID' in track.detection_properties else track.detection_properties['LONG_SPEAKER_ID'],
-            "gender": track.detection_properties['GENDER'],
+            "speaker_id": track.detection_properties['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in track.detection_properties else (track.detection_properties['SPEAKER_ID'] if 'SPEAKER_ID' in track.detection_properties else None),
+            "gender": track.detection_properties['GENDER'] if 'GENDER' in track.detection_properties else None,
             "start_timestamp": 0, #TODO
             "end_timestamp": 1, #TODO
             "english_text": track.detection_properties['TRANSLATION'] if 'SKIPPED TRANSLATION' not in track.detection_properties else track.detection_properties['TRANSCRIPT'],
-            "original_language": track.detection_properties['DECODED_LANGUAGE'],
+            "original_language": track.detection_properties['DECODED_LANGUAGE'] if 'DECODED_LANGUAGE' in track.detection_properties else None,
         })
     output = buffer.getvalue()
     del writer
