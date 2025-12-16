@@ -62,7 +62,7 @@ def convert_to_csv(input):
         for speech in media['output']['SPEECH']:
             for track in speech['tracks']:
                 writer.writerow({
-                    "speaker_id": track['trackProperties']['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in track['trackProperties'] else track['trackProperties']['SPEAKER_ID'],
+                    "speaker_id": track['trackProperties']['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in track['trackProperties'] else (track['trackProperties']['SPEAKER_ID'] if 'SPEAKER_ID' in track['trackProperties'] else None),
                     "gender": track['trackProperties']['GENDER'],
                     "start_timestamp": track['startOffsetTime'],
                     "end_timestamp": track['stopOffsetTime'],
