@@ -35,14 +35,14 @@ RUN set -x; DEPS="transformers>=4.51.0 accelerate pydantic openai jinja2"; \
     if [ "${RUN_TESTS,,}" == true ]; then DEPS="$DEPS pytest"; fi; \
     pip3 install --no-cache-dir $DEPS
 
+ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+ENV VLLM_MODEL="${VLLM_MODEL}"
+
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     # make sure the tokenizer is available offline
     /opt/mpf/plugin-venv/bin/python3 -c 'from qwen_speech_summarization_component.qwen_speech_summarization_component import QwenSpeechSummaryComponent; QwenSpeechSummaryComponent()'; \
     if [ "${RUN_TESTS,,}" == true ]; then pytest qwen_speech_summarization_component; fi
-
-ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
-ENV VLLM_MODEL="${VLLM_MODEL}"
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Qwen Speech Summarization" \
