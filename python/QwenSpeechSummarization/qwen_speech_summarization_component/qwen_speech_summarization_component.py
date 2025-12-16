@@ -126,7 +126,7 @@ class QwenSpeechSummaryComponent:
             else:
                 final_summary = summarize_summaries(self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             print(final_summary)
-            return [mpf.VideoTrack(
+            results = [mpf.VideoTrack(
                     video_job.start_frame,
                     video_job.stop_frame,
                     1,
@@ -144,6 +144,8 @@ class QwenSpeechSummaryComponent:
                     )
                 )
             ]
+            print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
+            print(f'get_detections_from_all_video_tracks results: {results}')
 
         else:
             the_roof = Exception("Received no feed forward tracks")
@@ -194,10 +196,7 @@ def run_component_test(clientFactory = None):
     ])
 
     print('About to call get_detections_from_all_video_tracks')
-    results = list(qsc.get_detections_from_all_video_tracks(job))
-    print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
-    print(f'get_detections_from_all_video_tracks results: {results}')
-    return results
+    return qsc.get_detections_from_all_video_tracks(job)
 
 
 
