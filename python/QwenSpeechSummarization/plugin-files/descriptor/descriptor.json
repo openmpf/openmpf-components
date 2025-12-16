@@ -62,21 +62,11 @@
     }
   ],
   "pipelines": [
-    {
-      "name": "QWEN SPEECH SUMMARIZATION PIPELINES",
-      "description": "Performs Qwen summarization Video|Audio tracks.",
+     {
+      "name": "WHISPER SPEECH DETECTION WITH QWEN SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using QWEN.",
       "tasks": [
-        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
-      ]
-    },
-    {
-      "name": "DYNAMIC SPEECH AZURE ONLY WITH TRANSLATION PIPELINE",
-      "description": "Runs VISTA speaker detection on audio or video, and passes to Azure for transcription. Then translates transcript to English using Azure. Keyword tagging is performed on all TRANSCRIPT and TRANSLATION results.",
-      "tasks": [
-        "VISTA SPEAKER DETECTION (AZURE ONLY) TASK",
-        "AZURE SPEECH DETECTION WITH UPSTREAM SPEAKER TASK",
-        "AZURE TRANSLATION (WITH FF REGION) TASK",
-        "KEYWORD TAGGING (WITH FF REGION) TASK",
+        "WHISPER SPEECH DETECTION TASK",
         "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
       ]
     }
