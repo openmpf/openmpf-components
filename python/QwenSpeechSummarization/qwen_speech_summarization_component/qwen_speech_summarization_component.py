@@ -125,11 +125,11 @@ class QwenSpeechSummaryComponent:
                 final_summary = summaries[0]
             else:
                 final_summary = summarize_summaries(self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
-
+            print(final_summary)
             return [mpf.VideoTrack(
                     video_job.start_frame,
                     video_job.stop_frame,
-                    -1,
+                    1,
                     {},
                     {
                         'TEXT': final_summary['summary'],
