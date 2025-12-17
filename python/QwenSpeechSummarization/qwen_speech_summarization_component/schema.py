@@ -31,7 +31,6 @@ class EntitiesObject(BaseModel):
     names_of_people: List[str]
     places: List[str]
     companies: List[str]
-    businesses: List[str]
     body_parts: List[str]
     organs: List[str]
     emotions: List[str]

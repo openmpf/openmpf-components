@@ -55,7 +55,6 @@ class FakeCompletions():
     "people": [],
     "places": [],
     "companies": [],
-    "businesses": [],
     "body_parts": [],
     "organs": [],
     "emotions": [
