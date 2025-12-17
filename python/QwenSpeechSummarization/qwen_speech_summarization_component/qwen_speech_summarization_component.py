@@ -29,7 +29,7 @@ import logging
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from typing import Sequence, Dict, Mapping
+from typing import Sequence, Mapping
 
 from openai import OpenAI
 from transformers import AutoTokenizer
@@ -75,6 +75,16 @@ class QwenSpeechSummaryComponent:
                 if len(event.choices[0].delta.content) > 0:
                     content += event.choices[0].delta.content
         return content
+
+    @staticmethod
+    def get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
+        detection_properties = {'CLASSIFICATION': classifier['classification'], 'REASONING': classifier['reasoning']}
+        # TODO: translate utterance start to frame number based on fps
+        return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier['confidence'], {0: mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties)}, detection_properties)
+
+    def get_classifier_track(self, video_job):
+        func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
+        return func
 
     def __init__(self, clientFactory=None):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
@@ -126,21 +136,25 @@ class QwenSpeechSummaryComponent:
             else:
                 final_summary = summarize_summaries(self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             print(final_summary)
+            main_detection_properties = {
+                'TEXT': final_summary['summary'],
+                'PRIMARY TOPIC': final_summary['primary_topic'],
+                'OTHER TOPICS': ', '.join(final_summary['other_topics']),
+                **{k.upper(): ', '.join(v) for (k,v) in final_summary['entities'].items()}
+            }
             results = [mpf.VideoTrack(
                     video_job.start_frame,
                     video_job.stop_frame,
                     -1,
-                    {},
                     {
-                        'TEXT': final_summary['summary'],
-                        'PRIMARY TOPIC': final_summary['primary_topic'],
-                        'OTHER TOPICS': ', '.join(final_summary['other_topics']),
-                        **{k.upper(): ', '.join(v) for (k,v) in final_summary['entities'].items()}
-                    }
+                        # TODO: translate utterance start to frame number based on fps
+                        0: mpf.ImageLocation(0, 0, 0, 0, -1, main_detection_properties)
+                    },
+                    main_detection_properties
                 ),
                 *list(
                     map(
-                        lambda classifier: mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier['confidence'], {}, {'CLASSIFICATION': classifier['classification'], 'REASONING': classifier['reasoning']}),final_summary['classifications']
+                        self.get_classifier_track(video_job), final_summary['classifications']
                     )
                 )
             ]
