@@ -37,6 +37,12 @@
           "description": "If true, each detection will include extra debug output.",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
+        },
+        {
+          "name": "PROMPT_TEMPLATE",
+          "description": "If set, will override the default, tested prompt template with one read from a different file",
+          "type": "STRING",
+          "defaultValue": null
         }
       ]
     }

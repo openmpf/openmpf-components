@@ -62,7 +62,7 @@ class QwenSpeechSummaryComponent:
             ],
             temperature=0,
             stream=True,
-            max_tokens=32768,
+            max_tokens=0.95 * (self.max_model_len - self.chunk_size - self.overlap),
             timeout=300,
         )
         content = ""
@@ -89,8 +89,12 @@ class QwenSpeechSummaryComponent:
     def __init__(self, clientFactory=None):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
-        self.chunk_size = 10000
-        self.overlap = 500
+        # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
+        self.max_model_len = int(os.environ.get('MAX_MODEL_LEN', 45000))
+        self.chunk_size = int(os.environ.get('INPUT_TOKEN_CHUNK_SIZE', 10000))
+        self.overlap = int(os.environ.get('INPUT_CHUNK_TOKEN_OVERLAP', 500))
+
+        # TODO: warn if chunk_size is TOO LARGE of a proportion of max_model_len
 
         # vllm
         self.base_url=f"{os.environ.get('VLLM_URI', 'http://vllm:11434/v1')}"
