@@ -1,6 +1,6 @@
 # Overview
 
-This folder sitory contains source code for the OpenMPF Qwen speech summarization component.
+This folder contains source code for the OpenMPF Qwen speech summarization component.
 
 This component requires a base image python3.10+ and an mpf_component_api that supports mpf.AllVideoTracksJob.
 
