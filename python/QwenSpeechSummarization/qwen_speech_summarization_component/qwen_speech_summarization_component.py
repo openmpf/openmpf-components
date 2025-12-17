@@ -135,7 +135,8 @@ class QwenSpeechSummaryComponent:
                 final_summary = summaries[0]
             else:
                 final_summary = summarize_summaries(self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
-            print(final_summary)
+            if config.debug:
+                print(final_summary)
             main_detection_properties = {
                 'TEXT': final_summary['summary'],
                 'PRIMARY TOPIC': final_summary['primary_topic'],
@@ -159,7 +160,8 @@ class QwenSpeechSummaryComponent:
                 )
             ]
             print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
-            print(f'get_detections_from_all_video_tracks results: {results}')
+            if config.debug:
+                print(f'get_detections_from_all_video_tracks results: {results}')
             return results
 
         else:
