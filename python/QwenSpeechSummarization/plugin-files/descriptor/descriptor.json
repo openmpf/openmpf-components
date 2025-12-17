@@ -24,25 +24,25 @@
           "name": "CLASSIFIERS_LIST",
           "description": "Comma-separated list of classifiers to include in the summary output.",
           "type": "STRING",
-          "defaultValue": "ALL"
+          "propertiesKey": "detection.qwen_speech_summarization.classifiers_list"
         },
         {
           "name": "CLASSIFIERS_FILE",
           "description": "The package-relative OR absolute filename of the classifiers json file",
           "type": "STRING",
-          "defaultValue": "classifiers.json"
+          "propertiesKey": "detection.qwen_speech_summarization.classifiers_file"
         },
         {
           "name": "ENABLE_DEBUG",
           "description": "If true, each detection will include extra debug output.",
           "type": "BOOLEAN",
-          "defaultValue": "FALSE"
+          "propertiesKey": "detection.qwen_speech_summarization.debug"
         },
         {
           "name": "PROMPT_TEMPLATE",
           "description": "If set, will override the default, tested prompt template with one read from a different file",
           "type": "STRING",
-          "defaultValue": null
+          "propertiesKey": "detection.qwen_speech_summarization.prompt_template_path"
         }
       ]
     }
