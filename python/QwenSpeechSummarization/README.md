@@ -29,6 +29,7 @@ In either case, the component assumes anonymous access to the openai-api-compati
 
 - CLASSIFIERS_FILE: when set to an absolute path (with a valid classifiers.json in a volume mounted such that the file is at the specified path), will replace the default classifiers.json
 - CLASSIFIERS_LIST: Either "ALL", or a comma-separated list of specific names of the "Classifier" fields of defined classifiers
+- PROMPT_TEMPLATE: if set, will replace the packaged `templates/prompt.jinja` with one read from this location. Must include self-recursive summarization instructions and the jinja templates `{{ classifiers }}` and `{{ input }}`.
 
 # Docker build-args
 
@@ -42,7 +43,6 @@ NOTE: if you have an internet connection at runtime, you may use the image `vllm
 - MODEL_MAX_LEN should be defined on both the qwen container AND the vllm container. It is the maximum input+output token count you can fit into your VRAM.
 - INPUT_TOKEN_CHUNK_SIZE should be about 20%-30% of your MODEL_MAX_LEN, and is the token size that your input will be split into during chunking before making a series of calls to the LLM.
 - INPUT_CHUNK_TOKEN_OVERLAP should be small and constant. If it is too small, there will be no overlap between chunks, which could negatively impact performance with huge input tracks.
-- PROMPT_TEMPLATE: if set, will replace the packaged `templates/prompt.jinja` with one read from this location. Must include self-recursive summarization instructions and the jinja templates `{{ classifiers }}` and `{{ input }}`.
 
 # Outputs
 
