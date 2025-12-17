@@ -41,7 +41,7 @@ NOTE: if you have an internet connection at runtime, you may use the image `vllm
 
 - VLLM_MODEL: must MATCH the model name being served by vllm OR be available at whichver openai-api-compatible API you choose to talk to.
 - VLLM_URI: the base_url of the openai-api-compatible API providing access to your model. If your vllm service is named vllm, then this would need to be `http://vllm:11434/v1`.
-- MODEL_MAX_LEN should be defined on both the qwen container AND the vllm container. It is the maximum input+output token count you can fit into your VRAM.
+- MODEL_MAX_LEN should be defined on both the qwen container AND the vllm container. It is the maximum input+output token count you can use without erroring. We have tried 45000 for the -FP8 model and 120000 for the nonquantized model on a 40GB and 80GB card, respectively.
 - INPUT_TOKEN_CHUNK_SIZE should be about 20%-30% of your MODEL_MAX_LEN, and is the token size that your input will be split into during chunking before making a series of calls to the LLM.
 - INPUT_CHUNK_TOKEN_OVERLAP should be small and constant. If it is too small, there will be no overlap between chunks, which could negatively impact performance with huge input tracks.
 
