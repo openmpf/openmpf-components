@@ -80,7 +80,7 @@ class QwenSpeechSummaryComponent:
     def get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
         detection_properties = {'CLASSIFICATION': classifier['classification'], 'REASONING': classifier['reasoning']}
         # TODO: translate utterance start to frame number based on fps
-        return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier['confidence'], {0: mpf.ImageLocation(0, 0, 0, 0, -1, detection_properties)}, detection_properties)
+        return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier['confidence'], {0: mpf.ImageLocation(0, 0, 0, 0, classifier['confidence'], detection_properties)}, detection_properties)
 
     def get_classifier_track(self, video_job):
         func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
