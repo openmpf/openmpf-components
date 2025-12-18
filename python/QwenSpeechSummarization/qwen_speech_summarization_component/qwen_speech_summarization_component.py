@@ -156,13 +156,12 @@ class QwenSpeechSummaryComponent:
                         0: mpf.ImageLocation(0, 0, 0, 0, -1, main_detection_properties)
                     },
                     main_detection_properties
-                ),
-                *list(
-                    map(
-                        self.get_classifier_track(video_job), final_summary['classifications']
-                    )
+                )]
+            results += list(
+                map(
+                    self.get_classifier_track(video_job), final_summary['classifications']
                 )
-            ]
+            )
             print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
             if config.debug:
                 print(f'get_detections_from_all_video_tracks results: {results}')
