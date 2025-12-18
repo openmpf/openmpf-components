@@ -165,5 +165,5 @@ def test_summarize_summaries():
         return json.dumps({"summary": " AND ".join(map(lambda x: json.loads(x)['summary'], input))})
 
     expected = {"summary": "The chicken walked across the road for the first time AND The chicken walked across the road for the second time AND The chicken walked across the road for the third time AND The chicken walked across the road for the fourth time AND The chicken walked across the road for the fifth time AND The chicken walked across the road for the sixth time AND The chicken walked across the road for the seventh time AND The chicken walked across the road for the eighth time AND The chicken walked across the road for the ninth time"}
-    actual = summarize_summaries(tokenizer, combine_summaries, 1, 0, input)
+    actual = summarize_summaries(None, tokenizer, combine_summaries, 1, 0, input)
     assert actual['summary'] == expected['summary']

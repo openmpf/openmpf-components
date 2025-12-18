@@ -30,8 +30,8 @@ Your output must include:
 1. summary: Summary of conversation (summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation)
 2. primary_topic: The primary topic of conversation
 3. other_topics: Other topics of conversation
-4. classifications: Based on the Classifiers between <classifiers></classifiers>, a list of classifications, with (for each) the classification, reasoning, and confidence (0-1). For any classifiers that include a "Specific Items of Interest" appendage, please make sure to note the presence of any of those specific items of interest in your Reasoning for the classifier, independent of their inclusion or exclusion in any entities category.
-5. entities: An entities object, including a list of EACH of: names of people (only include people referred to in the conversation. Unless the speakers use eachothers' names or refer to echother somehow in an utterance, do not include the speakers.), places, companies, body parts, organs, and emotions
+4. classifiers: Based on the Classifiers between <classifiers></classifiers>, a list of classifiers, with (for each) the classifier name ('classifier'), reasoning, and confidence (0-1). For any classifiers that include a "Specific Items of Interest" appendage, please make sure to note the presence of any of those specific items of interest in your reasoning for the classifier, independent of their inclusion or exclusion in any entities category.
+5. entities: An entities object, including a list of EACH of: names_of_people (only include people referred to in the conversation. Unless the speakers use eachothers' names or refer to echother somehow in an utterance, do not include the speakers.), places, companies, body_parts, organs, and emotions
 
 Do not create or infer new classifier categories that are not specified below.
 

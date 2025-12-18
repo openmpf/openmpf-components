@@ -24,10 +24,10 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import json
 from typing import Any, List
 import pandas as pd
 import io
-import json
 from math import inf
 
 def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_count_at_boundaries: List[int], min_grouping: int|None, get_partial_chunk = None, convert_chunk_for_output = lambda x: x):
@@ -91,7 +91,7 @@ def split_csv_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap
 def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, overlap: int = 500, min_grouping=-1):
     for i in range(0, len(arr)):
         if type(arr[i]) is not str:
-            arr[i] = json.dumps(arr[i])
+            arr[i] = arr[i].json() if hasattr(arr[i], 'json') else json.dumps(arr[i])
     # serialize each object separately so we can insert newline tokens to facilitate letting the tokenizer
     # count for us
 
@@ -117,7 +117,7 @@ def split_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap: in
     decoded = [tokenizer.decode(chunk) for chunk in chunks]
     return decoded
 
-def summarize_summaries(tokenizer, get_output, chunk_size, overlap, summaries):
+def summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, summaries):
     print(f'Summarizing {len(summaries)} summaries...')
 
     # bisecting or n-secting the chunks is probably a smarter way to handle this... but greedy for now
@@ -126,8 +126,12 @@ def summarize_summaries(tokenizer, get_output, chunk_size, overlap, summaries):
     if len(summaries) == 1:
         return summaries[0]
 
+    # TODO: evaluate minimum grouping factors?
     chunks = split_array_into_chunks(tokenizer, summaries, chunk_size, overlap, min_grouping=2)
     results = []
     for chunk in chunks:
-        results.append(json.loads(get_output(chunk)))
-    return summarize_summaries(tokenizer, get_output, chunk_size, overlap, results)
+        if not model:
+            results.append(json.loads(get_output(chunk)))
+        else:
+            results.append(model.model_validate_json(get_output(chunk))) # type: ignore
+    return summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, results)

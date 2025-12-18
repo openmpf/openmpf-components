@@ -52,35 +52,37 @@ logger = logging.getLogger('QwenSpeechSummaryComponent')
 
 class QwenSpeechSummaryComponent:
 
+    
     def get_output(self, classifiers, input):
         prompt = self.template.render(input = input, classifiers=classifiers)
-        stream = self.client.chat.completions.create(
-            model=self.client_model_name, #model_name ## for ollama
-            # reasoning_effort='none',
-            messages=[
-                {"role": "user", "content": prompt, "reasponse_format": response_format}
-            ],
-            temperature=0,
-            stream=True,
-            max_tokens=0.95 * (self.max_model_len - self.chunk_size - self.overlap),
-            timeout=300,
-        )
-        content = ""
-        for event in stream:
-            if event.choices[0].finish_reason != None:
-                break
-            if event.object == "chat.completion.chunk":
-                if hasattr(event.choices[0].delta, 'reasoning'):
-                    print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
-                if len(event.choices[0].delta.content) > 0:
-                    content += event.choices[0].delta.content
+        with self.client_factory() as client:
+            stream = client.chat.completions.create(
+                model=self.client_model_name, #model_name ## for ollama
+                # reasoning_effort='none',
+                messages=[
+                    {"role": "user", "content": prompt, "reasponse_format": response_format}
+                ],
+                temperature=0,
+                stream=True,
+                max_tokens=0.95 * (self.max_model_len - self.chunk_size - self.overlap),
+                timeout=300,
+            )
+            content = ""
+            for event in stream:
+                if event.choices[0].finish_reason != None:
+                    break
+                if event.object == "chat.completion.chunk":
+                    if hasattr(event.choices[0].delta, 'reasoning'):
+                        print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
+                    if len(event.choices[0].delta.content) > 0:
+                        content += event.choices[0].delta.content
         return content
 
     @staticmethod
     def get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
-        detection_properties = {'CLASSIFICATION': classifier['classification'], 'REASONING': classifier['reasoning']}
+        detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
-        return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier['confidence'], {0: mpf.ImageLocation(0, 0, 0, 0, classifier['confidence'], detection_properties)}, detection_properties)
+        return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier.confidence, {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}, detection_properties)
 
     def get_classifier_track(self, video_job):
         func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
@@ -102,9 +104,9 @@ class QwenSpeechSummaryComponent:
 
         # Set OpenAI API base URL
         if not clientFactory:
-            self.client = OpenAI(base_url=self.base_url, api_key="whatever")
+            self.client_factory = lambda: OpenAI(base_url=self.base_url, api_key="whatever")
         else:
-            self.client = clientFactory()
+            self.client_factory = clientFactory
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
@@ -134,18 +136,18 @@ class QwenSpeechSummaryComponent:
             for idx,chunk in enumerate(chunks):
                 print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
                 content = self.get_output(classifiers, chunk)
-                summaries += [json.loads(content)]
+                summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
-                final_summary = summarize_summaries(self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
-                print(final_summary)
+                print(final_summary.json())
             main_detection_properties = {
-                'TEXT': final_summary['summary'],
-                'PRIMARY TOPIC': final_summary['primary_topic'],
-                'OTHER TOPICS': ', '.join(final_summary['other_topics']),
-                **{k.upper(): ', '.join(v) for (k,v) in final_summary['entities'].items()}
+                'TEXT': final_summary.summary,
+                'PRIMARY TOPIC': final_summary.primary_topic,
+                'OTHER TOPICS': ', '.join(final_summary.other_topics),
+                **{k.upper(): ', '.join(v) for (k,v) in final_summary.entities.__dict__.items()}
             }
             results = [mpf.VideoTrack(
                     video_job.start_frame,
@@ -159,7 +161,7 @@ class QwenSpeechSummaryComponent:
                 )]
             results += list(
                 map(
-                    self.get_classifier_track(video_job), final_summary['classifications']
+                    self.get_classifier_track(video_job), final_summary.classifiers
                 )
             )
             print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
@@ -206,13 +208,18 @@ class JobConfig:
 def run_component_test(clientFactory = None):
     qsc = QwenSpeechSummaryComponent(clientFactory)
     input = None
-    with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.json')) as f:
+    with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
         input = f.read()
-    before = len(input)
-    input = clean_input_json(input.replace("\r\n", "\n"))
+    input = input.replace("\r\n", "\n")
 
     job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {}, {}, [
-        mpf.VideoTrack(0, 1, -100, {}, track['trackProperties']) for media in json.loads(input)['media'] for speech in media['output']['SPEECH'] for track in speech['tracks'] # type: ignore
+        mpf.VideoTrack(0, 1, -100, {}, {
+            "DEFAULT_LANGUAGE": "eng",
+            "LANGUAGE": "eng",
+            "SPEAKER_ID": None,
+            "GENDER": None,
+            "TRANSCRIPT": x
+        }) for x in input.split('\n\n') # type: ignore
     ])
 
     print('About to call get_detections_from_all_video_tracks')
