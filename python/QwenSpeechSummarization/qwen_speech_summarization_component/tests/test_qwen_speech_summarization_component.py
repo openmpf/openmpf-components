@@ -31,11 +31,10 @@ class FakeClass():
         for k,v in kwargs.items():
             self.__dict__[k] = v
 
-class FakeCompletions():
-    # builds an array that emulates the streaming event from the LLM
-    def create(self, *args, **kwargs):
-        return [
-            FakeClass(choices=[FakeClass(finish_reason=None,
+# FakeLLM is a factory that returns an instance where .chat.completions.create is a function with kwargs
+# When that function is called, return an array of event-like instances, regardless of arguments
+FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda  *_args, **_kwargs: [ \
+            FakeClass(choices=[FakeClass(finish_reason=None, \
                                  delta=FakeClass(content="""{
   "summary": "The conversation centers on the experience of switching between languages during communication, particularly focusing on the comfort and cognitive effort involved when speaking in different languages. One speaker reflects on how language use depends on context and the person they are speaking with, noting that they adapt their language based on familiarity and environment. The other speaker confirms that they always speak English with this person, while using other languages with others. They discuss the challenges of translating jokes or culturally specific expressions, emphasizing that some ideas or humor do not translate well. The speakers also reflect on the novelty of recording this conversation in a multilingual format, acknowledging it as a unique and potentially more challenging experience than expected.",
   "primary_topic": "Language switching and communication comfort in multilingual interactions",
@@ -64,17 +63,9 @@ class FakeCompletions():
       "curiosity"
     ]
   }
-}"""))], object="chat.completion.chunk"),
-            FakeClass(choices=[FakeClass(finish_reason=True)]),
-        ]
-
-class FakeChat():
-    def __init__(self):
-        self.completions = FakeCompletions()
-
-class FakeLLM():
-    def __init__(self):
-        self.chat = FakeChat()
+}"""))], object="chat.completion.chunk"), \
+            FakeClass(choices=[FakeClass(finish_reason=True)]), \
+        ])))
 
 def test_invocation_with_fake_client():
     result = run_component_test(FakeLLM)
