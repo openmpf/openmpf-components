@@ -40,7 +40,7 @@ RUN huggingface-cli download ${VLLM_MODEL}
 # default value
 ENV MAX_MODEL_LEN=45000
 
-COPY --chown=root:root docker/vllm-entrypoint.sh /usr/bin/
+COPY --chown=root:root vllm-entrypoint.sh /usr/bin/
 
 ENTRYPOINT ["/usr/bin/vllm-entrypoint.sh"]
 
