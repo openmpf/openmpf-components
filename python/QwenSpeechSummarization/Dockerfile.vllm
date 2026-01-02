@@ -35,7 +35,7 @@ RUN pip install huggingface_hub[cli]
 
 ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
 ENV VLLM_MODEL="${VLLM_MODEL}"
-RUN huggingface-cli download ${VLLM_MODEL}
+RUN export HF_HUB_DISABLE_XET=1; hf download ${VLLM_MODEL}
 
 # default value
 ENV MAX_MODEL_LEN=45000
