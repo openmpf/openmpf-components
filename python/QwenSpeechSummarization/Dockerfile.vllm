@@ -24,18 +24,26 @@
 # limitations under the License.                                            #
 #############################################################################
 
-FROM vllm/vllm-openai:latest
+FROM ubuntu:20.04 AS download_model
 
-USER root
-
-RUN apt-get update; \
-    apt-get -y install curl ca-certificates python3-venv python3-pip python3-certifi python3-urllib3
-
-RUN pip install huggingface_hub[cli]
+RUN --mount=type=tmpfs,target=/var/cache/apt \
+    --mount=type=tmpfs,target=/var/lib/apt/lists  \
+    --mount=type=tmpfs,target=/tmp \
+    apt-get update && apt-get install --no-install-recommends -y curl ca-certificates python3-venv python3-pip python3-certifi python3-urllib3 && \
+    pip install huggingface_hub[cli]
 
 ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
 ENV VLLM_MODEL="${VLLM_MODEL}"
-RUN export HF_HUB_DISABLE_XET=1; hf download ${VLLM_MODEL}
+RUN HF_HUB_DISABLE_XET=1 hf download ${VLLM_MODEL}
+
+
+FROM vllm/vllm-openai:latest
+ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+ENV VLLM_MODEL="${VLLM_MODEL}"
+
+USER root
+RUN mkdir -p /root/.cache
+COPY --chown=root:root --from=download_model /root/.cache/huggingface /root/.cache/huggingface
 
 # default value
 ENV MAX_MODEL_LEN=45000
