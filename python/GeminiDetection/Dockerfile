@@ -30,28 +30,28 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y wget \
-    # For Google Gemini 
-    # After installing the following /usr/bin will have:
-    # python3 -> python3.8
-    # python3.8
-    # python3.9
-    python3.9 python3.9-venv libpython3.9
+#RUN --mount=type=tmpfs,target=/var/cache/apt \
+#    --mount=type=tmpfs,target=/var/lib/apt/lists  \
+#    --mount=type=tmpfs,target=/tmp \
+#    apt-get update; \
+#    DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y wget \
+#    # For Google Gemini 
+#    # After installing the following /usr/bin will have:
+#    # python3 -> python3.8
+#    # python3.8
+#    # python3.9
+#    python3.9 python3.9-venv libpython3.9
 
 # Create separate venv for Python 3.9 subprocess
-RUN mkdir -p /gemini-subprocess/venv; \
-    python3.9 -m venv /gemini-subprocess/venv; \
-    /gemini-subprocess/venv/bin/pip3 install google-genai pillow numpy
+#RUN mkdir -p /gemini-subprocess/venv; \
+#    python3.9 -m venv /gemini-subprocess/venv; \
+#    /gemini-subprocess/venv/bin/pip3 install google-genai pillow numpy
 
-COPY gemini-process-image.py gemini_component/resource_tracker_monkeypatch.py /gemini-subprocess
+#COPY gemini-process-image.py gemini_component/resource_tracker_monkeypatch.py /gemini-subprocess
+#RUN pip3 install --upgrade pip
+#RUN pip3 install tenacity opencv-python
 
-RUN pip3 install --upgrade pip
-
-RUN pip3 install tenacity opencv-python
+RUN pip3 install tenacity opencv-python google-genai pillow numpy
         
 ARG RUN_TESTS=false
 
