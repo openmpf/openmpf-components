@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2023 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2024 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2023 The MITRE Corporation                                       *
+ * Copyright 2024 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -247,9 +247,9 @@ bool KeywordTagging::comp_regex(const MPFJob &job, const wstring &full_text,
         boost::wregex reg_matcher;
 
         if (case_sensitive) {
-            reg_matcher = boost::wregex(regstr, boost::regex_constants::extended);
+            reg_matcher = boost::wregex(regstr, boost::regex_constants::perl);
         } else {
-            reg_matcher = boost::wregex(regstr, boost::regex_constants::extended | boost::regex::icase);
+            reg_matcher = boost::wregex(regstr, boost::regex_constants::perl | boost::regex::icase);
         }
 
         boost::wsmatch m;

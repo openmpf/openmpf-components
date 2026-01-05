@@ -197,7 +197,7 @@ class TestComponent(unittest.TestCase):
         child_process_send_job_patcher = mock.patch('llama_video_summarization_component.ChildProcess.send_job_get_response')
         self.mock_child_process_send_job = child_process_send_job_patcher.start()
         self.addCleanup(child_process_send_job_patcher.stop)
-        
+
 
     def run_patched_job(self, component, job, response):
         if USE_MOCKS:
@@ -207,13 +207,13 @@ class TestComponent(unittest.TestCase):
     
 
     def assert_detection_region(self, detection, frame_width, frame_height):    
-        self.assertEquals(0, detection.x_left_upper)
-        self.assertEquals(0, detection.y_left_upper)
-        self.assertEquals(frame_width, detection.width)
-        self.assertEquals(frame_height, detection.height)
+        self.assertEqual(0, detection.x_left_upper)
+        self.assertEqual(0, detection.y_left_upper)
+        self.assertEqual(frame_width, detection.width)
+        self.assertEqual(frame_height, detection.height)
 
 
-    def assert_first_middle_last_detections(self, track, frame_width, frame_height):    
+    def assert_first_middle_last_detections(self, track, frame_width, frame_height):
         self.assertIn(track.start_frame, track.frame_locations)
         self.assert_detection_region(track.frame_locations[track.start_frame], frame_width, frame_height)
 
@@ -233,22 +233,22 @@ class TestComponent(unittest.TestCase):
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
         results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
-        self.assertEquals(3, len(results))
+        self.assertEqual(3, len(results))
 
-        self.assertEquals('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
         self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
-        self.assertEquals(0, results[0].start_frame)
-        self.assertEquals(171, results[0].stop_frame)
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(171, results[0].stop_frame)
         self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
         self.assertIn("looking around.", results[1].detection_properties["TEXT"])
-        self.assertEquals(0, results[1].start_frame) # 0 * 25
-        self.assertEquals(121, results[1].stop_frame) # (4.9 * 25) - 1
+        self.assertEqual(0, results[1].start_frame) # 0 * 25
+        self.assertEqual(121, results[1].stop_frame) # (4.9 * 25) - 1
         self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
         self.assertIn("looks back at the camera", results[2].detection_properties["TEXT"])
-        self.assertEquals(125, results[2].start_frame) # 5.0 * 25
-        self.assertEquals(169, results[2].stop_frame) # (6.8 * 25) - 1
+        self.assertEqual(125, results[2].start_frame) # 5.0 * 25
+        self.assertEqual(169, results[2].stop_frame) # (6.8 * 25) - 1
         self.assert_first_middle_last_detections(results[2], frame_width, frame_height)
 
 
@@ -257,17 +257,17 @@ class TestComponent(unittest.TestCase):
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
         results = self.run_patched_job(component, job, json.dumps(DOG_TIMELINE))
-        self.assertEquals(2, len(results))
+        self.assertEqual(2, len(results))
 
-        self.assertEquals('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
         self.assertIn("sitting by a window and looking around", results[0].detection_properties["TEXT"])
-        self.assertEquals(0, results[0].start_frame)
-        self.assertEquals(153, results[0].stop_frame)
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(153, results[0].stop_frame)
         self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
         self.assertIn("sitting by the window.", results[1].detection_properties["TEXT"])
-        self.assertEquals(0, results[1].start_frame) # 0 * 25
-        self.assertEquals(152, results[1].stop_frame) # (6.12 * 25) - 1
+        self.assertEqual(0, results[1].start_frame) # 0 * 25
+        self.assertEqual(152, results[1].stop_frame) # (6.12 * 25) - 1
         self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
 
@@ -276,27 +276,28 @@ class TestComponent(unittest.TestCase):
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
         results = self.run_patched_job(component, job, json.dumps(SHORT_TIMELINE))
-        self.assertEquals(2, len(results))
+        self.assertEqual(2, len(results))
 
-        self.assertEquals('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
         self.assertIn("A person is running around.", results[0].detection_properties["TEXT"])
-        self.assertEquals(0, results[0].start_frame)
-        self.assertEquals(0, results[0].stop_frame)
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(0, results[0].stop_frame)
         self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
         self.assertIn("A person running.", results[1].detection_properties["TEXT"])
-        self.assertEquals(0, results[1].start_frame) # 0 * 1
-        self.assertEquals(0, results[1].stop_frame) # (1 * 1) - 1
+        self.assertEqual(0, results[1].start_frame) # 0 * 1
+        self.assertEqual(0, results[1].stop_frame) # (1 * 1) - 1
         self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
 
     def test_invalid_timeline(self):
         component = LlamaVideoSummarizationComponent()
 
         job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
-            { 
+            {
                 "GENERATION_MAX_ATTEMPTS" : "1",
                 "TIMELINE_CHECK_TARGET_THRESHOLD" : "10"
-            }, 
+            },
             CAT_VIDEO_PROPERTIES, {})
         
         with self.assertRaises(mpf.DetectionException) as cm:
@@ -310,13 +311,13 @@ class TestComponent(unittest.TestCase):
         self.assertIn("Max timeline event end time not close enough to segment stop time.", str(cm.exception))
 
         # test disabling time check
-        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
+        job = mpf.VideoJob('cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
             {
                 "GENERATION_MAX_ATTEMPTS" : "1",
                 "TIMELINE_CHECK_TARGET_THRESHOLD" : "-1"
             },
             CAT_VIDEO_PROPERTIES, {})
-        
+
         results = self.run_patched_job(component, job, json.dumps(
         {
             "video_summary": "This is a video of a cat.",
@@ -337,7 +338,7 @@ class TestComponent(unittest.TestCase):
 
         with self.assertRaises(mpf.DetectionException) as cm:
             self.run_patched_job(component, job, "garbage xyz") # don't care about results
-        
+
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("not valid JSON", str(cm.exception))
 
@@ -447,26 +448,26 @@ class TestComponent(unittest.TestCase):
         # event that starts within range but ends outside of valid frames
         drone_timeline_segment_1["video_event_timeline"][2]["timestamp_end"] = 185.0
         job1_results = self.run_patched_job(component, job1, json.dumps(drone_timeline_segment_1))
-        self.assertEquals(6, len(job1_results))
+        self.assertEqual(6, len(job1_results))
 
         self.assertIn('SEGMENT SUMMARY', job1_results[0].detection_properties)
         for track in job1_results:
-            self.assertEquals('0-5393', track.detection_properties['SEGMENT ID'])
+            self.assertEqual('0-5393', track.detection_properties['SEGMENT ID'])
             self.assertGreaterEqual(track.start_frame, 0)
             self.assertLessEqual(track.stop_frame, 5393)
 
-        self.assertEquals(1962, job1_results[3].start_frame)
-        self.assertEquals(5393, job1_results[3].stop_frame)
+        self.assertEqual(1962, job1_results[3].start_frame)
+        self.assertEqual(5393, job1_results[3].stop_frame)
         self.assertIsNotNone(job1_results[3].frame_locations[1962])
         self.assertIsNotNone(job1_results[3].frame_locations[3752])
         self.assertIsNotNone(job1_results[3].frame_locations[5393])
 
-        self.assertEquals(5393, job1_results[4].start_frame)
-        self.assertEquals(5393, job1_results[4].stop_frame)
+        self.assertEqual(5393, job1_results[4].start_frame)
+        self.assertEqual(5393, job1_results[4].stop_frame)
         self.assertIsNotNone(job1_results[4].frame_locations[5393])
 
-        self.assertEquals(5393, job1_results[5].start_frame)
-        self.assertEquals(5392, job1_results[5].stop_frame) # 179.96 < 179.9798
+        self.assertEqual(5393, job1_results[5].start_frame)
+        self.assertEqual(5392, job1_results[5].stop_frame) # 179.96 < 179.9798
         self.assertIsNotNone(job1_results[5].frame_locations[5393])
 
         job2 = mpf.VideoJob(
@@ -529,25 +530,26 @@ class TestComponent(unittest.TestCase):
 
         drone_timeline_segment_2['video_event_timeline'][1]["timestamp_end"] = 298.46
         job2_results = self.run_patched_job(component, job2, json.dumps(drone_timeline_segment_2))
-        self.assertEquals(3, len(job2_results))
+        self.assertEqual(3, len(job2_results))
 
         self.assertIn('SEGMENT SUMMARY', job2_results[0].detection_properties)
         for track in job2_results:
-            self.assertEquals('5394-8989', track.detection_properties['SEGMENT ID'])
+            self.assertEqual('5394-8989', track.detection_properties['SEGMENT ID'])
             self.assertGreaterEqual(track.start_frame, 5394)
             self.assertLessEqual(track.stop_frame, 8989)
 
-        self.assertEquals(5394, job2_results[1].start_frame)
-        self.assertEquals(6490, job2_results[1].stop_frame)
+        self.assertEqual(5394, job2_results[1].start_frame)
+        self.assertEqual(6490, job2_results[1].stop_frame)
         self.assertIsNotNone(job2_results[1].frame_locations[5394])
         self.assertIsNotNone(job2_results[1].frame_locations[5942])
         self.assertIsNotNone(job2_results[1].frame_locations[6490])
 
-        self.assertEquals(6524, job2_results[2].start_frame)
-        self.assertEquals(8943, job2_results[2].stop_frame)
+        self.assertEqual(6524, job2_results[2].start_frame)
+        self.assertEqual(8943, job2_results[2].stop_frame)
         self.assertIsNotNone(job2_results[2].frame_locations[6524])
         self.assertIsNotNone(job2_results[2].frame_locations[7733])
         self.assertIsNotNone(job2_results[2].frame_locations[8943])
+
 
     def test_timeline_acceptable_threshold(self):
         component = LlamaVideoSummarizationComponent()
@@ -595,7 +597,7 @@ class TestComponent(unittest.TestCase):
         drone_timeline_segment_1["video_event_timeline"][0]["timestamp_start"] += 11.0
         drone_timeline_segment_1["video_event_timeline"][2]["timestamp_end"] += 20.0
         job1_results = self.run_patched_job(component, job1, json.dumps(drone_timeline_segment_1))
-        self.assertEquals(4, len(job1_results))
+        self.assertEqual(4, len(job1_results))
 
 
         job2 = mpf.VideoJob(
@@ -619,7 +621,7 @@ class TestComponent(unittest.TestCase):
         drone_timeline_segment_2["video_event_timeline"][0]["timestamp_end"] = 178.0
         drone_timeline_segment_2["video_event_timeline"][-1]["timestamp_end"] = 325.0
         job2_results = self.run_patched_job(component, job2, json.dumps(drone_timeline_segment_2))
-        self.assertEquals(5, len(job2_results))
+        self.assertEqual(5, len(job2_results))
 
 
 if __name__ == "__main__":

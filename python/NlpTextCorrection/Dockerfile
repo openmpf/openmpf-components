@@ -7,11 +7,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -28,15 +28,35 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-RUN pip install --no-cache-dir --use-pep517 'cyhunspell>=2.0.2'
+FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
+
+RUN --mount=type=tmpfs,target=/var/cache/apt \
+    --mount=type=tmpfs,target=/var/lib/apt/lists  \
+    --mount=type=tmpfs,target=/tmp \
+    apt-get update; \
+    apt-get install -y --no-install-recommends libhunspell-dev hunspell-en-us
+
+RUN pip install --no-cache-dir --use-pep517 'hunspell'
 
 ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_nlp_correction.py; fi
+
+
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG}
+
+COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+
+COPY --from=build /usr/lib/x86_64-linux-gnu/libhunspell-1.7.so.0 /usr/lib/x86_64-linux-gnu/
+
+COPY --from=build /usr/share/hunspell /usr/share/hunspell
+
+COPY --from=build $PLUGINS_DIR/NlpTextCorrection $PLUGINS_DIR/NlpTextCorrection
+
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF NLP Text Correction" \
