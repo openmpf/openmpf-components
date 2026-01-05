@@ -221,7 +221,7 @@ public class TestTikaTextDetectionComponent {
 
         // For awareness, this particular issue has been resolved with the newer version of Tika.
         // The last entry now reflects the final text in the slide rather than repeating the first detection.
-        assertSection(tracks.get(tracks.size()), "-1", "23", "Unknown", "End slide test text");
+        assertSection(tracks.get(tracks.size() - 1), "-1", "23", "Unknown", "End slide test text");
     }
 
     @Test
