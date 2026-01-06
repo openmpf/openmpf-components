@@ -33,7 +33,7 @@ import torch
 
 from jsonschema import validate, ValidationError
 from transformers import AutoModelForCausalLM, AutoProcessor 
-from typing import Any, cast, Iterable, List, Mapping, Tuple, Union
+from typing import Any, cast, Iterable, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -151,7 +151,7 @@ class LlamaVideoSummarizationComponent:
                 log.info('Couldn\'t satisfy target threshold. Falling back to response that satisfies acceptable threshold.')
                 return acceptable_json
             else:
-                raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
+                raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to get valid response: {error}')
 
         # if no error, then response_json should be valid and meet target criteria
         return response_json # type: ignore
@@ -173,7 +173,6 @@ class LlamaVideoSummarizationComponent:
             log.debug(f"generation_prompt:\n\n{job_config['generation_prompt']}\n")
 
         conversation = [
-            # {"role": "system", "content": "You are a helpful assistant."},
             {"role": "system", "content": job_config['system_prompt']},
             {
                 "role": "user",

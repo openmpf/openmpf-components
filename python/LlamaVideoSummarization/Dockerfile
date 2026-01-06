@@ -38,8 +38,8 @@ RUN pip install huggingface_hub; \
 
 RUN pip install --no-cache-dir \
         "jsonschema" \
-        "torch==2.4.0" \
-        "torchvision==0.19.0" \
+        "torch==2.6.0" \
+        "torchvision==0.21.0" \
         "transformers==4.46.3" \
         "decord" \
         "ffmpeg-python" \
