@@ -28,23 +28,47 @@ import importlib.resources
 import json
 import logging
 import os
-import pickle
-import socket
-import subprocess
 import re
+import torch
 
 from jsonschema import validate, ValidationError
-from typing import Any, cast, Iterable, List, Mapping, Tuple, Union
+from transformers import AutoModelForCausalLM, AutoProcessor 
+from typing import Any, cast, Iterable, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+DEVICE = "cuda:0"
+MODEL_PATH = "DAMO-NLP-SG/VideoLLaMA3-7B"
+MODEL_REVISION = os.environ.get("MODEL_REVISION", "main")
 
 log = logging.getLogger('LlamaVideoSummarizationComponent')
 
 class LlamaVideoSummarizationComponent:
 
     def __init__(self):
-        self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py', str(log.getEffectiveLevel())])
+        log.info("Loading model/processor...")
+
+        self._model = AutoModelForCausalLM.from_pretrained(
+            MODEL_PATH,
+            revision=MODEL_REVISION,
+            local_files_only=True,
+            trust_remote_code=True,
+            device_map={"": DEVICE},
+            torch_dtype=torch.bfloat16,
+            tempurature=0.7, # default 0.7
+            repetition_penalty=1.05, # default 1.05
+            attn_implementation="flash_attention_2"
+        )
+        
+        self._processor = AutoProcessor.from_pretrained(
+            MODEL_PATH,
+            revision=MODEL_REVISION,
+            trust_remote_code=True,
+            local_files_only=True)
+
+        log.info("Loaded model/processor")
+
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         try:
@@ -75,7 +99,7 @@ class LlamaVideoSummarizationComponent:
             job_config['segment_start_time'] = segment_start_time
             job_config['segment_stop_time'] = segment_stop_time
 
-            response_json = self._get_response_from_subprocess(job_config)
+            response_json = self._process(job_config)
 
             log.info('Processing complete.')
 
@@ -88,7 +112,7 @@ class LlamaVideoSummarizationComponent:
             raise
 
 
-    def _get_response_from_subprocess(self, job_config: dict) -> dict:
+    def _process(self, job_config: dict) -> dict:
         schema_str = job_config['generation_json_schema']
         schema_json = json.loads(schema_str)
 
@@ -106,7 +130,7 @@ class LlamaVideoSummarizationComponent:
         acceptable_json = None
         error = None
         while max(attempts.values()) < max_attempts:
-            response = self.child_process.send_job_get_response(job_config)
+            response = self._get_response(job_config)
             response_json, error = self._check_response(attempts, max_attempts, schema_json, response)
             if error is not None:
                 continue
@@ -127,10 +151,56 @@ class LlamaVideoSummarizationComponent:
                 log.info('Couldn\'t satisfy target threshold. Falling back to response that satisfies acceptable threshold.')
                 return acceptable_json
             else:
-                raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
+                raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to get valid response: {error}')
 
         # if no error, then response_json should be valid and meet target criteria
         return response_json # type: ignore
+
+
+    def _get_response(self, job_config: dict) -> str:
+
+        log.info(f"Processing \"{job_config['video_path']}\" with "
+            f"fps: {job_config['process_fps']}, "
+            f"max_frames: {job_config['max_frames']}, "
+            f"max_new_tokens: {job_config['max_new_tokens']}, "
+            f"start_time: {job_config['segment_start_time']}, "
+            f"end_time: {job_config['segment_stop_time']}")
+
+        if job_config['system_prompt'] == job_config['generation_prompt']:
+            log.debug(f"system_prompt/generation_prompt:\n\n{job_config['system_prompt']}\n")
+        else:
+            log.debug(f"system_prompt:\n\n{job_config['system_prompt']}\n")
+            log.debug(f"generation_prompt:\n\n{job_config['generation_prompt']}\n")
+
+        conversation = [
+            {"role": "system", "content": job_config['system_prompt']},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "video", "video": {"video_path": job_config['video_path'],
+                                                "fps": job_config['process_fps'], "max_frames": job_config['max_frames'],
+                                                "start_time": job_config['segment_start_time'], "end_time": job_config['segment_stop_time']}},
+                    {"type": "text", "text": job_config['generation_prompt']},
+                ]
+            },
+        ]
+
+        inputs = self._processor(
+            conversation=conversation,
+            add_system_prompt=True,
+            add_generation_prompt=True,
+            return_tensors="pt"
+        )
+
+        inputs = {k: v.to(DEVICE) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+        if "pixel_values" in inputs:
+            inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
+        output_ids = self._model.generate(**inputs, max_new_tokens=job_config['max_new_tokens'])
+        response = self._processor.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+
+        log.debug(f"Response:\n\n{response}")
+
+        return response
 
 
     def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str
@@ -425,39 +495,3 @@ def _read_file(path: str) -> str:
         return importlib.resources.read_text(__name__, expanded_path).strip()
     except:
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(f"Could not read \"{path}\".")
-
-
-class ChildProcess:
-
-    def __init__(self, start_cmd: List[str]):
-        parent_socket, child_socket = socket.socketpair()
-        with parent_socket, child_socket:
-            env = {**os.environ, 'MPF_SOCKET_FD': str(child_socket.fileno())}
-            self._proc = subprocess.Popen(
-                    start_cmd,
-                    pass_fds=(child_socket.fileno(),),
-                    env=env)
-            self._socket = parent_socket.makefile('rwb')
-
-
-    def __del__(self):
-        print("Terminating subprocess...")
-        self._socket.close()
-        self._proc.terminate()
-        self._proc.wait()
-        print("Subprocess terminated")
-
-
-    def send_job_get_response(self, config: dict):
-        job_bytes = pickle.dumps(config)
-        self._socket.write(len(job_bytes).to_bytes(4, 'little'))
-        self._socket.write(job_bytes)
-        self._socket.flush()
-
-        response_length = int.from_bytes(self._socket.read(4), 'little')
-        if response_length == 0:
-            error_length = int.from_bytes(self._socket.read(4), 'little')
-            error = pickle.loads(self._socket.read(error_length))
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
-
-        return pickle.loads(self._socket.read(response_length))
