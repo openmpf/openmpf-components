@@ -34,7 +34,16 @@ version = "9.0"
 dependencies = [
     "mpf_component_api>=9.0",
     "mpf_component_util>=9.0",
-    "jsonschema"
+    "jsonschema",
+    "torch==2.6.0",
+    "torchvision==0.21.0",
+    "transformers==4.46.3",
+    "flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.3/flash_attn-2.7.3+cu12torch2.6cxx11abiFALSE-cp312-cp312-linux_x86_64.whl",
+    "decord",
+    "ffmpeg-python",
+    "imageio",
+    "opencv-python",
+    "accelerate==1.0.1"
 ]
 
 [project.entry-points."mpf.exported_component"]
@@ -42,6 +51,3 @@ component = "llama_video_summarization_component:LlamaVideoSummarizationComponen
 
 [tool.setuptools.package-data]
 llama_video_summarization_component = ["*"]
-
-[tool.setuptools.packages.find]
-exclude = ["subprocess"]
