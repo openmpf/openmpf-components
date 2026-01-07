@@ -74,7 +74,9 @@ public class TestTikaTextDetectionComponent {
         assertThat(tracks.get(0).getDetectionProperties().get("METADATA"),
                 containsString("{\"X-TIKA:Parsed-By\":\"org.apache.tika.parser.DefaultParser\"," +
                         "\"X-TIKA:Parsed-By-Full-Set\":\"org.apache.tika.parser.DefaultParser\"," +
-                        "\"Content-Encoding\":\"ISO-8859-1\",\"Content-Type\":\"text/plain; charset=ISO-8859-1\"}"));
+                        "\"Content-Encoding\":\"ISO-8859-1\",\"X-TIKA:detectedEncoding\":\"ISO-8859-1\"," +
+                        "\"X-TIKA:encodingDetector\":\"UniversalEncodingDetector\"," +
+                        "\"Content-Type\":\"text/plain; charset=ISO-8859-1\"}"));
 
         assertSection(tracks.get(1), "-1", "1", "English", "Testing, this is the first section");
     }
@@ -162,7 +164,7 @@ public class TestTikaTextDetectionComponent {
         assertSection(tracks.get(1), "2", "1", "Japanese", "Testing:\n\nジアゼパム");
         assertSection(tracks.get(3), "4", "1", "English", "An automobile with a bike races down the street");
         assertSection(tracks.get(9), "10", "1", "English",
-                "Phrase Test\nFrom the Universal Declaration of Human Rights (1948):\n\n" + 
+                "Phrase Test\nFrom the Universal Declaration of Human Rights (1948):\n\n" +
                 "Article 1.\n \nAll human beings are born free");
         assertSection(tracks.get(10), "11", "1", "Unknown", "End\nEnd slide test text");
     }
@@ -207,20 +209,19 @@ public class TestTikaTextDetectionComponent {
         assertTrue(tracks.size() == 22 || tracks.size() == 23);
 
         // Test language extraction
-        assertSection(tracks.get(0), "-1", "1", "English", "Testing Text Detection");
-        assertSection(tracks.get(3), "-1", "4", "Japanese", "ジアゼパム");
+        assertSection(tracks.get(0), "-1", "1", "English", "Testing TIKA DETECTION");
+        assertSection(tracks.get(1), "-1", "2", "English", "Testing Text Detection");
+        assertSection(tracks.get(4), "-1", "5", "Japanese", "ジアゼパム");
 
         // TODO: Look into why, unlike tracks generated from test-tika-detection.pptx, there is no track for
         //  blank slide 5.
 
-        assertSection(tracks.get(19), "-1", "20", "English", "All human beings are born free");
-        assertSection(tracks.get(20), "-1", "21", "Unknown", "End"); // cannot determine language
-        assertSection(tracks.get(21), "-1", "22", "Unknown", "End slide test text"); // cannot determine language
+        assertSection(tracks.get(20), "-1", "21", "English", "All human beings are born free");
+        assertSection(tracks.get(21), "-1", "22", "Unknown", "End"); // cannot determine language
 
-        if (tracks.size() == 23) {
-            // TODO: Look into why last section matches first section although the text is not on the last slide.
-            assertSection(tracks.get(22), "-1", "23", "English", "Testing Text Detection");
-        }
+        // For awareness, this particular issue has been resolved with the newer version of Tika.
+        // The last entry now reflects the final text in the slide rather than repeating the first detection.
+        assertSection(tracks.get(tracks.size() - 1), "-1", "23", "Unknown", "End slide test text");
     }
 
     @Test
