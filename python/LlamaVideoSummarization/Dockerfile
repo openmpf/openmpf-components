@@ -30,35 +30,22 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS base
 
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update; \
-    apt-get upgrade -y; \
-    apt-get install --no-install-recommends -y ca-certificates;
-
-COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /uvx /bin/
-
-ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
-
-RUN uv python install 3.10
-
-ENV PATH="/root/.local/bin/:$PATH"
-
-RUN --mount=type=bind,source=subprocess/requirements.txt,target=/tmp/requirements.txt \
-    mkdir -p /llama/venv; \
-    python3.10 -m venv /llama/venv; \
-    /llama/venv/bin/pip install --cert /etc/ssl/certs/ca-certificates.crt -r /tmp/requirements.txt
-
 # https://huggingface.co/DAMO-NLP-SG/VideoLLaMA3-7B/tree/fd2ad62f4cec8814750a908774c199681dbb89fd
 ENV MODEL_REVISION=fd2ad62f4cec8814750a908774c199681dbb89fd
 
-RUN . /llama/venv/bin/activate; \
-    pip install "huggingface_hub[hf_transfer]"; \
-    pip install hf_transfer; \
-    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download "DAMO-NLP-SG/VideoLLaMA3-7B" --revision ${MODEL_REVISION}
+RUN pip install huggingface_hub; \
+    SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt hf download "DAMO-NLP-SG/VideoLLaMA3-7B" --revision ${MODEL_REVISION}
 
-COPY subprocess/summarize_video.py /llama/summarize_video.py
+RUN pip install --no-cache-dir \
+        "jsonschema" \
+        "torch==2.6.0" \
+        "torchvision==0.21.0" \
+        "transformers==4.46.3" \
+        "decord" \
+        "ffmpeg-python" \
+        "imageio" \
+        "opencv-python" \
+        "accelerate==1.0.1"
 
 ARG RUN_TESTS=true
 
