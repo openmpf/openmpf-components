@@ -19,13 +19,13 @@ package org.apache.tika.parser.pdf;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import org.apache.commons.io.input.UnsynchronizedByteArrayInputStream;
 import org.apache.pdfbox.cos.COSString;
-import org.apache.pdfbox.io.RandomAccessBuffer;
 import org.apache.pdfbox.io.RandomAccessRead;
+import org.apache.pdfbox.io.RandomAccessReadBuffer;
 import org.apache.pdfbox.pdfparser.COSParser;
 
 /**
@@ -82,11 +82,13 @@ class PDFEncodedStringDecoder {
     String decode(String value) {
         try {
             byte[] bytes = new String("(" + value + ")").getBytes(ISO_8859_1);
-            InputStream is = new ByteArrayInputStream(bytes);
-            COSStringParser p = new COSStringParser(new RandomAccessBuffer(is));
-            String parsed = p.myParseCOSString();
-            if (parsed != null) {
-                return parsed;
+            InputStream is = UnsynchronizedByteArrayInputStream.builder().setByteArray(bytes).get();
+            try (RandomAccessRead rar = new RandomAccessReadBuffer(is)) {
+                COSStringParser p = new COSStringParser(rar);
+                String parsed = p.myParseCOSString();
+                if (parsed != null) {
+                    return parsed;
+                }
             }
         } catch (IOException e) {
             //oh well, we tried.
