@@ -46,16 +46,19 @@ import org.apache.tika.metadata.PDF;
 import org.apache.tika.metadata.Property;
 import org.apache.tika.metadata.TikaCoreProperties;
 import org.apache.tika.metadata.XMP;
-import org.apache.tika.mime.MediaType;
+import org.apache.tika.metadata.XMPDC;
+import org.apache.tika.metadata.XMPPDF;
 import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.pdf.xmpschemas.XMPSchemaIllustrator;
+import org.apache.tika.parser.pdf.xmpschemas.XMPSchemaPDFUA;
+import org.apache.tika.parser.pdf.xmpschemas.XMPSchemaPDFVT;
+import org.apache.tika.parser.pdf.xmpschemas.XMPSchemaPDFX;
+import org.apache.tika.parser.pdf.xmpschemas.XMPSchemaPDFXId;
 import org.apache.tika.parser.xmp.JempboxExtractor;
 import org.apache.tika.utils.StringUtils;
 import org.apache.tika.utils.XMLReaderUtils;
 
 public class PDMetadataExtractor {
-
-    private static final MediaType MEDIA_TYPE = MediaType.application("pdf");
-
 
     public static void extract(PDMetadata pdMetadata, Metadata metadata, ParseContext context) {
         if (pdMetadata == null) {
@@ -71,42 +74,183 @@ public class PDMetadataExtractor {
             return;
         }
         XMPMetadata xmp = new XMPMetadata(dom);
+        extract(xmp, metadata, context);
+    }
+
+    public static void extract(XMPMetadata xmp, Metadata metadata, ParseContext context) {
+        extractBasic(xmp, metadata);
+        extractPDF(xmp, metadata);
+        extractDublinCore(xmp, metadata);
+        JempboxExtractor.extractXMPMM(xmp, metadata);
+        extractPDFA(xmp, metadata);
+        extractPDFX(xmp, metadata);
+        extractPDFVT(xmp, metadata);
+        extractPDFUA(xmp, metadata);
+        extractIllustrator(xmp, metadata);
+    }
+
+    private static void extractIllustrator(XMPMetadata xmp, Metadata metadata) {
+        xmp.addXMLNSMapping(XMPSchemaIllustrator.NAMESPACE_URI, XMPSchemaIllustrator.class);
+        XMPSchemaIllustrator schema = null;
+        try {
+            schema = (XMPSchemaIllustrator) xmp.getSchemaByClass(XMPSchemaIllustrator.class);
+        } catch (IOException e) {
+            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
+                    "" + e);
+        }
+
+        if (schema == null) {
+            return;
+        }
+        String type = schema.getType();
+        if (! StringUtils.isBlank(type)) {
+            metadata.set(PDF.ILLUSTRATOR_TYPE, type);
+        }
+    }
+
+    private static void extractDublinCore(XMPMetadata xmp, Metadata metadata) {
         XMPSchemaDublinCore dcSchema = null;
         try {
             dcSchema = xmp.getDublinCoreSchema();
         } catch (IOException e) {
             //swallow
         }
-        if (dcSchema != null) {
-            extractMultilingualItems(metadata, TikaCoreProperties.DESCRIPTION, null, dcSchema);
-            extractDublinCoreListItems(metadata, TikaCoreProperties.CONTRIBUTOR, dcSchema);
-            extractDublinCoreListItems(metadata, TikaCoreProperties.CREATOR, dcSchema);
-            extractMultilingualItems(metadata, TikaCoreProperties.TITLE, null, dcSchema);
+        if (dcSchema == null) {
+            return;
         }
-        extractBasic(xmp, metadata);
-        extractPDF(xmp, metadata);
-        JempboxExtractor.extractXMPMM(xmp, metadata);
+        extractDublinCoreSimpleItem(metadata, dcSchema, TikaCoreProperties.IDENTIFIER.getName(), TikaCoreProperties.IDENTIFIER, XMPDC.IDENTIFIER);
+        extractDublinCoreSimpleItem(metadata, dcSchema, TikaCoreProperties.SOURCE.getName(), TikaCoreProperties.SOURCE, XMPDC.SOURCE);
 
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.CONTRIBUTOR.getName(), TikaCoreProperties.CONTRIBUTOR, XMPDC.CONTRIBUTOR);
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.CREATOR.getName(), TikaCoreProperties.CREATOR, XMPDC.CREATOR);
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.LANGUAGE.getName(), TikaCoreProperties.LANGUAGE, XMPDC.LANGUAGE);
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.PUBLISHER.getName(), TikaCoreProperties.PUBLISHER, XMPDC.PUBLISHER);
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.RELATION.getName(), TikaCoreProperties.RELATION, XMPDC.RELATION);
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.SUBJECT.getName(), TikaCoreProperties.SUBJECT, XMPDC.SUBJECT);
+        // finds only the first one?!
+        extractDublinCoreListItems(metadata, dcSchema, TikaCoreProperties.TYPE.getName(), TikaCoreProperties.TYPE, XMPDC.TYPE);
+
+        extractMultilingualItems(metadata, dcSchema, TikaCoreProperties.DESCRIPTION.getName(), TikaCoreProperties.DESCRIPTION, XMPDC.DESCRIPTION);
+        extractMultilingualItems(metadata, dcSchema, TikaCoreProperties.RIGHTS.getName(), TikaCoreProperties.RIGHTS, XMPDC.RIGHTS);
+        extractMultilingualItems(metadata, dcSchema, TikaCoreProperties.TITLE.getName(), TikaCoreProperties.TITLE, XMPDC.TITLE);
+
+    }
+
+    private static void extractPDFVT(XMPMetadata xmp, Metadata metadata) {
+        xmp.addXMLNSMapping(XMPSchemaPDFVT.NAMESPACE_URI, XMPSchemaPDFVT.class);
+        XMPSchemaPDFVT schema = null;
         try {
-            xmp.addXMLNSMapping(XMPSchemaPDFAId.NAMESPACE, XMPSchemaPDFAId.class);
-            XMPSchemaPDFAId pdfaxmp = (XMPSchemaPDFAId) xmp.getSchemaByClass(XMPSchemaPDFAId.class);
-            if (pdfaxmp != null) {
-                if (pdfaxmp.getPart() != null) {
-                    metadata.set(PDF.PDFAID_PART, Integer.toString(pdfaxmp.getPart()));
-                }
-                if (pdfaxmp.getConformance() != null) {
-                    metadata.set(PDF.PDFAID_CONFORMANCE, pdfaxmp.getConformance());
-                    String version = "A-" + pdfaxmp.getPart() +
-                            pdfaxmp.getConformance().toLowerCase(Locale.ROOT);
-                    metadata.set(PDF.PDFA_VERSION, version);
-                    metadata.add(TikaCoreProperties.FORMAT.getName(),
-                            MEDIA_TYPE.toString() + "; version=\"" + version + "\"");
-                }
-            }
-            // TODO WARN if this XMP version is inconsistent with document header version?
+            schema = (XMPSchemaPDFVT) xmp.getSchemaByClass(XMPSchemaPDFVT.class);
         } catch (IOException e) {
             metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
                     "" + e);
+        }
+
+        if (schema == null) {
+            return;
+        }
+        String version = schema.getPDFVTVersion();
+        if (! StringUtils.isBlank(version)) {
+            metadata.set(PDF.PDFVT_VERSION, version);
+        }
+        try {
+            Calendar modified = schema.getPDFVTModified();
+            metadata.set(PDF.PDFVT_MODIFIED, modified);
+        } catch (IOException ex) {
+            metadata.add(TikaCoreProperties.TIKA_META_EXCEPTION_WARNING,
+                    "bad date in vt modified");
+        }
+    }
+
+    private static void extractPDFX(XMPMetadata xmp, Metadata metadata) {
+        xmp.addXMLNSMapping(XMPSchemaPDFXId.NAMESPACE_URI, XMPSchemaPDFXId.class);
+        xmp.addXMLNSMapping(XMPSchemaPDFX.NAMESPACE_URI, XMPSchemaPDFX.class);
+        try {
+            XMPSchemaPDFXId
+                    XMPSchemaPDFXId = (XMPSchemaPDFXId) xmp.getSchemaByClass(XMPSchemaPDFXId.class);
+            if (XMPSchemaPDFXId != null) {
+                String version = XMPSchemaPDFXId.getPDFXVersion();
+                if (!StringUtils.isBlank(version)) {
+                    metadata.set(PDF.PDFXID_VERSION, version);
+                }
+            }
+        } catch (IOException e) {
+            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
+                    "" + e);
+        }
+        try {
+            XMPSchemaPDFX XMPSchemaPDFX = (XMPSchemaPDFX) xmp.getSchemaByClass(XMPSchemaPDFX.class);
+            if (XMPSchemaPDFX != null) {
+                String version = XMPSchemaPDFX.getPDFXVersion();
+                if (!StringUtils.isBlank(version)) {
+                    metadata.set(PDF.PDFX_VERSION, version);
+                }
+                String conformance = XMPSchemaPDFX.getPDFXConformance();
+                if (!StringUtils.isBlank(conformance)) {
+                    metadata.set(PDF.PDFX_CONFORMANCE, conformance);
+                }
+            }
+        } catch (IOException e) {
+            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
+                    "" + e);
+        }
+
+    }
+
+
+    private static void extractPDFUA(XMPMetadata xmp, Metadata metadata) {
+        xmp.addXMLNSMapping(XMPSchemaPDFUA.NAMESPACE_URI, XMPSchemaPDFUA.class);
+        XMPSchemaPDFUA schema = null;
+        try {
+            schema = (XMPSchemaPDFUA) xmp.getSchemaByClass(XMPSchemaPDFUA.class);
+        } catch (IOException e) {
+            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
+                    "" + e);
+        }
+
+        if (schema == null) {
+            return;
+        }
+        try {
+            Integer part = schema.getPart();
+            if (schema.getPart() != null) {
+                metadata.set(PDF.PDFUAID_PART, part.intValue());
+            }
+        } catch (NumberFormatException e) {
+            metadata.add(TikaCoreProperties.TIKA_META_EXCEPTION_WARNING,
+                    "expected integer " + "part");
+        }
+
+    }
+
+    private static void extractPDFA(XMPMetadata xmp, Metadata metadata) {
+        xmp.addXMLNSMapping(XMPSchemaPDFAId.NAMESPACE, XMPSchemaPDFAId.class);
+        XMPSchemaPDFAId schema = null;
+        try {
+            schema = (XMPSchemaPDFAId) xmp.getSchemaByClass(XMPSchemaPDFAId.class);
+        } catch (IOException e) {
+            metadata.set(TikaCoreProperties.TIKA_META_PREFIX + "pdf:metadata-xmp-parse-failed",
+                    "" + e);
+        }
+
+        if (schema == null) {
+            return;
+        }
+        String partString = "UNKNOWN";
+        try {
+            Integer part = schema.getPart();
+            if (part != null) {
+                partString = Integer.toString(part);
+                metadata.set(PDF.PDFAID_PART, part.intValue());
+            }
+        } catch (NumberFormatException e) {
+            metadata.add(TikaCoreProperties.TIKA_META_EXCEPTION_WARNING,
+                    "expected integer " + "part");
+        }
+        if (schema.getConformance() != null) {
+            metadata.set(PDF.PDFAID_CONFORMANCE, schema.getConformance());
+            String version = "A-" + partString + schema.getConformance().toLowerCase(Locale.ROOT);
+            metadata.set(PDF.PDFA_VERSION, version);
         }
     }
 
@@ -124,9 +268,9 @@ public class PDMetadataExtractor {
         if (pdf == null) {
             return;
         }
-        setNotNull(PDF.PRODUCER, pdf.getProducer(), metadata);
-        setNotNull(Office.KEYWORDS, pdf.getKeywords(), metadata);
-        setNotNull(PDF.PDF_VERSION, pdf.getPDFVersion(), metadata);
+        setNotNull(pdf.getProducer(), metadata, PDF.PRODUCER, XMPPDF.PRODUCER);
+        setNotNull(pdf.getKeywords(), metadata, Office.KEYWORDS, XMPPDF.KEY_WORDS);
+        setNotNull(pdf.getPDFVersion(), metadata, PDF.PDF_VERSION, XMPPDF.PDF_VERSION);
     }
 
     private static void extractBasic(XMPMetadata xmp, Metadata metadata) {
@@ -143,12 +287,11 @@ public class PDMetadataExtractor {
         if (basic == null) {
             return;
         }
-        //add the elements from the basic schema if they haven't already
-        //been extracted from dublin core
-        setNotNull(XMP.CREATOR_TOOL, basic.getCreatorTool(), metadata);
-        setNotNull(DublinCore.TITLE, basic.getTitle(), metadata);
-        setNotNull(XMP.ABOUT, basic.getAbout(), metadata);
-        setNotNull(XMP.LABEL, basic.getLabel(), metadata);
+        //add the elements from the basic schema
+        setNotNull(basic.getCreatorTool(), metadata, XMP.CREATOR_TOOL);
+        setNotNull(basic.getTitle(), metadata, DublinCore.TITLE, XMP.TITLE);
+        setNotNull(basic.getAbout(), metadata, XMP.ABOUT);
+        setNotNull(basic.getLabel(), metadata, XMP.LABEL);
         try {
             setNotNull(XMP.CREATE_DATE, basic.getCreateDate(), metadata);
         } catch (IOException e) {
@@ -177,15 +320,23 @@ public class PDMetadataExtractor {
                 metadata.add(XMP.ADVISORY, advisory);
             }
         }
-        setNotNull(XMP.NICKNAME, basic.getNickname(), metadata);
-        setNotNull(XMP.RATING, basic.getRating(), metadata);
+        setNotNull(basic.getNickname(), metadata, XMP.NICKNAME);
+        try {
+            setNotNull(XMP.RATING, basic.getRating(), metadata);
+        } catch (NumberFormatException e) {
+            //swallow TIKA-4401
+        }
         //TODO: find an example where basic.getThumbNail is not null
         //and figure out how to add that info
     }
 
-    private static void setNotNull(Property property, String value, Metadata metadata) {
-        if (metadata.get(property) == null && value != null && value.trim().length() > 0) {
-            metadata.set(property, decode(value));
+    private static void setNotNull(String value, Metadata metadata, Property ... properties) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String decoded = decode(value);
+        for (Property property : properties) {
+            metadata.set(property, decoded);
         }
     }
 
@@ -198,6 +349,15 @@ public class PDMetadataExtractor {
     private static void setNotNull(Property property, Integer value, Metadata metadata) {
         if (metadata.get(property) == null && value != null) {
             metadata.set(property, value);
+        }
+    }
+
+    static void addNotNull(String value, Metadata metadata, Property ... properties) {
+        if (StringUtils.isBlank(value)) {
+            return;
+        }
+        for (Property property : properties) {
+            metadata.add(property, value);
         }
     }
 
@@ -228,44 +388,19 @@ public class PDMetadataExtractor {
      * values (see TIKA-1295)
      *
      * @param metadata
-     * @param property
-     * @param pdfBoxBaseline
-     * @param schema
+     * @param schema schema - must be non-null
+     * @param dcName dublin core name for the property to select from the xmp schema
+     * @param properties property names to set to this value
      */
-    private static void extractMultilingualItems(Metadata metadata, Property property,
-                                                 String pdfBoxBaseline, XMPSchema schema) {
-        //if schema is null, just go with pdfBoxBaseline
-        if (schema == null) {
-            if (pdfBoxBaseline != null && pdfBoxBaseline.length() > 0) {
-                addMetadata(metadata, property, pdfBoxBaseline);
-            }
-            return;
-        }
+    private static void extractMultilingualItems(Metadata metadata, XMPSchema schema, String dcName, Property ... properties) {
 
-        for (String lang : schema.getLanguagePropertyLanguages(property.getName())) {
-            String value = schema.getLanguageProperty(property.getName(), lang);
-
-            if (value != null && value.length() > 0) {
-                //if you're going to add it below in the baseline addition, don't add it now
-                if (pdfBoxBaseline != null && value.equals(pdfBoxBaseline)) {
-                    continue;
-                }
-                addMetadata(metadata, property, value);
-                if (!property.isMultiValuePermitted()) {
-                    return;
+        for (Property property : properties) {
+            for (String lang : schema.getLanguagePropertyLanguages(dcName)) {
+                String value = schema.getLanguageProperty(dcName, lang);
+                if (value != null && ! value.isBlank()) {
+                    addMetadata(metadata, property, value);
                 }
             }
-        }
-
-        if (pdfBoxBaseline != null && pdfBoxBaseline.length() > 0) {
-            //if we've already added something above and multivalue is not permitted
-            //return.
-            if (!property.isMultiValuePermitted()) {
-                if (metadata.get(property) != null) {
-                    return;
-                }
-            }
-            addMetadata(metadata, property, pdfBoxBaseline);
         }
     }
 
@@ -279,42 +414,68 @@ public class PDMetadataExtractor {
      * <p/>
      * This relies on the property having a DublinCore compliant getName()
      *
-     * @param property
-     * @param dc
      * @param metadata
+     * @param dc schema - must be non-null
+     * @param dcName -- name of the dc property to read from the dc schema
+     * @param properties -- property to set for this value in the metadata object
      */
-    private static void extractDublinCoreListItems(Metadata metadata, Property property,
-                                                   XMPSchemaDublinCore dc) {
-        //if no dc, add baseline and return
-        if (dc == null) {
-            return;
-        }
-        List<String> items = getXMPBagOrSeqList(dc, property.getName());
+    private static void extractDublinCoreListItems(Metadata metadata,
+                                                   XMPSchemaDublinCore dc, String dcName, Property ... properties) {
+
+        List<String> items = getXMPBagOrSeqList(dc, dcName);
         if (items == null) {
             return;
         }
-        for (String item : items) {
-            addMetadata(metadata, property, item);
+        for (Property property : properties) {
+            for (String item : items) {
+                addMetadata(metadata, property, item);
+            }
         }
     }
 
+     /**
+     * This tries to read a string from a particular property in XMPSchemaDublinCore.
+     * <p/>
+     * This relies on the property having a DublinCore compliant getName()
+     *
+     * @param metadata
+     * @param dc schema - must be non-null
+     * @param dcName -- name of the dc property to read from the dc schema
+     * @param properties -- property to set for this value in the metadata object
+     */
+    private static void extractDublinCoreSimpleItem(Metadata metadata,
+                                                   XMPSchemaDublinCore dc, String dcName, Property ... properties) {
 
-    static void addMetadata(Metadata metadata, Property property, String value) {
-        if (value != null) {
-            String decoded = decode(value);
-            if (StringUtils.isBlank(decoded)) {
-                return;
-            }
-            if (property.isMultiValuePermitted() || metadata.get(property) == null) {
-                for (String v : metadata.getValues(property)) {
-                    if (v.equals(decoded)) {
-                        return;
-                    }
-                }
-                metadata.add(property, decoded);
-            }
-            //silently skip adding property that already exists if multiple values are not permitted
+        String textProperty = dc.getTextProperty(dcName);
+        for (Property property : properties) {
+            addMetadata(metadata, property, textProperty);
         }
+    }
+
+    /**
+     * Add non-null, non-empty and unique values to the Metadata object. If the property
+     * does not allow multiple values, silently fail to add values after the first.
+     * @param metadata
+     * @param property
+     * @param value
+     */
+    static void addMetadata(Metadata metadata, Property property, String value) {
+        if (value == null || value.isBlank()) {
+            return;
+        }
+        String decoded = decode(value);
+        if (StringUtils.isBlank(decoded)) {
+            return;
+        }
+        if (property.isMultiValuePermitted() || metadata.get(property) == null) {
+            for (String v : metadata.getValues(property)) {
+                if (v.equals(decoded)) {
+                    return;
+                }
+            }
+            metadata.add(property, decoded);
+        }
+        //silently skip adding property that already exists if multiple values are not permitted
     }
 
     static void addMetadata(Metadata metadata, String name, String value) {

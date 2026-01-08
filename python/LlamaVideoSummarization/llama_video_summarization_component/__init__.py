@@ -28,22 +28,46 @@ import importlib.resources
 import json
 import logging
 import os
-import pickle
-import socket
-import subprocess
+import re
+import torch
 
 from jsonschema import validate, ValidationError
-from typing import Any, Iterable, List, Mapping, Tuple, Union
+from transformers import AutoModelForCausalLM, AutoProcessor 
+from typing import Any, cast, Iterable, Mapping, Tuple, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
+
+DEVICE = "cuda:0"
+MODEL_PATH = "DAMO-NLP-SG/VideoLLaMA3-7B"
+MODEL_REVISION = os.environ.get("MODEL_REVISION", "main")
 
 log = logging.getLogger('LlamaVideoSummarizationComponent')
 
 class LlamaVideoSummarizationComponent:
 
     def __init__(self):
-        self.child_process = ChildProcess(['/llama/venv/bin/python3', '/llama/summarize_video.py', str(log.getEffectiveLevel())])
+        log.info("Loading model/processor...")
+
+        self._model = AutoModelForCausalLM.from_pretrained(
+            MODEL_PATH,
+            revision=MODEL_REVISION,
+            local_files_only=True,
+            trust_remote_code=True,
+            device_map={"": DEVICE},
+            torch_dtype=torch.bfloat16,
+            tempurature=0.7, # default 0.7
+            repetition_penalty=1.05, # default 1.05
+            attn_implementation="flash_attention_2"
+        )
+        
+        self._processor = AutoProcessor.from_pretrained(
+            MODEL_PATH,
+            revision=MODEL_REVISION,
+            trust_remote_code=True,
+            local_files_only=True)
+
+        log.info("Loaded model/processor")
 
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
@@ -62,11 +86,20 @@ class LlamaVideoSummarizationComponent:
             segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
 
             job_config = _parse_properties(job.job_properties, segment_start_time)
+
+            if job_config['timeline_check_target_threshold'] < 0 and \
+                    job_config['timeline_check_acceptable_threshold'] >= 0:
+                log.warning('TIMELINE_CHECK_ACCEPTABLE_THRESHOLD will be ignored since TIMELINE_CHECK_TARGET_THRESHOLD < 0.')
+
+            if job_config['timeline_check_acceptable_threshold'] < job_config['timeline_check_target_threshold']:
+                raise mpf.DetectionError.INVALID_PROPERTY.exception(
+                    'TIMELINE_CHECK_ACCEPTABLE_THRESHOLD must be >= TIMELINE_CHECK_TARGET_THRESHOLD.')
+
             job_config['video_path'] = job.data_uri
             job_config['segment_start_time'] = segment_start_time
             job_config['segment_stop_time'] = segment_stop_time
 
-            response_json = self._get_response_from_subprocess(job_config)
+            response_json = self._process(job_config)
 
             log.info('Processing complete.')
 
@@ -79,7 +112,7 @@ class LlamaVideoSummarizationComponent:
             raise
 
 
-    def _get_response_from_subprocess(self, job_config: dict) -> dict:
+    def _process(self, job_config: dict) -> dict:
         schema_str = job_config['generation_json_schema']
         schema_json = json.loads(schema_str)
 
@@ -89,124 +122,192 @@ class LlamaVideoSummarizationComponent:
 
         max_attempts = job_config['generation_max_attempts']
         timeline_check_target_threshold = job_config['timeline_check_target_threshold']
+        timeline_check_acceptable_threshold = job_config['timeline_check_acceptable_threshold']
         segment_start_time = job_config['segment_start_time']
         segment_stop_time = job_config['segment_stop_time']
 
-        response_json = {}
+        response_json = None
+        acceptable_json = None
         error = None
         while max(attempts.values()) < max_attempts:
-            response = self.child_process.send_job_get_response(job_config)
+            response = self._get_response(job_config)
             response_json, error = self._check_response(attempts, max_attempts, schema_json, response)
             if error is not None:
                 continue
 
-            # if no error, then response_json should be valid
-            event_timeline = response_json['video_event_timeline'] # type: ignore
-
-            if timeline_check_target_threshold != -1:
-                error = self._check_timeline(
-                    timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
+            if timeline_check_target_threshold >= 0:
+                acceptable, error = self._check_timeline(
+                    timeline_check_target_threshold, timeline_check_acceptable_threshold,
+                    attempts, max_attempts, segment_start_time, segment_stop_time, cast(dict, response_json))
+                if acceptable:
+                    acceptable_json = response_json
                 if error is not None:
                     continue
 
             break
 
         if error:
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
+            if acceptable_json is not None:
+                log.info('Couldn\'t satisfy target threshold. Falling back to response that satisfies acceptable threshold.')
+                return acceptable_json
+            else:
+                raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to get valid response: {error}')
 
-        # if no error, then response_json should be valid
+        # if no error, then response_json should be valid and meet target criteria
         return response_json # type: ignore
+
+
+    def _get_response(self, job_config: dict) -> str:
+
+        log.info(f"Processing \"{job_config['video_path']}\" with "
+            f"fps: {job_config['process_fps']}, "
+            f"max_frames: {job_config['max_frames']}, "
+            f"max_new_tokens: {job_config['max_new_tokens']}, "
+            f"start_time: {job_config['segment_start_time']}, "
+            f"end_time: {job_config['segment_stop_time']}")
+
+        if job_config['system_prompt'] == job_config['generation_prompt']:
+            log.debug(f"system_prompt/generation_prompt:\n\n{job_config['system_prompt']}\n")
+        else:
+            log.debug(f"system_prompt:\n\n{job_config['system_prompt']}\n")
+            log.debug(f"generation_prompt:\n\n{job_config['generation_prompt']}\n")
+
+        conversation = [
+            {"role": "system", "content": job_config['system_prompt']},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "video", "video": {"video_path": job_config['video_path'],
+                                                "fps": job_config['process_fps'], "max_frames": job_config['max_frames'],
+                                                "start_time": job_config['segment_start_time'], "end_time": job_config['segment_stop_time']}},
+                    {"type": "text", "text": job_config['generation_prompt']},
+                ]
+            },
+        ]
+
+        inputs = self._processor(
+            conversation=conversation,
+            add_system_prompt=True,
+            add_generation_prompt=True,
+            return_tensors="pt"
+        )
+
+        inputs = {k: v.to(DEVICE) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+        if "pixel_values" in inputs:
+            inputs["pixel_values"] = inputs["pixel_values"].to(torch.bfloat16)
+        output_ids = self._model.generate(**inputs, max_new_tokens=job_config['max_new_tokens'])
+        response = self._processor.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
+
+        log.debug(f"Response:\n\n{response}")
+
+        return response
 
 
     def _check_response(self, attempts: dict, max_attempts: int, schema_json: dict, response: str
                         ) -> Tuple[Union[dict, None], Union[str, None]]:
+        error = None
         response_json = None
 
         if not response:
             error = 'Empty response.'
-            log.warning(error)
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return None, error
 
-        try:
-            response_json = json.loads(response)
-        except ValueError as ve:
-            error = 'Response is not valid JSON.'
-            log.warning(error)
-            log.warning(str(ve))
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return response_json, error
+        if not error:
+            try:
+                response_json = json.loads(response)
+            except ValueError as ve:
+                error = f'Response is not valid JSON. {str(ve)}'
 
-        try:
-            validate(response_json, schema_json)
-        except ValidationError as ve:
-            error = 'Response JSON is not in the desired format.'
-            log.warning(error)
-            log.warning(str(ve))
-            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
-            attempts['base'] += 1
-            return response_json, error
+        if not error and response_json:
+            try:
+                validate(response_json, schema_json)
+            except ValidationError as ve:
+                error = f'Response JSON is not in the desired format. {str(ve)}'
         
-        return response_json, None
+        if not error and response_json:
+            try:
+                event_timeline = response_json['video_event_timeline']
+                for event in event_timeline:
+                    # update values for later use
+                    event["timestamp_start"] = _get_timestamp_value(event["timestamp_start"])
+                    event["timestamp_end"] = _get_timestamp_value(event["timestamp_end"])
+            except ValueError as ve:
+                error = f'Response JSON is not in the desired format. {str(ve)}'
+    
+        if error:
+            log.warning(error)
+            log.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
+            attempts['base'] += 1
+
+        return response_json, error
 
 
-    def _check_timeline(self, threshold: float, attempts: dict, max_attempts: int,
-                        segment_start_time: float, segment_stop_time: float, event_timeline: list
-                        ) -> Union[str, None]:
+    def _check_timeline(self, target_threshold: float, accept_threshold: float, attempts: dict, max_attempts: int,
+                        segment_start_time: float, segment_stop_time: float, response_json: dict
+                        ) -> Tuple[bool, Union[str, None]]:
 
-        error = None
+        event_timeline = response_json['video_event_timeline'] # type: ignore
+
+        acceptable_checks = dict(
+            near_seg_start = False,
+            near_seg_stop = False)
+
+        hard_error = None
+        soft_error = None
         for event in event_timeline:
-            timestamp_start = _get_timestamp_value(event["timestamp_start"])
-            timestamp_end = _get_timestamp_value(event["timestamp_end"])
+            timestamp_start = event["timestamp_start"]
+            timestamp_end = event["timestamp_end"]
 
             if timestamp_start < 0:
-                error = (f'Timeline event start time of {timestamp_start} < 0.')
+                hard_error = (f'Timeline event start time of {timestamp_start} < 0.')
                 break
             
             if timestamp_end < 0:
-                error = (f'Timeline event end time of {timestamp_end} < 0.')
+                hard_error = (f'Timeline event end time of {timestamp_end} < 0.')
                 break
 
             if timestamp_end < timestamp_start:
-                error = (f'Timeline event end time is less than event start time. '
+                hard_error = (f'Timeline event end time is less than event start time. '
                          f'{timestamp_end} < {timestamp_start}.')
                 break
-            
-            if (segment_start_time - timestamp_start) > threshold:
-                error = (f'Timeline event start time occurs too soon before segment start time. '
-                         f'({segment_start_time} - {timestamp_start}) > {threshold}.')
-                break
 
-            if (timestamp_end - segment_stop_time) > threshold:
-                error = (f'Timeline event end time occurs too late after segment stop time. '
-                         f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
-                break
-        
-        if not error:
+        minmax_errors = []
+        if not hard_error:
             min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
-
-            if abs(segment_start_time - min_event_start) > threshold:
-                error = (f'Min timeline event start time not close enough to segment start time. '
-                         f'abs({segment_start_time} - {min_event_start}) > {threshold}.')
-
-        if not error:
+            
             max_event_end = max(list(map(lambda d: _get_timestamp_value(d.get('timestamp_end')),
                                          filter(lambda d: 'timestamp_end' in d, event_timeline))))
 
-            if abs(max_event_end - segment_stop_time) > threshold:
-                error = (f'Max timeline event end time not close enough to segment stop time. '
-                         f'abs({max_event_end} - {segment_stop_time}) > {threshold}.')
+            if abs(segment_start_time - min_event_start) > target_threshold:
+                minmax_errors.append((f'Min timeline event start time not close enough to segment start time. '
+                                      f'abs({segment_start_time} - {min_event_start}) > {target_threshold}.'))
+
+            if abs(max_event_end - segment_stop_time) > target_threshold:
+                minmax_errors.append((f'Max timeline event end time not close enough to segment stop time. '
+                                      f'abs({max_event_end} - {segment_stop_time}) > {target_threshold}.'))
+            
+            if accept_threshold >= 0:
+                acceptable_checks['near_seg_start'] = abs(segment_start_time - min_event_start) <= accept_threshold
+
+                acceptable_checks['near_seg_stop'] = abs(max_event_end - segment_stop_time) <= accept_threshold
+
+        acceptable = not hard_error and all(acceptable_checks.values())
+
+        if len(minmax_errors) > 0:
+            soft_error = minmax_errors.pop()
+
+        error = None
+        if hard_error:
+            error = hard_error
+        elif soft_error:
+            error = soft_error
 
         if error:
             log.warning(error)
             log.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
-            return error
-
-        return None
+        
+        return acceptable, error
 
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
@@ -263,8 +364,8 @@ class LlamaVideoSummarizationComponent:
 
             for event in response_json['video_event_timeline']:
                 # get offset start/stop times in milliseconds
-                event_start_time = int(_get_timestamp_value(event['timestamp_start']) * 1000)
-                event_stop_time = int(_get_timestamp_value(event['timestamp_end']) * 1000)
+                event_start_time = int(event['timestamp_start'] * 1000)
+                event_stop_time = int(event['timestamp_end'] * 1000)
 
                 offset_start_frame = int((event_start_time * video_fps) / 1000)
                 offset_stop_frame = int((event_stop_time * video_fps) / 1000) - 1
@@ -331,12 +432,17 @@ class LlamaVideoSummarizationComponent:
         log.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
+
 def _get_timestamp_value(seconds: Any) -> float:
     if isinstance(seconds, str):
-        secval = float(seconds.replace('s', ''))
+        if re.match(r"^\s*\d+(\.\d*)?\s*[Ss]?$", seconds):
+            secval = float(re.sub('s', '', seconds, flags=re.IGNORECASE))
+        else:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Invalid timestamp: {seconds}')
     else:
         secval = float(seconds)
     return secval
+
 
 def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> dict:
     process_fps = mpf_util.get_property(
@@ -356,6 +462,8 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         props, 'GENERATION_MAX_ATTEMPTS', 5)
     timeline_check_target_threshold = mpf_util.get_property(
         props, 'TIMELINE_CHECK_TARGET_THRESHOLD', 10)
+    timeline_check_acceptable_threshold = mpf_util.get_property(
+        props, 'TIMELINE_CHECK_ACCEPTABLE_THRESHOLD', 30)
 
     generation_prompt = _read_file(generation_prompt_path) % (segment_start_time)
 
@@ -373,7 +481,8 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         generation_json_schema = generation_json_schema,
         system_prompt = system_prompt,
         generation_max_attempts = generation_max_attempts,
-        timeline_check_target_threshold = timeline_check_target_threshold
+        timeline_check_target_threshold = timeline_check_target_threshold,
+        timeline_check_acceptable_threshold = timeline_check_acceptable_threshold
     )
 
 
@@ -386,37 +495,3 @@ def _read_file(path: str) -> str:
         return importlib.resources.read_text(__name__, expanded_path).strip()
     except:
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(f"Could not read \"{path}\".")
-
-
-class ChildProcess:
-
-    def __init__(self, start_cmd: List[str]):
-        parent_socket, child_socket = socket.socketpair()
-        with parent_socket, child_socket:
-            env = {**os.environ, 'MPF_SOCKET_FD': str(child_socket.fileno())}
-            self._proc = subprocess.Popen(
-                    start_cmd,
-                    pass_fds=(child_socket.fileno(),),
-                    env=env)
-            self._socket = parent_socket.makefile('rwb')
-
-    def __del__(self):
-        print("Terminating subprocess...")
-        self._socket.close()
-        self._proc.terminate()
-        self._proc.wait()
-        print("Subprocess terminated")
-
-    def send_job_get_response(self, config: dict):
-        job_bytes = pickle.dumps(config)
-        self._socket.write(len(job_bytes).to_bytes(4, 'little'))
-        self._socket.write(job_bytes)
-        self._socket.flush()
-
-        response_length = int.from_bytes(self._socket.read(4), 'little')
-        if response_length == 0:
-            error_length = int.from_bytes(self._socket.read(4), 'little')
-            error = pickle.loads(self._socket.read(error_length))
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Subprocess failed: {error}')
-
-        return pickle.loads(self._socket.read(response_length))

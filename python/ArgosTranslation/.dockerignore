@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2024 The MITRE Corporation                                      #
+# Copyright 2025 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -24,21 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "FastTextLanguageDetection"
-version = "9.0"
-dependencies = [
-    "mpf_component_api>=9.0",
-    "fasttext",
-    "numpy<2"
-]
-
-[project.entry-points."mpf.exported_component"]
-component = "fast_text_language_detection_component:FastTextLanguageDetectionComponent"
-
-[tool.setuptools.package-data]
-fast_text_language_detection_component = ["*"]
+.dockerignore
+Dockerfile
+LICENSE
+README.md
+.vscode
