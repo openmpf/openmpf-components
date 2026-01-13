@@ -30,10 +30,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "LlamaVideoSummarization"
-version = "9.0"
+version = "10.0"
 dependencies = [
-    "mpf_component_api>=9.0",
-    "mpf_component_util>=9.0",
+    "mpf_component_api>=10.0",
+    "mpf_component_util>=10.0",
     "jsonschema",
     "torch==2.6.0",
     "torchvision==0.21.0",
