@@ -83,13 +83,13 @@ class QwenSpeechSummaryComponent:
         return content
 
     @staticmethod
-    def get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
+    def get_track_for_classifier(t, video_job: mpf.VideoJob, classifier, arg_factory):
         detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
-        return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier.confidence, {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}, detection_properties)
+        return t(video_job.start_frame, video_job.stop_frame, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
 
-    def get_classifier_track(self, video_job):
-        func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
+    def get_classifier_track(self, t, job, arg_factory=lambda _classifier, _detection_properties: []):
+        func = lambda classifier: QwenSpeechSummaryComponent.get_track_for_classifier(t, job, classifier, arg_factory)
         return func
 
     def get_openai_api_client_when_server_is_ready(self, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
@@ -195,7 +195,7 @@ class QwenSpeechSummaryComponent:
                 )]
             results += list(
                 map(
-                    self.get_classifier_track(video_job), final_summary.classifiers
+                    self.get_classifier_track(mpf.VideoTrack, video_job, lambda classifier, detection_properties: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}), final_summary.classifiers
                 )
             )
             print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
@@ -208,10 +208,65 @@ class QwenSpeechSummaryComponent:
             raise the_roof
 
 
-    def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
-        print(f'Received audio job.')
+    def get_detections_from_all_audio_tracks(self, audio_job: mpf.AllAudioTracksJob) -> Sequence[mpf.AudioTrack]:
+        
+        print(f'Received feed forward audio job.')
 
-        raise Exception('Getting 1 track at a time is going to be rough')
+        #print('Received all tracks audio job: {audio_job}')
+
+        config = JobConfig(audio_job.job_properties)
+        if config.prompt_template:
+            self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+            self.template = self.env.get_template(os.path.basename(config.prompt_template))
+        else:
+            self.env = Environment(loader = FileSystemLoader(os.path.realpath(resource_filename(__name__, 'templates'))))
+            self.template = self.env.get_template('prompt.jinja')
+
+
+        if audio_job.feed_forward_tracks is not None:
+            classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
+
+            # TODO implement one for audio specifically... probably
+            input = convert_tracks_to_csv(audio_job.feed_forward_tracks)
+
+            summaries = []
+            chunks = split_csv_into_chunks(self.tokenizer, input, self.chunk_size, self.overlap)
+            nchunks = len(chunks)
+            for idx,chunk in enumerate(chunks):
+                print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
+                content = self.get_output(classifiers, chunk)
+                summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
+            if nchunks == 1:
+                final_summary = summaries[0]
+            else:
+                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+            if config.debug:
+                print(final_summary.json())
+            main_detection_properties = {
+                'TEXT': final_summary.summary,
+                'PRIMARY TOPIC': final_summary.primary_topic,
+                'OTHER TOPICS': ', '.join(final_summary.other_topics),
+                **{k.upper(): ', '.join(v) for (k,v) in final_summary.entities.__dict__.items()}
+            }
+            results = [mpf.AudioTrack(
+                    audio_job.start_time,
+                    audio_job.stop_time,
+                    -1,
+                    main_detection_properties
+                )]
+            results += list(
+                map(
+                    self.get_classifier_track(mpf.AudioTrack, audio_job), final_summary.classifiers
+                )
+            )
+            print(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
+            if config.debug:
+                print(f'get_detections_from_all_audio_tracks results: {results}')
+            return results
+
+        else:
+            the_roof = Exception("Received no feed forward tracks")
+            raise the_roof
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str]):
