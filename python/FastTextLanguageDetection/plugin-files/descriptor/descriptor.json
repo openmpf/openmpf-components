@@ -1,0 +1,87 @@
+{
+    "componentName": "FastTextLanguageDetection",
+    "componentVersion": "10.0",
+    "middlewareVersion": "10.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "FastTextLanguageDetection",
+    "environmentVariables": [],
+    "algorithm": {
+      "name": "FASTTEXTLANGUAGE",
+      "description": "Uses a FastText model to perform language detection.",
+      "actionType": "DETECTION",
+      "trackType": "LANGUAGE",
+      "outputChangedCounter": 1,
+      "requiresCollection": {
+        "states": []
+      },
+      "providesCollection": {
+        "states": [
+          "DETECTION",
+          "DETECTION_LANGUAGE",
+          "DETECTION_LANGUAGE_FASTTEXT"
+        ],
+        "properties": [
+          {
+            "name": "FEED_FORWARD_PROP_TO_PROCESS",
+            "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider for language detection. If the first property listed is present, then that property will be processed. If it's not, then the next property in the list is considered. At most, one property will be processed.",
+            "type": "STRING",
+            "defaultValue": "TEXT,TRANSCRIPT"
+          },
+          {
+            "name": "MODEL_PATH",
+            "description": "Path to a FastText model.",
+            "type": "STRING",
+            "defaultValue": "/opt/fasttext/models/glotlid.bin"
+          }
+        ]
+      }
+    },
+    "actions": [
+      {
+        "name": "FASTTEXT LANGUAGE ID (WITH FF REGION) ACTION",
+        "description": "Uses FastText to perform language identification on feed-forward tracks and detections.",
+        "algorithm": "FASTTEXTLANGUAGE",
+        "properties": [
+          {
+            "name": "FEED_FORWARD_TYPE",
+            "value": "REGION"
+          },
+          {
+            "name": "IS_ANNOTATOR",
+            "value": "TRUE"
+          }
+        ]
+      },
+      {
+        "name": "FASTTEXT LANGUAGE ID TEXT FILE ACTION",
+        "description": "Uses FastText to perform language identification on a plain text file.",
+        "algorithm": "FASTTEXTLANGUAGE",
+        "properties": []
+      }
+    ],
+    "tasks": [
+      {
+        "name": "FASTTEXT LANGUAGE ID (WITH FF REGION) TASK",
+        "description": "Uses FastText to perform language identification on feed-forward tracks and detections.",
+        "actions": [
+          "FASTTEXT LANGUAGE ID (WITH FF REGION) ACTION"
+        ]
+      },
+      {
+        "name": "FASTTEXT LANGUAGE ID TEXT FILE TASK",
+        "description": "Uses FastText to perform language identification on a plain text file.",
+        "actions": [
+          "FASTTEXT LANGUAGE ID TEXT FILE ACTION"
+        ]
+      }
+    ],
+    "pipelines": [
+      {
+        "name": "FASTTEXT LANGUAGE ID TEXT FILE PIPELINE",
+        "description": "Uses FastText to perform language identification on a plain text file.",
+        "tasks": [
+          "FASTTEXT LANGUAGE ID TEXT FILE TASK"
+        ]
+      }
+    ]
+  }

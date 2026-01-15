@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -25,6 +25,9 @@
 #############################################################################
 
 import logging
+import os
+import functools
+import importlib.resources
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -35,7 +38,6 @@ from typing import Sequence, Dict, Mapping
 import os
 import time
 
-from pkg_resources import resource_filename
 from nltk.tokenize.punkt import PunktSentenceTokenizer
 import pandas as pd
 
@@ -45,7 +47,12 @@ class TransformerTaggingComponent:
 
     def __init__(self):
         self._cached_model = SentenceTransformer('/models/all-mpnet-base-v2')
-        self._cached_corpuses: Dict[str, Corpus] = {}
+
+        @functools.lru_cache(get_corpus_cache_size())
+        def get_corpus(file_name):
+            return Corpus(file_name, self._cached_model)
+
+        self._get_corpus = get_corpus
 
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
@@ -89,7 +96,7 @@ class TransformerTaggingComponent:
             }
 
             config = JobConfig(new_job_props)
-            corpus = self._get_corpus(config.corpus_path)
+            corpus = self._get_corpus(config.corpus_file_name)
             self._add_tags(config, corpus, new_ff_props)
 
             return [ff_track]
@@ -103,7 +110,7 @@ class TransformerTaggingComponent:
                     ' jobs, but no feed forward track provided. ')
 
             config = JobConfig(job.job_properties)
-            corpus = self._get_corpus(config.corpus_path)
+            corpus = self._get_corpus(config.corpus_file_name)
 
             self._add_tags(config, corpus, job_feed_forward.detection_properties)
 
@@ -119,13 +126,6 @@ class TransformerTaggingComponent:
             raise
 
 
-    def _get_corpus(self, corpus_path):
-        if not corpus_path in self._cached_corpuses:
-            self._cached_corpuses[corpus_path] = Corpus(corpus_path, self._cached_model)
-
-        return self._cached_corpuses[corpus_path]
-
-
     def _add_tags(self, config, corpus, ff_props: Dict[str, str]):
         input_texts = {}
         for prop_to_tag in config.props_to_process:
@@ -137,7 +137,7 @@ class TransformerTaggingComponent:
             logger.warning("Feed forward element missing one of the following properties: "
                            + ", ".join(config.props_to_process))
             return
-            
+
         for prop_to_tag, input_text in input_texts.items():
             self._add_tags_for_prop(config, corpus, ff_props, prop_to_tag, input_text)
 
@@ -161,10 +161,10 @@ class TransformerTaggingComponent:
             for probe in probe_list:
                 # strip probe of leading and trailing whitespace
                 stripped_probe = probe.strip()
-                
+
                 # determine probe character offsets
                 num_leading_chars = len(probe) - len(probe.lstrip())
-                offset_start = offset_counter + num_leading_chars 
+                offset_start = offset_counter + num_leading_chars
                 offset_end = offset_start + len(stripped_probe) - 1
 
                 # set character offset counter for next iteration
@@ -210,7 +210,7 @@ class TransformerTaggingComponent:
 
         # create detection properties for each tag found in the text
         # detection properties formatted as <input property> <tag> TRIGGER SENTENCES...
-        for tag in new_tags: 
+        for tag in new_tags:
             tag_df = all_tag_results[all_tag_results["tag"] == tag]
 
             sents = []
@@ -243,14 +243,40 @@ class TransformerTaggingComponent:
                 ff_props[prop_name_matches] = "; ".join(matches)
 
 
-class Corpus:
-    def __init__(self, corpus_path, model):
-        self.json = pd.read_json(corpus_path)
+def get_corpus_cache_size():
+    if env_val := os.getenv('CORPUS_CACHE_SIZE'):
+        try:
+            return int(env_val)
+        except ValueError:
+            pass
+    return 4
 
+class Corpus:
+    def __init__(self, corpus_file_name: str, model: SentenceTransformer):
+        self.json = self._load_json(corpus_file_name)
         start = time.time()
-        self.embed= model.encode(self.json["text"], convert_to_tensor=True, show_progress_bar=False)
+        self.embed = model.encode(self.json["text"], convert_to_tensor=True, show_progress_bar=False)
         elapsed = time.time() - start
         logger.info(f"Successfully encoded corpus in {elapsed} seconds.")
+
+    @staticmethod
+    def _load_json(corpus_file_name: str) -> pd.DataFrame:
+        try:
+            if '$' not in corpus_file_name and '/' not in corpus_file_name:
+                with importlib.resources.open_text(__name__, corpus_file_name) as f:
+                    return pd.read_json(f)
+            else:
+                path = os.path.expandvars(corpus_file_name)
+                with open(path) as f:
+                    return pd.read_json(f)
+        except FileNotFoundError as e:
+            logger.exception(
+                'Failed to complete job due incorrect file path for the transformer tagging corpus: '
+                f'"{corpus_file_name}"')
+            raise mpf.DetectionException(
+                'Invalid path provided for transformer tagging corpus: '
+                f'"{corpus_file_name}"',
+                mpf.DetectionError.COULD_NOT_READ_DATAFILE) from e
 
 
 class JobConfig:
@@ -274,19 +300,5 @@ class JobConfig:
         # if split on newline is true will split input on newline and carriage returns
         self.split_on_newline = mpf_util.get_property(props, 'ENABLE_NEWLINE_SPLIT', False)
 
-        self.corpus_file = \
+        self.corpus_file_name = \
             mpf_util.get_property(props, 'TRANSFORMER_TAGGING_CORPUS', "transformer_text_tags_corpus.json")
-
-        self.corpus_path = ""
-        if "$" not in self.corpus_file and "/" not in self.corpus_file:
-            self.corpus_path = os.path.realpath(resource_filename(__name__, self.corpus_file))
-        else:
-            self.corpus_path = os.path.expandvars(self.corpus_file)
-
-        if not os.path.exists(self.corpus_path):
-            logger.exception('Failed to complete job due incorrect file path for the transformer tagging corpus: '
-                             f'"{self.corpus_file}"')
-            raise mpf.DetectionException(
-                'Invalid path provided for transformer tagging corpus: '
-                f'"{self.corpus_file}"',
-                mpf.DetectionError.COULD_NOT_READ_DATAFILE)

@@ -5,11 +5,11 @@
  * under contract, and is subject to the Rights in Data-General Clause        *
  * 52.227-14, Alt. IV (DEC 2007).                                             *
  *                                                                            *
- * Copyright 2023 The MITRE Corporation. All Rights Reserved.                 *
+ * Copyright 2024 The MITRE Corporation. All Rights Reserved.                 *
  ******************************************************************************/
 
 /******************************************************************************
- * Copyright 2023 The MITRE Corporation                                       *
+ * Copyright 2024 The MITRE Corporation                                       *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License");            *
  * you may not use this file except in compliance with the License.           *
@@ -28,7 +28,6 @@ package org.apache.tika.parser.pdf.image;
 
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream;
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSStream;
@@ -347,7 +347,7 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
     }
 
     @Override
-    protected void showGlyph(Matrix textRenderingMatrix, PDFont font, int code, String unicode,
+    protected void showGlyph(Matrix textRenderingMatrix, PDFont font, int code,
                              Vector displacement) throws IOException {
 
         RenderingMode renderingMode = getGraphicsState().getTextState().getRenderingMode();
@@ -420,7 +420,7 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
         }
 
         if (embeddedDocumentExtractor.shouldParseEmbedded(metadata)) {
-            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            UnsynchronizedByteArrayOutputStream buffer = UnsynchronizedByteArrayOutputStream.builder().get();
             if (pdImage instanceof PDImageXObject) {
                 //extract the metadata contained outside of the image
                 PDMetadataExtractor
@@ -506,7 +506,9 @@ public class ImageGraphicsEngine extends PDFGraphicsStreamEngine {
             suffix = "png";
         }
         return suffix;
+
     }
+
 
     protected void handleCatchableIOE(IOException e) throws IOException {
         if (pdfParserConfig.isCatchIntermediateIOExceptions()) {

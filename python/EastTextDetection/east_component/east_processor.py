@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2024 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2024 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -24,14 +24,11 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import os
+import importlib.resources
 
 import mpf_component_api as mpf
 from .bbox_utils import *
 
-# The path to the serialized EAST model file.
-from pkg_resources import resource_filename
-_model_filename = os.path.realpath(resource_filename(__name__, 'east_resnet50.pb'))
 
 # The output layer names for the EAST model. Respectively: the layer
 # corresponding to the bounding box geometry, and the layer corresponding to
@@ -105,10 +102,10 @@ class EastProcessor(object):
         use_cached = (old_params == new_params)
 
         if not use_cached:
-            self._model = cv2.dnn.readNetFromTensorflow(_model_filename)
+            self._model = read_net()
 
         if not use_cached or (rotate_on and not self._rotate_on):
-            self._model_90 = cv2.dnn.readNetFromTensorflow(_model_filename)
+            self._model_90 = read_net()
 
         self._rotate_on = rotate_on
 
@@ -396,3 +393,8 @@ class EastProcessor(object):
                 image_locs.append([])
 
         return image_locs
+
+def read_net():
+    ref = importlib.resources.files(__name__) / 'east_resnet50.pb'
+    with importlib.resources.as_file(ref) as path:
+        return cv2.dnn.readNetFromTensorflow(str(path))

@@ -6,11 +6,11 @@
   ~ under contract, and is subject to the Rights in Data-General Clause       ~
   ~ 52.227-14, Alt. IV (DEC 2007).                                            ~
   ~                                                                           ~
-  ~ Copyright 2023 The MITRE Corporation. All Rights Reserved.                ~
+  ~ Copyright 2024 The MITRE Corporation. All Rights Reserved.                ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
 
 <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ~ Copyright 2023 The MITRE Corporation                                      ~
+  ~ Copyright 2024 The MITRE Corporation                                      ~
   ~                                                                           ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");           ~
   ~ you may not use this file except in compliance with the License.          ~
@@ -31,7 +31,7 @@
 
 
     <groupId>org.mitre.mpf</groupId>
-    <version>9.0</version>
+    <version>10.0</version>
 
     <modelVersion>4.0.0</modelVersion>
 
@@ -48,22 +48,22 @@
         <dependency>
             <groupId>org.mitre.mpf</groupId>
             <artifactId>mpf-java-component-api</artifactId>
-            <version>9.0</version>
+            <version>10.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-core</artifactId>
-            <version>2.4.1</version>
+            <version>3.2.2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-parsers-standard-package</artifactId>
-            <version>2.4.1</version>
+            <version>3.2.2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-parser-sqlite3-module</artifactId>
-            <version>2.4.1</version>
+            <version>3.2.2</version>
         </dependency>
         <dependency>
             <!-- Please note that Apache Tika versions 2.0 and above now support multiple language detection options: -->
@@ -71,7 +71,7 @@
             <!-- TODO: Investigate other language detection capabilities and update this library if needed.-->
             <groupId>org.apache.tika</groupId>
             <artifactId>tika-langdetect-optimaize</artifactId>
-            <version>2.4.1</version>
+            <version>3.2.2</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

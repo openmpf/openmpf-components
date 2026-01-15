@@ -1,0 +1,14 @@
+{
+    "componentName": "OrToolsSubjectComponent",
+    "componentVersion": "10.0",
+    "sourceLanguage": "python",
+    "componentLibrary": "OrToolsSubjectComponent",
+    "properties": [
+        {
+            "name": "MIN_IOU",
+            "description" : "Minimum required intersection over union for two tracks to be associated.",
+            "type": "FLOAT",
+            "defaultValue": "0.03"
+        }
+    ]
+}
