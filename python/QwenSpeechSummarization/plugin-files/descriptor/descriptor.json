@@ -1,7 +1,7 @@
 {
   "componentName": "QwenSpeechSummarization",
-  "componentVersion": "1.0",
-  "middlewareVersion": "1.0",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
   "sourceLanguage": "python",
   "batchLibrary": "QwenSpeechSummarization",
   "environmentVariables": [],
