@@ -31,7 +31,7 @@
 
 
     <groupId>org.mitre.mpf</groupId>
-    <version>9.0</version>
+    <version>10.0</version>
 
     <modelVersion>4.0.0</modelVersion>
 
@@ -49,7 +49,7 @@
         <dependency>
             <groupId>org.mitre.mpf</groupId>
             <artifactId>mpf-java-component-api</artifactId>
-            <version>9.0</version>
+            <version>10.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.tika</groupId>
