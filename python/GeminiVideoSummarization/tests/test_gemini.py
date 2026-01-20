@@ -28,6 +28,7 @@ import sys
 import os
 import logging
 import json
+from pathlib import Path
 
 import unittest
 import unittest.mock
@@ -41,7 +42,7 @@ import mpf_component_api as mpf
 
 logging.basicConfig(level=logging.DEBUG)
 USE_MOCKS = True
-TEST_DATA = "data"
+TEST_DATA = Path("data")
 
 # Replace with your own desired model name
 MODEL_NAME = "gemini-2.5-flash"
@@ -119,21 +120,113 @@ DOG_VIDEO_PROPERTIES = {
     'ROTATION': '0.0'
 }
 
-# events span after video segment
-DOG_TIMELINE_SEGMENT_2 = {
-    "video_summary": "A dog sitting by a window and looking around.",
+SHORT_TIMELINE = {
+    "video_summary": "A person is running around.",
     "video_event_timeline": [
         {
             "timestamp_start": "0:00",
-            "timestamp_end": "0:06",
-            "description": "Dog sitting by the window."
-        },
-        {
-            "timestamp_start": "0:06",
-            "timestamp_end": "0:08",
-            "description": "Dog looks towards the camera and tilts it's head."
+            "timestamp_end": "0:01",
+            "description": "A person running."
         }
     ]
+}
+
+SHORT_VIDEO_PROPERTIES = {
+    'DURATION': '1000',
+    'FPS': '30.0',
+    'FRAME_COUNT': '31',
+    'FRAME_HEIGHT': '1920',
+    'FRAME_WIDTH': '1080',
+    'HAS_CONSTANT_FRAME_RATE': 'true',
+    'MIME_TYPE': 'video/mp4',
+    'ROTATION': '0.0'
+}
+
+DRONE_TIMELINE_SEGMENT_1 = {
+    "video_summary": "The video shows a street in Turkey with traffic and pedestrians.",
+    "video_event_timeline": [
+        {
+            "timestamp_start": "0:00",
+            "timestamp_end": "1:01",
+            "description": "An aerial view of a city with traffic and pedestrians."
+        },
+        {
+            "timestamp_start": "1:02",
+            "timestamp_end": "1:29",
+            "description": "Traffic continues to pass through with little change to the scenery."
+        },
+        {
+            "timestamp_start": "1:30",
+            "timestamp_end": "2:00",
+            "description": "The video continues as pedestrains and street traffic pass through the city center."
+        }
+    ]
+}
+
+# Valid timeline for timeline integrity test (ends at 3:36 to fit 5393 frames at 25fps = 215.72s)
+DRONE_TIMELINE_SEGMENT_1_VALID = {
+    "video_summary": "The video shows a street in Turkey with traffic and pedestrians.",
+    "video_event_timeline": [
+        {
+            "timestamp_start": "0:00",
+            "timestamp_end": "1:01",
+            "description": "An aerial view of a city with traffic and pedestrians."
+        },
+        {
+            "timestamp_start": "1:02",
+            "timestamp_end": "1:29",
+            "description": "Traffic continues to pass through with little change to the scenery."
+        },
+        {
+            "timestamp_start": "1:30",
+            "timestamp_end": "3:36",
+            "description": "The video continues as pedestrains and street traffic pass through the city center."
+        }
+    ]
+}
+
+# events beyond video length
+DRONE_TIMELINE_SEGMENT_2 = {
+    "video_event_timeline": [
+        {
+            "timestamp_start": "0:00",
+            "timestamp_end": "1:58",
+            "description": "An aerial view of a city with traffic and pedestrians."
+        },
+        {
+            "timestamp_start": "1:58",
+            "timestamp_end": "2:10",
+            "description": "Traffic continues to pass through with little change to the scenery."
+        },
+        {
+            "timestamp_start": "2:11",
+            "timestamp_end": "2:40",
+            "description": "The video continues as pedestrains and street traffic pass through the city center."
+        }
+    ]
+}
+
+# Short timeline for segment length validation test
+DRONE_TIMELINE_SEGMENT_2_SHORT = {
+    "video_summary": "An aerial view of a city with traffic and pedestrians.",
+    "video_event_timeline": [
+        {
+            "timestamp_start": "0:00",
+            "timestamp_end": "0:35",
+            "description": "An aerial view of a city with traffic and pedestrians."
+        }
+    ]
+}
+
+DRONE_VIDEO_PROPERTIES = {
+    'DURATION': '120000',
+    'FPS': '25.0',
+    'FRAME_COUNT': '3001',
+    'FRAME_HEIGHT': '1080',
+    'FRAME_WIDTH': '1920',
+    'HAS_CONSTANT_FRAME_RATE': 'true',
+    'MIME_TYPE': 'video/mp4',
+    'ROTATION': '0.0'
 }
 
 class TestGemini(unittest.TestCase):
@@ -167,7 +260,7 @@ class TestGemini(unittest.TestCase):
     def test_multiple_videos(self):
             component = GeminiVideoSummarizationComponent()
 
-            job = mpf.VideoJob('valid cat job', str(TEST_DATA + "/" + "cat.mp4"), 0, 171, job_properties, CAT_VIDEO_PROPERTIES, {})
+            job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, job_properties, CAT_VIDEO_PROPERTIES, {})
             frame_width = int(job.media_properties['FRAME_WIDTH'])
             frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
@@ -191,7 +284,7 @@ class TestGemini(unittest.TestCase):
             self.assert_first_middle_last_detections(results[2], frame_width, frame_height)
 
 
-            job = mpf.VideoJob('valid dog job', str(TEST_DATA + "/" + "dog.mp4"), 0, 153, job_properties, DOG_VIDEO_PROPERTIES, {})
+            job = mpf.VideoJob('valid dog job', str(TEST_DATA / 'dog.mp4'), 0, 153, job_properties, DOG_VIDEO_PROPERTIES, {})
             frame_width = int(job.media_properties['FRAME_WIDTH'])
             frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
@@ -209,10 +302,28 @@ class TestGemini(unittest.TestCase):
             self.assertEqual(149, results[1].stop_frame) # (6 * 25) - 1
             self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
+            job = mpf.VideoJob('short job', str(TEST_DATA / 'short.mp4'), 0, 0, job_properties, SHORT_VIDEO_PROPERTIES, {})
+            frame_width = int(job.media_properties['FRAME_WIDTH'])
+            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+            results = self.run_patched_job(component, job, json.dumps(SHORT_TIMELINE))
+            self.assertEqual(2, len(results))
+
+            self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+            self.assertIn("A person is running around.", results[0].detection_properties["TEXT"])
+            self.assertEqual(0, results[0].start_frame)
+            self.assertEqual(0, results[0].stop_frame)
+            self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+            self.assertIn("A person running.", results[1].detection_properties["TEXT"])
+            self.assertEqual(0, results[1].start_frame)
+            self.assertEqual(0, results[1].stop_frame) 
+            self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
     def test_invalid_timeline(self):
         component = GeminiVideoSummarizationComponent()
 
-        job = mpf.VideoJob('invalid cat job', str(TEST_DATA + "/" + "cat.mp4"), 0, 15000,
+        job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
             { 
                 "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
@@ -227,7 +338,7 @@ class TestGemini(unittest.TestCase):
         self.assertIn("Max timeline event end time not close enough to segment stop time.", str(cm.exception))
 
         # test disabling time check
-        job = mpf.VideoJob('invalid cat job', str(TEST_DATA + "/" + "cat.mp4"), 0, 15000, 
+        job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
             {
                 "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
@@ -243,7 +354,7 @@ class TestGemini(unittest.TestCase):
     def test_invalid_json_response(self):
         component = GeminiVideoSummarizationComponent()
 
-        job = mpf.VideoJob('invalid cat job JSON', str(TEST_DATA + "/" + "cat.mp4"), 0, 100,
+        job = mpf.VideoJob('invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
             {
                 "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
@@ -260,7 +371,7 @@ class TestGemini(unittest.TestCase):
     def test_empty_response(self):
         component = GeminiVideoSummarizationComponent()
 
-        job = mpf.VideoJob('empty cat job', str(TEST_DATA + "/" + "cat.mp4"), 0,  171,
+        job = mpf.VideoJob('empty cat job', str(TEST_DATA / 'cat.mp4'), 0,  171,
             {
                 "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
@@ -273,8 +384,6 @@ class TestGemini(unittest.TestCase):
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
-
-
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
