@@ -1,7 +1,7 @@
 {
     "componentName": "FastTextLanguageDetection",
-    "componentVersion": "9.0",
-    "middlewareVersion": "9.0",
+    "componentVersion": "10.0",
+    "middlewareVersion": "10.0",
     "sourceLanguage": "python",
     "batchLibrary": "FastTextLanguageDetection",
     "environmentVariables": [],
@@ -29,21 +29,9 @@
           },
           {
             "name": "MODEL_PATH",
-            "description": "Path to a FastText model. When both MODEL_PATH and HUGGING_FACE_REPO are specified, MODEL_PATH will be used.",
+            "description": "Path to a FastText model.",
             "type": "STRING",
-            "defaultValue": ""
-          },
-          {
-            "name": "HUGGING_FACE_REPO",
-            "description": "Name of a Hugging Face repository containing a model file. Ignored if the MODEL_PATH property is set.",
-            "type": "STRING",
-            "defaultValue": "cis-lmu/glotlid"
-          },
-          {
-            "name": "HUGGING_FACE_FILE",
-            "description": "Name of the model file in the Hugging Face repository specified by the HUGGING_FACE_REPO property. Ignored if the MODEL_PATH property is set.",
-            "type": "STRING",
-            "defaultValue": "model.bin"
+            "defaultValue": "/opt/fasttext/models/glotlid.bin"
           }
         ]
       }
@@ -59,7 +47,7 @@
             "value": "REGION"
           },
           {
-            "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+            "name": "IS_ANNOTATOR",
             "value": "TRUE"
           }
         ]

@@ -39,7 +39,7 @@ from unittest import mock
 import mpf_component_api as mpf
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
-from llama_video_summarization_component import LlamaVideoSummarizationComponent, ChildProcess
+from llama_video_summarization_component import LlamaVideoSummarizationComponent
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -185,23 +185,19 @@ class TestComponent(unittest.TestCase):
         if not USE_MOCKS:
             return
 
-        child_process_init_patcher = mock.patch('llama_video_summarization_component.ChildProcess.__init__')
-        self.mock_child_process_init = child_process_init_patcher.start()
-        self.mock_child_process_init.return_value = None
-        self.addCleanup(child_process_init_patcher.stop)
+        init_patcher = mock.patch('llama_video_summarization_component.LlamaVideoSummarizationComponent.__init__')
+        self.mock_init = init_patcher.start()
+        self.mock_init.return_value = None
+        self.addCleanup(init_patcher.stop)
 
-        child_process_del_patcher = mock.patch('llama_video_summarization_component.ChildProcess.__del__')
-        self.mock_child_process_del = child_process_del_patcher.start()
-        self.addCleanup(child_process_del_patcher.stop)
-
-        child_process_send_job_patcher = mock.patch('llama_video_summarization_component.ChildProcess.send_job_get_response')
-        self.mock_child_process_send_job = child_process_send_job_patcher.start()
-        self.addCleanup(child_process_send_job_patcher.stop)
+        get_response_patcher = mock.patch('llama_video_summarization_component.LlamaVideoSummarizationComponent._get_response')
+        self.mock_get_response = get_response_patcher.start()
+        self.addCleanup(get_response_patcher.stop)
 
 
     def run_patched_job(self, component, job, response):
         if USE_MOCKS:
-            self.mock_child_process_send_job.return_value = response
+            self.mock_get_response.return_value = response
 
         return component.get_detections_from_video(job)
     
