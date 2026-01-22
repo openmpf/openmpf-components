@@ -36,6 +36,10 @@ from transformers import AutoTokenizer
 from jinja2 import Environment, FileSystemLoader, PackageLoader
 import os, sys
 
+import math
+import time
+import requests
+
 import json
 
 # No local model loading; using remote API
@@ -88,6 +92,36 @@ class QwenSpeechSummaryComponent:
         func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
         return func
 
+    def get_openai_api_client_when_server_is_ready(self, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
+        start_time = time.time()
+        base_url = kwargs['base_url']
+        success = False
+        failed_ever = False
+        last_error = None
+        while time.time() - start_time < timeout_seconds:
+            try:
+                response = requests.get(f"{base_url}/../health", timeout=retry_delay_seconds)
+                if response.status_code == 200:
+                    if failed_ever:
+                        print("VLLM is now available")
+                    success = True
+                    break
+                else:
+                    failed_ever = True
+                    print(f"Received HTTP{response.status_code} from {base_url}")
+            except Exception as e:
+                failed_ever = True
+                print(f"Waiting up to {timeout_seconds}s for VLLM at {base_url} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
+                last_error = e
+            time.sleep(retry_delay_seconds)
+
+        if not success:
+            if last_error:
+                raise last_error
+            raise Exception("Timed out waiting for VLLM to be healthy")
+
+        return OpenAI(**kwargs)
+
     def __init__(self, clientFactory=None):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
@@ -104,7 +138,7 @@ class QwenSpeechSummaryComponent:
 
         # Set OpenAI API base URL
         if not clientFactory:
-            self.client_factory = lambda: OpenAI(base_url=self.base_url, api_key="whatever")
+            self.client_factory = lambda: self.get_openai_api_client_when_server_is_ready(base_url=self.base_url, api_key="whatever")
         else:
             self.client_factory = clientFactory
 
