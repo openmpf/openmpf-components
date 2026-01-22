@@ -33,25 +33,21 @@ from typing import Sequence, Mapping
 
 from openai import OpenAI
 from transformers import AutoTokenizer
-from jinja2 import Environment, FileSystemLoader, PackageLoader
+from jinja2 import Environment, FileSystemLoader
 import os, sys
-
-import json
 
 # No local model loading; using remote API
 from .schema import response_format, StructuredResponse
 
 from .llm_util.classifiers import get_classifier_lines
 from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
-from .llm_util.input_cleanup import clean_input_json, convert_tracks_to_csv
+from .llm_util.input_cleanup import convert_tracks_to_csv
 
 from pkg_resources import resource_filename
-import pandas as pd
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
 class QwenSpeechSummaryComponent:
-
     
     def get_output(self, classifiers, input):
         prompt = self.template.render(input = input, classifiers=classifiers)
@@ -88,7 +84,7 @@ class QwenSpeechSummaryComponent:
         func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
         return func
 
-    def __init__(self, clientFactory=None):
+    def setup_client(self, config):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
         # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
@@ -99,14 +95,12 @@ class QwenSpeechSummaryComponent:
         # TODO: warn if chunk_size is TOO LARGE of a proportion of max_model_len
 
         # vllm
-        self.base_url=f"{os.environ.get('VLLM_URI', 'http://vllm:11434/v1')}"
         self.client_model_name = self.model_name_hf
 
+        logger.debug(f"Using VLLM URI: {config.vllm_uri}")  ## DEBUG
+
         # Set OpenAI API base URL
-        if not clientFactory:
-            self.client_factory = lambda: OpenAI(base_url=self.base_url, api_key="whatever")
-        else:
-            self.client_factory = clientFactory
+        self.client_factory = lambda: OpenAI(base_url=config.vllm_uri, api_key="whatever")
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
@@ -117,6 +111,8 @@ class QwenSpeechSummaryComponent:
         #print('Received all tracks video job: {video_job}')
 
         config = JobConfig(video_job.job_properties)
+        self.setup_client(config)
+
         if config.prompt_template:
             self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
             self.template = self.env.get_template(os.path.basename(config.prompt_template))
@@ -173,7 +169,6 @@ class QwenSpeechSummaryComponent:
             the_roof = Exception("Received no feed forward tracks")
             raise the_roof
 
-
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         print(f'Received audio job.')
 
@@ -185,6 +180,9 @@ class JobConfig:
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
 
         self.prompt_template = mpf_util.get_property(props, 'PROMPT_TEMPLATE', None)
+
+        self.vllm_uri = \
+            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
 
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
@@ -205,8 +203,8 @@ class JobConfig:
                 f'"{self.classifiers_path}"',
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
-def run_component_test(clientFactory = None):
-    qsc = QwenSpeechSummaryComponent(clientFactory)
+def run_component_test():
+    qsc = QwenSpeechSummaryComponent()
     input = None
     with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
         input = f.read()
@@ -224,7 +222,6 @@ def run_component_test(clientFactory = None):
 
     print('About to call get_detections_from_all_video_tracks')
     return qsc.get_detections_from_all_video_tracks(job)
-
 
 
 if __name__ == '__main__':

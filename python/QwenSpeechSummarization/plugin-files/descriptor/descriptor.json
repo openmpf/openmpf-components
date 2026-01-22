@@ -43,6 +43,12 @@
           "description": "If set, will override the default, tested prompt template with one read from a different file",
           "type": "STRING",
           "defaultValue": ""
+        },
+        {
+          "name": "VLLM_URI",
+          "description": "The base_url of the openai-api-compatible API providing access to your model.",
+          "type": "STRING",
+          "defaultValue": "http://qwen-speech-summarization-server:11434/v1"
         }
       ]
     }
