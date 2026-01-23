@@ -40,7 +40,7 @@ ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
 RUN --mount=target=.,readwrite \
     install-component.sh; \
     # make sure the tokenizer is available offline
-    /opt/mpf/plugin-venv/bin/python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\"${VLLM_MODEL,,}\")"; \
+    /opt/mpf/plugin-venv/bin/python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\"${VLLM_MODEL}\")"; \
     if [ "${RUN_TESTS,,}" == true ]; then pytest qwen_speech_summarization_component; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
