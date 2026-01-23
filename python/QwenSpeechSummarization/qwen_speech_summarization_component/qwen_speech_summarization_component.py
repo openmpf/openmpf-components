@@ -106,7 +106,7 @@ class QwenSpeechSummaryComponent:
             # Set OpenAI API base URL
             self.client_factory = lambda: OpenAI(base_url=config.vllm_uri, api_key="whatever")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=True)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
