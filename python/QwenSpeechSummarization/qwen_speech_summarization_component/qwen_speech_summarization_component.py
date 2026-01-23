@@ -208,8 +208,8 @@ class JobConfig:
                 f'"{self.classifiers_path}"',
                 mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
-def run_component_test():
-    qsc = QwenSpeechSummaryComponent()
+def run_component_test(clientFactory = None):
+    qsc = QwenSpeechSummaryComponent(clientFactory)
     input = None
     with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
         input = f.read()
