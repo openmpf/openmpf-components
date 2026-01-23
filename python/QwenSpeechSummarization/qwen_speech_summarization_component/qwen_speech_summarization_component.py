@@ -45,6 +45,8 @@ from .llm_util.input_cleanup import convert_tracks_to_csv
 
 from pkg_resources import resource_filename
 
+os.environ["HF_HUB_OFFLINE"] = "1"
+
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
 class QwenSpeechSummaryComponent:
