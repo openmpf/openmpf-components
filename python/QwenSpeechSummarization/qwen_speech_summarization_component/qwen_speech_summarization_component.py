@@ -85,8 +85,7 @@ class QwenSpeechSummaryComponent:
         return func
 
     def __init__(self, clientFactory=None):
-        if clientFactory:
-            self.client_factory = clientFactory
+        self.client_factory = clientFactory
 
     def setup_client(self, config):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
