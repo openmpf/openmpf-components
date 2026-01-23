@@ -84,6 +84,10 @@ class QwenSpeechSummaryComponent:
         func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
         return func
 
+    def __init__(self, clientFactory=None):
+        if clientFactory:
+            self.client_factory = clientFactory
+
     def setup_client(self, config):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
@@ -99,8 +103,9 @@ class QwenSpeechSummaryComponent:
 
         logger.debug(f"Using VLLM URI: {config.vllm_uri}")  ## DEBUG
 
-        # Set OpenAI API base URL
-        self.client_factory = lambda: OpenAI(base_url=config.vllm_uri, api_key="whatever")
+        if not self.client_factory:
+            # Set OpenAI API base URL
+            self.client_factory = lambda: OpenAI(base_url=config.vllm_uri, api_key="whatever")
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
