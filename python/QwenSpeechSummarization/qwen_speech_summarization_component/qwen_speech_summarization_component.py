@@ -32,9 +32,12 @@ import mpf_component_util as mpf_util
 from typing import Sequence, Mapping
 
 from openai import OpenAI
-from transformers import AutoTokenizer
+
 from jinja2 import Environment, FileSystemLoader
 import os, sys
+
+os.environ["HF_HUB_OFFLINE"] = "1"
+from transformers import AutoTokenizer
 
 # No local model loading; using remote API
 from .schema import response_format, StructuredResponse
@@ -44,8 +47,6 @@ from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
 from .llm_util.input_cleanup import convert_tracks_to_csv
 
 from pkg_resources import resource_filename
-
-os.environ["HF_HUB_OFFLINE"] = "1"
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
@@ -75,6 +76,12 @@ class QwenSpeechSummaryComponent:
                     if len(event.choices[0].delta.content) > 0:
                         content += event.choices[0].delta.content
         return content
+
+    # DEBUG: Test with CLI Runner
+    def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
+        config = JobConfig(job.job_properties)
+        self.setup_client(config)
+        raise NotImplementedError('Generic jobs are not supported by QwenSpeechSummaryComponent')
 
     @staticmethod
     def get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
