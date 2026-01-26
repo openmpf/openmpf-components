@@ -207,7 +207,7 @@ class QwenSpeechSummaryComponent:
                 map(
                     self.get_classifier_track(video_job),
                     filter(
-                        lambda classifier: classifier.confidence > classifier_confidence_minimum,
+                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
                         final_summary.classifiers)
                 )
             )
