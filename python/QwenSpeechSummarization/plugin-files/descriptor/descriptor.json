@@ -65,7 +65,7 @@
       "description": "Performs Qwen summarization Video|Audio tracks.",
       "algorithm": "QWENSPEECHSUMMARIZATION",
       "properties": [
-        {"name": "FEED_FORWARD_ALL_TRACKS", "value": true},
+        {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
         {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
       ]
     }
