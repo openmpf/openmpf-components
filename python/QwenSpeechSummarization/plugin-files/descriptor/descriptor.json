@@ -1,0 +1,92 @@
+{
+  "componentName": "QwenSpeechSummarization",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "QwenSpeechSummarization",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "QWENSPEECHSUMMARIZATION",
+    "description": "Uses Qwen3 to summarize speech",
+    "actionType": "DETECTION",
+    "trackType": "TEXT",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_QWEN_SPEECH_SUMMARIZATION"
+      ],
+      "properties": [
+        {
+          "name": "CLASSIFIERS_LIST",
+          "description": "Comma-separated list of classifiers to include in the summary output.",
+          "type": "STRING",
+          "defaultValue": "ALL"
+        },
+        {
+          "name": "CLASSIFIERS_FILE",
+          "description": "The package-relative OR absolute filename of the classifiers json file",
+          "type": "STRING",
+          "defaultValue": "classifiers.json"
+        },
+        {
+          "name": "CLASSIFIERS_CONFIDENCE_MINIMUM",
+          "description": "The minimum confidence to include in classifiers output. When set to 0.3, classifiers with <0.3 confidence are excluded from produced tracks.",
+          "type": "STRING",
+          "defaultValue": "0.3"
+        },
+        {
+          "name": "ENABLE_DEBUG",
+          "description": "If true, each detection will include extra debug output.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "PROMPT_TEMPLATE",
+          "description": "If set, will override the default, tested prompt template with one read from a different file",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "VLLM_URI",
+          "description": "The base_url of the openai-api-compatible API providing access to your model.",
+          "type": "STRING",
+          "defaultValue": "http://qwen-speech-summarization-server:11434/v1"
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "algorithm": "QWENSPEECHSUMMARIZATION",
+      "properties": [
+        {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
+        {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "actions": [
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+     {
+      "name": "WHISPER SPEECH DETECTION WITH QWEN SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using QWEN.",
+      "tasks": [
+        "WHISPER SPEECH DETECTION TASK",
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+      ]
+    }
+  ]
+}

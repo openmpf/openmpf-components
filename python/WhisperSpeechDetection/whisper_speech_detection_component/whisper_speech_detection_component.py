@@ -86,8 +86,8 @@ class WhisperSpeechDetectionComponent:
             for track in audio_tracks:
 
                 video_track = mpf.VideoTrack(
-                    start_frame=0,
-                    stop_frame=-1,
+                    start_frame=start_frame,
+                    stop_frame=stop_frame,
                     confidence=track.confidence,
                     detection_properties=track.detection_properties
                 )

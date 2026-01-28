@@ -21,6 +21,18 @@
       ],
       "properties": [
         {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "VFR_TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed on variable frame rate videos.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
           "name": "WHISPER_MODEL_LANG",
           "description": "Whisper has English-only models and multilingual models. Set to 'en' for English-only models and 'multi' for multilingual models.",
           "type": "STRING",
