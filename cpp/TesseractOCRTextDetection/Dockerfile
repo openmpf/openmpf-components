@@ -61,7 +61,7 @@ RUN --mount=type=tmpfs,target=/tmp \
     && mkdir -p tesseract-4.1.1/build \
     && cd tesseract-4.1.1/build \
     && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local \
-        -DCMAKE_CXX_FLAGS="-mno-avx -mno-avx2 -mno-avx512f" .. \
+        -DAUTO_OPTIMIZE=OFF .. \
     && make install -j $(nproc) \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharset.h /usr/local/include/tesseract/ \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/errcode.h /usr/local/include/tesseract/ \
