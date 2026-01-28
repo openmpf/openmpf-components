@@ -1,0 +1,24 @@
+{
+    "classPrompts": [
+        {
+            "classes": [
+                "PERSON"
+            ],
+            "prompts": [
+                "If there is no person visible in the image, produce JSON matching this specification: \"person\": { \"visible_person\": false } Return person. If a person is visible, extract their features and include answers only if 100% confident, if not provide \"unsure\". If an attribute is not visible, set the value to \"not visible\". For clarification, facial features are permanent or consistent traits of the face that do not change with expressions or emotions. Examples include face shape, nose structure, lip shape, eye shape/spacing, jawline, cheekbones, and consistent marks like scars or moles. They do not include temporary expressions (e.g., smiling), emotions (e.g., sadness), or conditions like makeup or lighting. Produce JSON matching this specification: \"person\": { \"visible_person\": true, \"type\": (\"civilian\", \"guard\", \"public figure\"), \"clothing\": array<{\"type\": (ie. \"shirt\", \"pants\", \"dress\", \"t-shirt\", \"shorts\", \"skirt\", etc.), \"color\": string, \"describe\": string}>, \"age_range\": (\"minor/child\", \"adult\", \"elderly\"), \"gender\": string, \"skin_color\": (\"very fair\", \"fair\", \"medium\", \"olive\", \"brown\", \"black\"), \"race\": (\"american indian/alaska native\", \"asian\", \"black/african american\", \"hispanic/latino\", \"native hawaiian/pacific islander\", \"white\"), \"accessories\": array< \"type\": string, \"color\": string, \"describe\": string}>, \"glasses\": {\"type\": string, \"color\": string, \"describe\": string}, \"object_in_hand\": array< \"type\": clothing_enum>, \"color\": string, \"describe\": string}>, \"shoes\": {\"type\": string, \"color\": string, \"describe\": string}, \"head_features\": {\"hair_color\": string, \"bald\": boolean, \"head_cover\": {\"type\": string, \"color\": string, \"describe\": string}}, \"tattoo_features\": {\"location\": string, \"color\": string, \"describe\": string}, \"face_features\": {\"eye_color\": (ie. \"brown\", \"blue\", \"green\", \"hazel\", \"gray\", \"amber\", \"violet\", etc.), \"facial_hair_color\": string, \"facial_features\": string}, \"action_performed\": string, \"background\": {\"type\": string, \"color\": string, \"describe\": string}, \"other_notable_characteristics\": string } Return: person"
+            ]
+        },
+        {
+            "classes": [
+                "VEHICLE",
+                "CAR",
+                "TRUCK",
+                "BUS",
+                "MOTORBIKE"
+            ],
+            "prompts": [
+                "If there is no vehicle visible in the image, produce JSON matching this specification: \"vehicle\": { \"visible_vehicle\": false } Return vehicle. If a vehicle is visible, extract its features and include answers only if 100% confident, if not provide \"unsure\". If an attribute is not visible, set the value to \"not visible\". Produce JSON matching this specification: \"vehicle\": { \"visible_vehicle\": true, \"make\": string, \"type\": string, \"color\": string, \"license_plate_state\": string, \"license_plate_number\": string, \"other_notable_characteristics\": string} Return: vehicle"
+            ]
+        }
+    ]
+}

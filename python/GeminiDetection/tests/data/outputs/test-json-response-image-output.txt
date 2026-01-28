@@ -1,0 +1,60 @@
+```json
+{
+  "visible_person": true,
+  "person": {
+    "Type": "Public figure",
+    "clothing": {
+      "jacket": "gray",
+      "shirt": "white",
+      "tie": "gold"
+    },
+    "estimated_age_range": "adult",
+    "estimated_gender": "male",
+    "estimated_race": "Caucasian",
+    "accessories": [
+      {
+        "type": "glasses",
+        "color": "black"
+      }
+    ],
+    "visible_glasses": true,
+    "glasses": {
+      "type": "spectacles",
+      "color": "black",
+      "describe": "A pair of black rimmed glasses."
+    },
+    "visible_object_in_hand": false,
+    "object_in_hand": null,
+    "person_wearing_shoe": true,
+    "shoe": {
+      "type": "business dress shoes",
+      "color": "black",
+      "describe": "A pair of black dress shoes."
+    },
+    "visible_head_hair": true,
+    "head_features": {
+      "head_hair_color": "graying brown",
+      "bald": false,
+      "visible_head_cover": false,
+      "head_cover_type": null,
+      "visible_tattoo": false,
+      "tattoo_features": null
+    },
+    "visible_face": true,
+    "visible_eye": true,
+    "face_features": {
+      "visible_eye": true,
+      "eye_color": "blue",
+      "visible_facial_hair": false,
+      "facial_hair_color": null,
+      "facial_features": null,
+      "emotion_of_person": "neutral"
+    },
+    "action_performed": "Shaking hands with another person",
+    "background": {
+      "describe": "The background shows an event venue with tables and chairs. The setting suggests a formal or semi-formal gathering."
+    },
+    "other_notable_characteristics": null
+  }
+}
+```
