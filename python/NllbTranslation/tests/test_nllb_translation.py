@@ -112,7 +112,7 @@ class TestNllbTranslation(unittest.TestCase):
         self.assertEqual(self.OUTPUT_0, props["TRANSLATION"])
 
     def test_video_job(self):
-        
+
         ff_track = mpf.VideoTrack(
             0, 1, -1,
             {
@@ -120,7 +120,7 @@ class TestNllbTranslation(unittest.TestCase):
                 1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=self.SAMPLE_2))
             },
             dict(TEXT=self.SAMPLE_0))
-        
+
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
         #load source language
@@ -161,8 +161,8 @@ class TestNllbTranslation(unittest.TestCase):
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
 
-        job = mpf.GenericJob('Test Plaintext', 
-                             str(Path(__file__).parent / 'data' / 'translation.txt'), 
+        job = mpf.GenericJob('Test Plaintext',
+                             str(Path(__file__).parent / 'data' / 'translation.txt'),
                              test_generic_job_props,
                              {})
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
@@ -185,7 +185,7 @@ class TestNllbTranslation(unittest.TestCase):
                 1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TEXT=self.SAMPLE_0,TRANSCRIPT=self.SAMPLE_2))
             },
             dict(TRANSCRIPT=self.SAMPLE_0))
-        
+
         job = mpf.VideoJob('Test Video',
                         'test.mp4', 0, 1,
                         test_generic_job_props,
@@ -247,7 +247,7 @@ class TestNllbTranslation(unittest.TestCase):
         frame_2_props = result[0].frame_locations[2].detection_properties
         self.assertNotIn("OTHER TRANSLATION", frame_2_props)
         self.assertIn("OTHER", frame_2_props)
-    
+
     def test_translate_first_frame_location_property(self):
         # set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
@@ -264,7 +264,7 @@ class TestNllbTranslation(unittest.TestCase):
                 0: mpf.ImageLocation(0, 0, 10, 10, -1, dict(OTHER_PROPERTY="Other prop text", TEXT=self.SAMPLE_1)),
                 1: mpf.ImageLocation(0, 10, 10, 10, -1, dict(TRANSCRIPT=self.SAMPLE_2))
             })
-        
+
         job = mpf.VideoJob('Test Video',
                         'test.mp4', 0, 1,
                         test_generic_job_props,
@@ -388,7 +388,7 @@ class TestNllbTranslation(unittest.TestCase):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
 
-        ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0, 
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0,
                                              LANGUAGE='deu',
                                              ISO_SCRIPT='Latn'))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
@@ -401,7 +401,7 @@ class TestNllbTranslation(unittest.TestCase):
         #set default props
         test_generic_job_props: dict[str, str] = dict(self.defaultProps)
 
-        ff_track = mpf.GenericTrack(-1, dict(TEXT='This is English text that should not be translated.', 
+        ff_track = mpf.GenericTrack(-1, dict(TEXT='This is English text that should not be translated.',
                                              LANGUAGE='eng',
                                              ISO_SCRIPT='Latn'))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
@@ -416,6 +416,7 @@ class TestNllbTranslation(unittest.TestCase):
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '25'
         test_generic_job_props['SENTENCE_MODEL'] = 'wtp-bert-mini'
 
@@ -454,6 +455,7 @@ class TestNllbTranslation(unittest.TestCase):
 
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '39'
 
          # excerpt from https://www.gutenberg.org/ebooks/16443
@@ -476,6 +478,9 @@ class TestNllbTranslation(unittest.TestCase):
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'por'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
+        test_generic_job_props['SENTENCE_SPLITTER_MODE'] = 'DEFAULT'
+        test_generic_job_props['SENTENCE_SPLITTER_NEWLINE_BEHAVIOR'] = 'GUESS'
 
         # excerpt from https://www.gutenberg.org/ebooks/16443
         pt_text="""Teimam de facto estes em que são indispensaveis os vividos raios do
@@ -496,8 +501,32 @@ entre nós, envolvidos em densa atmosphera de perenne contentamento,
 satisfeitos do mundo, satisfeitos dos homens e, muito especialmente,
 satisfeitos de si.
 """
-        pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable, to pour joy into the soul and send to the semblances the reflection of them; they imagine fatally pursued from _spleen_,  hopelessly gloomy and sullen, as if at every moment they were emerging from the subterranean galleries of a pit-coal mine, our British allies. How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which much is vainly complained the unlevel and accentuated expression of bliss, which shines through on the face. The European Parliament has been a great help to the people of Europe in the past, and it is a great help to us in the present."
+        pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable, to pour joy into the soul and send to the semblances the reflection of them; they imagine fatally pursued from _spleen_,  hopelessly gloomy and dreary, as if every moment they came out of the underground galleries of a pit-coal mine, How they deceive or how they intend to deceive us! is this an illusion or bad faith, against which there is much claim in vain the indelevel and accented expression of beatitude, which shines on the illuminated face of the men from beyond the Manch, who seem to walk among us, wrapped in dense atmosphere of perennial contentment, satisfied The European Union is a global community of nations, which is not only a community of nations, but also a community of nations."
 
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
+
+
+        test_generic_job_props['SENTENCE_SPLITTER_MODE'] = 'SENTENCE'
+        test_generic_job_props['SENTENCE_SPLITTER_NEWLINE_BEHAVIOR'] = 'GUESS'
+
+        pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable to pour joy into the soul and send to the countenances the reflection of them; They imagine themselves fatally haunted by spleen, hopelessly gloomy and sullen, as if at every moment they were emerging from the underground galleries of a pit-coal mine, Our British allies. How they deceive themselves or how they intend to deceive us! Is this an illusion or bad faith, against which there is much to be lamented in vain the indelevel and accentuated expression of beatitude, which shines through the illuminated faces of the men from beyond the Channel, who seem to walk among us, wrapped in a dense atmosphere of perenne contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves? i.  the"
+        ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
+        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
+        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+
+        result_props: dict[str, str] = result_track[0].detection_properties
+        self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
+
+
+        test_generic_job_props['SENTENCE_SPLITTER_MODE'] = 'DEFAULT'
+        test_generic_job_props['SENTENCE_SPLITTER_NEWLINE_BEHAVIOR'] = 'NONE'
+
+        pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable, to pour joy into the soul and send to the semblances the reflection of them; they imagine fatally pursued from _spleen_,  hopelessly gloomy and sullen, as if at every moment they were emerging from the subterranean galleries of a pit-coal mine, our British allies. How they deceive themselves or how they intend to deceive us! This is an illusion or bad faith, against which much is vainly complained the unlevel and accentuated expression of bliss, which shines through on the face. The European Parliament has been a great help to the people of Europe in the past, and it is a great help to us in the present."
         ff_track = mpf.GenericTrack(-1, dict(TEXT=pt_text))
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
@@ -511,6 +540,7 @@ satisfeitos de si.
         #load source language
         test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'arz'
         test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Arab'
+        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '100'
         test_generic_job_props['SENTENCE_SPLITTER_INCLUDE_INPUT_LANG'] = 'True'
 
@@ -612,11 +642,11 @@ satisfeitos de si.
             self.assertFalse(should_translate("꩐꩑꩒꩓꩔꩕꩖꩗꩘꩙")) #  Cham digits (\uAA50-\uAA59)
             self.assertFalse(should_translate("꯰꯱꯲꯳꯴꯵꯶꯷꯸꯹")) #  Meetei Mayek digits (\uABF0-\uABF9)
             self.assertFalse(should_translate("０１２３４５６７８９")) #  Full width digits (\uFF10-\uFF19)
-            
+
         with self.subTest('Letter_Number: a letterlike numeric character'):
             letter_numbers = "ᛮᛯᛰⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫⅬⅭⅮⅯⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹⅺⅻⅼⅽⅾⅿↀↁↂↅↆↇↈ〇〡〢〣〤〥〦〧〨〩〸〹〺ꛦꛧꛨꛩꛪꛫꛬꛭꛮꛯ"
             self.assertFalse(should_translate(letter_numbers))
-        
+
         with self.subTest('Other_Number: a numeric character of other type'):
             other_numbers1 = "²³¹¼½¾৴৵৶৷৸৹୲୳୴୵୶୷௰௱௲౸౹౺౻౼౽౾൘൙൚൛൜൝൞൰൱൲൳൴൵൶൷൸༪༫༬༭༮༯༰༱༲༳፩፪፫፬፭፮፯፰፱፲፳፴፵፶፷፸፹፺፻፼"
             other_numbers2 = "៰៱៲៳៴៵៶៷៸៹᧚⁰⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞⅟↉①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"
@@ -854,7 +884,7 @@ satisfeitos de si.
         self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zul_Latn')), 'zu')
 
         # languages supported by NLLB but not supported by WTP Splitter
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('aka_Latn'))) # 'ak'  Akan                
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('aka_Latn'))) # 'ak'  Akan
         self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bem_Latn'))) # 'sw'  Bemba
         self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bod_Tibt'))) # 'bo'  Tibetan
         self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bos_Latn'))) # 'bs'  Bosnian
