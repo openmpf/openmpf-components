@@ -80,8 +80,10 @@ def test_split_array_into_chunks():
     ]
 
     expected = [
-        ['{"a": 1}','{"b": 2}'],
-        ['{"c": 3}','{"d": 4}']
+        ['{"a": 1}'],
+        ['{"b": 2}'],
+        ['{"c": 3}'],
+        ['{"d": 4}']
     ]
 
     actual = split_array_into_chunks(tokenizer, input, 1, 0)
