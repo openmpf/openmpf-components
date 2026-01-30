@@ -24,55 +24,8 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import json
 from typing import List
 import mpf_component_api as mpf
-
-def clean_input_json(input):
-    result = {}
-    input = json.loads(input)
-    for x in ['jobId', 'timeStart', 'timeStop']:
-        result[x] = input[x]
-    result['media'] = input['media']
-    for media in result['media']:
-        del media['output']['TRACKS MERGED']
-        unused = []
-        for i, speech in enumerate(media['output']['SPEECH']):
-            # we only want azurespeech
-            if 'algorithm' in speech and speech['algorithm'] == 'VISTASPEECH':
-                unused.append(i)
-                continue
-            for track in speech['tracks']:
-                # already in trackProperties
-                del track['exemplar']['detectionProperties']
-                for detection in track['detections']:
-                    del detection['detectionProperties']
-        tmp = media['output']['SPEECH']
-        media['output']['SPEECH'] = [tmp[i] for i in range(0, len(tmp)) if i not in unused]
-    return json.dumps(result)
-
-def convert_to_csv(input):
-    input = json.loads(input)
-    from csv import DictWriter
-    import io
-    buffer = io.StringIO()
-    writer = DictWriter(buffer, ['speaker_id', 'gender', 'start_timestamp', 'end_timestamp', 'english_text', 'original_language'], delimiter='|')
-    writer.writeheader()
-    for media in input['media']:
-        for speech in media['output']['SPEECH']:
-            for track in speech['tracks']:
-                writer.writerow({
-                    "speaker_id": track['trackProperties']['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in track['trackProperties'] else (track['trackProperties']['SPEAKER_ID'] if 'SPEAKER_ID' in track['trackProperties'] else None),
-                    "gender": track['trackProperties']['GENDER'],
-                    "start_timestamp": track['startOffsetTime'],
-                    "end_timestamp": track['stopOffsetTime'],
-                    "english_text": track['trackProperties']['TRANSLATION'] if 'SKIPPED TRANSLATION' not in track['trackProperties'] else track['trackProperties']['TRANSCRIPT'],
-                    "original_language": track['trackProperties']['DECODED_LANGUAGE'],
-                })
-    output = buffer.getvalue()
-    del writer
-    buffer.close()
-    return output
 
 def convert_tracks_to_csv(input: List[mpf.VideoTrack]|List[mpf.AudioTrack]):
     from csv import DictWriter
