@@ -183,7 +183,7 @@ class QwenSpeechSummaryComponent:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
                 final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
-                print(final_summary.json())
+                print(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary,
                 'PRIMARY TOPIC': final_summary.primary_topic,

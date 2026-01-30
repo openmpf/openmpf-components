@@ -91,7 +91,7 @@ def split_csv_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap
 def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, overlap: int = 500, min_grouping=-1):
     for i in range(0, len(arr)):
         if type(arr[i]) is not str:
-            arr[i] = arr[i].json() if hasattr(arr[i], 'json') else json.dumps(arr[i])
+            arr[i] = arr[i].model_dump_json() if hasattr(arr[i], 'model_dump_json') else json.dumps(arr[i])
     # serialize each object separately so we can insert newline tokens to facilitate letting the tokenizer
     # count for us
 
