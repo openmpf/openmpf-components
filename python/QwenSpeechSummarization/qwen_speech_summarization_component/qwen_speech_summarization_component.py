@@ -50,7 +50,7 @@ from .llm_util.classifiers import get_classifier_lines
 from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
 from .llm_util.input_cleanup import convert_tracks_to_csv
 
-from pkg_resources import resource_filename
+import importlib.resources
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
@@ -164,7 +164,9 @@ class QwenSpeechSummaryComponent:
             self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
             self.template = self.env.get_template(os.path.basename(config.prompt_template))
         else:
-            self.env = Environment(loader = FileSystemLoader(os.path.realpath(resource_filename(__name__, 'templates'))))
+            template_resource = importlib.resources.files(__name__) / 'templates'
+            with importlib.resources.as_file(template_resource) as path:
+                self.env = Environment(loader = FileSystemLoader(path))
             self.template = self.env.get_template('prompt.jinja')
 
 
