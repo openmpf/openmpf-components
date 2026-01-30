@@ -48,7 +48,7 @@
           "name": "PROMPT_TEMPLATE",
           "description": "If set, will override the default, tested prompt template with one read from a different file",
           "type": "STRING",
-          "defaultValue": "templates/prompt.json"
+          "defaultValue": "templates/prompt.jinja"
         },
         {
           "name": "VLLM_URI",
