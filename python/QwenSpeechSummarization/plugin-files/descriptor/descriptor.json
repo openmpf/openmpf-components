@@ -35,7 +35,7 @@
         {
           "name": "CLASSIFIERS_CONFIDENCE_MINIMUM",
           "description": "The minimum confidence to include in classifiers output. When set to 0.3, classifiers with <0.3 confidence are excluded from produced tracks.",
-          "type": "STRING",
+          "type": "FLOAT",
           "defaultValue": "0.3"
         },
         {

@@ -200,7 +200,7 @@ class QwenSpeechSummaryComponent:
                     },
                     main_detection_properties
                 )]
-            classifier_confidence_minimum = float(config.classifier_confidence_minimum or 0)
+            classifier_confidence_minimum = config.classifier_confidence_minimum
             results += list(
                 map(
                     self._get_classifier_track(video_job),
@@ -238,7 +238,7 @@ class JobConfig:
 
         # exclude classifiers from output if their confidence is below this threshold
         self.classifier_confidence_minimum = \
-            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', "0.3")
+            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', 0.3)
 
         self.classifiers_path = \
             self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
