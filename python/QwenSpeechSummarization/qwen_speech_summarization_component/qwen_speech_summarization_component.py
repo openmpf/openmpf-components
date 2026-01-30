@@ -56,7 +56,7 @@ logger = logging.getLogger('QwenSpeechSummaryComponent')
 
 class QwenSpeechSummaryComponent:
     
-    def get_output(self, classifiers, input):
+    def _get_output(self, classifiers, input):
         prompt = self.template.render(input = input, classifiers=classifiers)
         with self.client_factory() as client:
             stream = client.chat.completions.create(
@@ -84,20 +84,22 @@ class QwenSpeechSummaryComponent:
     # DEBUG: Test with CLI Runner
     def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
         config = JobConfig(job.job_properties)
-        self.setup_client(config)
+        self._setup_client(config)
         raise NotImplementedError('Generic jobs are not supported by QwenSpeechSummaryComponent')
 
     @staticmethod
-    def get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
+    def _get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
         detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
         return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier.confidence, {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}, detection_properties)
 
-    def get_classifier_track(self, video_job):
-        func = lambda classifier: QwenSpeechSummaryComponent.get_video_track_for_classifier(video_job, classifier)
+    @staticmethod
+    def _get_classifier_track(video_job):
+        func = lambda classifier: QwenSpeechSummaryComponent._get_video_track_for_classifier(video_job, classifier)
         return func
 
-    def get_openai_api_client_when_server_is_ready(self, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
+    @staticmethod
+    def _get_openai_api_client_when_server_is_ready(timeout_seconds=300, retry_delay_seconds=5, **kwargs):
         start_time = time.time()
         base_url = kwargs['base_url']
         success = False
@@ -130,8 +132,7 @@ class QwenSpeechSummaryComponent:
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
 
-    # TODO: All private non-static methods should be prefixed with a single _
-    def setup_client(self, config):
+    def _setup_client(self, config):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
         # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
@@ -148,7 +149,7 @@ class QwenSpeechSummaryComponent:
 
         if not self.client_factory:
             # Set OpenAI API base URL
-            self.client_factory = lambda: self.get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key="whatever")
+            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key="whatever")
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=True)
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
@@ -159,7 +160,7 @@ class QwenSpeechSummaryComponent:
         #print('Received all tracks video job: {video_job}')
 
         config = JobConfig(video_job.job_properties)
-        self.setup_client(config)
+        self._setup_client(config)
 
         self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
         self.template = self.env.get_template(os.path.basename(config.prompt_template))
@@ -174,13 +175,13 @@ class QwenSpeechSummaryComponent:
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
                 print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
-                content = self.get_output(classifiers, chunk)
+                content = self._get_output(classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
-                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
                 print(final_summary.json())
             main_detection_properties = {
@@ -202,7 +203,7 @@ class QwenSpeechSummaryComponent:
             classifier_confidence_minimum = float(config.classifier_confidence_minimum or 0)
             results += list(
                 map(
-                    self.get_classifier_track(video_job),
+                    self._get_classifier_track(video_job),
                     filter(
                         lambda classifier: classifier.confidence >= classifier_confidence_minimum,
                         final_summary.classifiers)
