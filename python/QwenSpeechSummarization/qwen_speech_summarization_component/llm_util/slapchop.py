@@ -130,8 +130,16 @@ def summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, summa
     chunks = split_array_into_chunks(tokenizer, summaries, chunk_size, overlap, min_grouping=2)
     results = []
     for chunk in chunks:
-        if not model:
-            results.append(json.loads(get_output(chunk)))
+        # if the chunk is unary, pass it along without an LLM call
+        chunkarr = json.loads(chunk)
+        if len(chunkarr) == 1:
+            results.append(chunkarr[0])
         else:
-            results.append(model.model_validate_json(get_output(chunk))) # type: ignore
+            # otherwise make the LLM summarize the summaries
+            summary = get_output(chunk)
+            if not model:
+                results.append(json.loads(summary))
+            else:
+                results.append(model.model_validate_json(summary)) # type: ignore
+    # recurse with all of our results
     return summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, results)
