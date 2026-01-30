@@ -55,7 +55,20 @@
           "description": "The base_url of the openai-api-compatible API providing access to your model.",
           "type": "STRING",
           "defaultValue": "http://qwen-speech-summarization-server:11434/v1"
+        },
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "VFR_TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed on variable frame rate videos.",
+          "type": "INT",
+          "defaultValue": "-1"
         }
+
       ]
     }
   },
