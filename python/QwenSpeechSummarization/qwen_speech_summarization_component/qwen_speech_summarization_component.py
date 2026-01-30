@@ -161,14 +161,8 @@ class QwenSpeechSummaryComponent:
         config = JobConfig(video_job.job_properties)
         self.setup_client(config)
 
-        if config.prompt_template:
-            self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-            self.template = self.env.get_template(os.path.basename(config.prompt_template))
-        else:
-            template_resource = importlib.resources.files(__name__) / 'templates'
-            with importlib.resources.as_file(template_resource) as path:
-                self.env = Environment(loader = FileSystemLoader(path))
-            self.template = self.env.get_template('prompt.jinja')
+        self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        self.template = self.env.get_template(os.path.basename(config.prompt_template))
 
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
@@ -233,7 +227,7 @@ class JobConfig:
         # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
 
-        self.prompt_template = mpf_util.get_property(props, 'PROMPT_TEMPLATE', None)
+        self.prompt_template = mpf_util.get_property(props, 'PROMPT_TEMPLATE', self._get_file_path('templates/prompt.jinja'))
 
         self.vllm_uri = \
             mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
