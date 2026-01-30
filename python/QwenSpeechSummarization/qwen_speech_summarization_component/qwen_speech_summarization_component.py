@@ -228,7 +228,7 @@ class JobConfig:
         # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
 
-        self.prompt_template = mpf_util.get_property(props, 'PROMPT_TEMPLATE', self._get_file_path('templates/prompt.jinja'))
+        self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
 
         self.vllm_uri = \
             mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
