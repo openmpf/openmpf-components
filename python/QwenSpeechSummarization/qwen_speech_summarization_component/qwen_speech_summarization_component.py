@@ -24,24 +24,27 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import importlib.resources
 import logging
+import math
+import os
+import requests
+import sys
+import time
 
-import mpf_component_api as mpf
-import mpf_component_util as mpf_util
-
+from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
+
+# TODO: Remove this
+from pkg_resources import resource_filename
 
 from openai import OpenAI
 
-from jinja2 import Environment, FileSystemLoader
-import os, sys
-
-import math
-import time
-import requests
-
 os.environ["HF_HUB_OFFLINE"] = "1"
 from transformers import AutoTokenizer
+
+import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 # No local model loading; using remote API
 from .schema import response_format, StructuredResponse
@@ -50,7 +53,6 @@ from .llm_util.classifiers import get_classifier_lines
 from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
 from .llm_util.input_cleanup import convert_tracks_to_csv
 
-from pkg_resources import resource_filename
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
@@ -130,6 +132,7 @@ class QwenSpeechSummaryComponent:
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
 
+    # TODO: All private non-static methods should be prefixed with a single _
     def setup_client(self, config):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
@@ -166,7 +169,6 @@ class QwenSpeechSummaryComponent:
         else:
             self.env = Environment(loader = FileSystemLoader(os.path.realpath(resource_filename(__name__, 'templates'))))
             self.template = self.env.get_template('prompt.jinja')
-
 
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
@@ -242,21 +244,19 @@ class JobConfig:
         self.classifier_confidence_minimum = \
             mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', "0.3")
 
-        self.classifiers_file = \
-            mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json")
+        self.classifiers_path = \
+            self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
 
-        if "$" not in self.classifiers_file and '/' not in self.classifiers_file:
-            self.classifiers_path = os.path.realpath(resource_filename(__name__, self.classifiers_file))
-        else:
-            self.classifiers_path = os.path.expandvars(self.classifiers_file)
-
-        if not os.path.exists(self.classifiers_path):
-            print('Failed to complete job due incorrect file path for the qwen classifiers path: '
-                             f'"{self.classifiers_path}"')
-            raise mpf.DetectionException(
-                'Invalid path provided for qwen classifiers path: '
-                f'"{self.classifiers_path}"',
-                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
+    @staticmethod
+    def _get_file_path(path: str) -> str:
+        expanded_path = os.path.expandvars(path)
+        if os.path.exists(expanded_path):
+            return expanded_path
+        resource = importlib.resources.files(__name__) / expanded_path
+        if resource.is_file():
+            return str(importlib.resources.as_file(resource).__enter__())
+        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
+            f"{path} does not exist.")
 
 def run_component_test(clientFactory = None):
     qsc = QwenSpeechSummaryComponent(clientFactory)
