@@ -37,7 +37,7 @@ from typing import Sequence, Mapping
 
 from openai import OpenAI
 
-os.environ["HF_HUB_OFFLINE"] = "1"
+if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "1"
 from transformers import AutoTokenizer
 
 import mpf_component_api as mpf
@@ -151,7 +151,7 @@ class QwenSpeechSummaryComponent:
             # Set OpenAI API base URL
             self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key="whatever")
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
