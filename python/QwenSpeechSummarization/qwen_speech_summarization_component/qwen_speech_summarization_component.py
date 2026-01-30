@@ -183,6 +183,7 @@ class QwenSpeechSummaryComponent:
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
+                # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
                 final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
                 print(final_summary.json())
