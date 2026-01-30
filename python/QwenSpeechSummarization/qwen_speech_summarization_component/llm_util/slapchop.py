@@ -88,7 +88,7 @@ def split_csv_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap
 
     return _chunk_within_limits(total_rows, chunk_size, overlap, token_count_at_line, min_grouping, lambda i: df.iloc[i], convert_chunk_to_csv) # type: ignore
 
-def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, overlap: int = 500, min_grouping=2):
+def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, overlap: int = 500, min_grouping=-1):
     for i in range(0, len(arr)):
         if type(arr[i]) is not str:
             arr[i] = arr[i].json() if hasattr(arr[i], 'json') else json.dumps(arr[i])
@@ -131,7 +131,7 @@ def summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, summa
     results = []
     for chunk in chunks:
         # if the chunk is unary, pass it along without an LLM call
-        chunkarr = json.loads(chunk)
+        chunkarr = json.loads(chunk) if type(chunk) is str else chunk
         if len(chunkarr) == 1:
             results.append(chunkarr[0])
         else:
