@@ -24,40 +24,39 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import importlib.resources
 import logging
+import math
+import os
+import requests
+import sys
+import time
 
-import mpf_component_api as mpf
-import mpf_component_util as mpf_util
-
+from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
 
 from openai import OpenAI
+
+if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "1"
 from transformers import AutoTokenizer
-from jinja2 import Environment, FileSystemLoader, PackageLoader
-import os, sys
 
-import math
-import time
-import requests
-
-import json
+import mpf_component_api as mpf
+import mpf_component_util as mpf_util
 
 # No local model loading; using remote API
 from .schema import response_format, StructuredResponse
 
 from .llm_util.classifiers import get_classifier_lines
 from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
-from .llm_util.input_cleanup import clean_input_json, convert_tracks_to_csv
+from .llm_util.input_cleanup import convert_tracks_to_csv
 
-from pkg_resources import resource_filename
-import pandas as pd
+import importlib.resources
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
 class QwenSpeechSummaryComponent:
-
     
-    def get_output(self, classifiers, input):
+    def _get_output(self, classifiers, input):
         prompt = self.template.render(input = input, classifiers=classifiers)
         with self.client_factory() as client:
             stream = client.chat.completions.create(
@@ -82,17 +81,25 @@ class QwenSpeechSummaryComponent:
                         content += event.choices[0].delta.content
         return content
 
+    # DEBUG: Test with CLI Runner
+    def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
+        config = JobConfig(job.job_properties)
+        self._setup_client(config)
+        raise NotImplementedError('Generic jobs are not supported by QwenSpeechSummaryComponent')
+
     @staticmethod
-    def get_track_for_classifier(t, video_job: mpf.VideoJob, classifier, arg_factory):
+    def _get_track_for_classifier(t, video_job: mpf.VideoJob, classifier, arg_factory):
         detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
         return t(video_job.start_frame, video_job.stop_frame, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
 
-    def get_classifier_track(self, t, job, arg_factory=lambda _classifier, _detection_properties: []):
-        func = lambda classifier: QwenSpeechSummaryComponent.get_track_for_classifier(t, job, classifier, arg_factory)
+    @staticmethod
+    def _get_classifier_track(t, job, arg_factory=lambda _classifier, _detection_properties: []):
+        func = lambda classifier: QwenSpeechSummaryComponent._get_track_for_classifier(t, job, classifier, arg_factory)
         return func
 
-    def get_openai_api_client_when_server_is_ready(self, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
+    @staticmethod
+    def _get_openai_api_client_when_server_is_ready(timeout_seconds=300, retry_delay_seconds=5, **kwargs):
         start_time = time.time()
         base_url = kwargs['base_url']
         success = False
@@ -123,6 +130,9 @@ class QwenSpeechSummaryComponent:
         return OpenAI(**kwargs)
 
     def __init__(self, clientFactory=None):
+        self.client_factory = clientFactory
+
+    def _setup_client(self, config):
         self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
         # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
@@ -133,16 +143,15 @@ class QwenSpeechSummaryComponent:
         # TODO: warn if chunk_size is TOO LARGE of a proportion of max_model_len
 
         # vllm
-        self.base_url=f"{os.environ.get('VLLM_URI', 'http://vllm:11434/v1')}"
         self.client_model_name = self.model_name_hf
 
-        # Set OpenAI API base URL
-        if not clientFactory:
-            self.client_factory = lambda: self.get_openai_api_client_when_server_is_ready(base_url=self.base_url, api_key="whatever")
-        else:
-            self.client_factory = clientFactory
+        logger.debug(f"Using VLLM URI: {config.vllm_uri}")  ## DEBUG
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf)
+        if not self.client_factory:
+            # Set OpenAI API base URL
+            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key="whatever")
+
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
@@ -151,13 +160,10 @@ class QwenSpeechSummaryComponent:
         #print('Received all tracks video job: {video_job}')
 
         config = JobConfig(video_job.job_properties)
-        if config.prompt_template:
-            self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-            self.template = self.env.get_template(os.path.basename(config.prompt_template))
-        else:
-            self.env = Environment(loader = FileSystemLoader(os.path.realpath(resource_filename(__name__, 'templates'))))
-            self.template = self.env.get_template('prompt.jinja')
+        self._setup_client(config)
 
+        self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        self.template = self.env.get_template(os.path.basename(config.prompt_template))
 
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
@@ -169,20 +175,25 @@ class QwenSpeechSummaryComponent:
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
                 print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
-                content = self.get_output(classifiers, chunk)
+                content = self._get_output(classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
-                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
+                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
-                print(final_summary.json())
+                print(final_summary.model_dump_json())
             main_detection_properties = {
-                'TEXT': final_summary.summary,
-                'PRIMARY TOPIC': final_summary.primary_topic,
-                'OTHER TOPICS': ', '.join(final_summary.other_topics),
-                **{k.upper(): ', '.join(v) for (k,v) in final_summary.entities.__dict__.items()}
+                'TEXT': final_summary.summary
             }
+            if hasattr(final_summary, 'primary_topic'):
+                main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
+            if hasattr(final_summary, 'other_topics'):
+                main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
+            if hasattr(final_summary, 'entities'):
+                for (k,v) in final_summary.entities.__dict__.items():
+                    main_detection_properties[k.upper()] = ', '.join(v)
             results = [mpf.VideoTrack(
                     video_job.start_frame,
                     video_job.stop_frame,
@@ -193,9 +204,13 @@ class QwenSpeechSummaryComponent:
                     },
                     main_detection_properties
                 )]
+            classifier_confidence_minimum = config.classifier_confidence_minimum
             results += list(
                 map(
-                    self.get_classifier_track(mpf.VideoTrack, video_job, lambda classifier, detection_properties: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}), final_summary.classifiers
+                    self._get_classifier_track(mpf.VideoTrack, video_job, lambda classifier, detection_properties: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}),
+                    filter(
+                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
+                        final_summary.classifiers)
                 )
             )
             print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
@@ -207,7 +222,6 @@ class QwenSpeechSummaryComponent:
             the_roof = Exception("Received no feed forward tracks")
             raise the_roof
 
-
     def get_detections_from_all_audio_tracks(self, audio_job: mpf.AllAudioTracksJob) -> Sequence[mpf.AudioTrack]:
         
         print(f'Received feed forward audio job.')
@@ -215,12 +229,8 @@ class QwenSpeechSummaryComponent:
         #print('Received all tracks audio job: {audio_job}')
 
         config = JobConfig(audio_job.job_properties)
-        if config.prompt_template:
-            self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-            self.template = self.env.get_template(os.path.basename(config.prompt_template))
-        else:
-            self.env = Environment(loader = FileSystemLoader(os.path.realpath(resource_filename(__name__, 'templates'))))
-            self.template = self.env.get_template('prompt.jinja')
+        self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        self.template = self.env.get_template(os.path.basename(config.prompt_template))
 
 
         if audio_job.feed_forward_tracks is not None:
@@ -234,29 +244,37 @@ class QwenSpeechSummaryComponent:
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
                 print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
-                content = self.get_output(classifiers, chunk)
+                content = self._get_output(classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
-                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self.get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
                 print(final_summary.json())
             main_detection_properties = {
-                'TEXT': final_summary.summary,
-                'PRIMARY TOPIC': final_summary.primary_topic,
-                'OTHER TOPICS': ', '.join(final_summary.other_topics),
-                **{k.upper(): ', '.join(v) for (k,v) in final_summary.entities.__dict__.items()}
+                'TEXT': final_summary.summary
             }
+            if hasattr(final_summary, 'primary_topic'):
+                main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
+            if hasattr(final_summary, 'other_topics'):
+                main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
+            if hasattr(final_summary, 'entities'):
+                for (k,v) in final_summary.entities.__dict__.items():
+                    main_detection_properties[k.upper()] = ', '.join(v)
             results = [mpf.AudioTrack(
                     audio_job.start_time,
                     audio_job.stop_time,
                     -1,
                     main_detection_properties
                 )]
+            classifier_confidence_minimum = config.classifier_confidence_minimum
             results += list(
                 map(
-                    self.get_classifier_track(mpf.AudioTrack, audio_job), final_summary.classifiers
+                    self._get_classifier_track(mpf.AudioTrack, audio_job),
+                    filter(
+                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
+                        final_summary.classifiers)
                 )
             )
             print(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
@@ -273,26 +291,31 @@ class JobConfig:
         # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
 
-        self.prompt_template = mpf_util.get_property(props, 'PROMPT_TEMPLATE', None)
+        self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
+
+        self.vllm_uri = \
+            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
 
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
 
-        self.classifiers_file = \
-            mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json")
+        # exclude classifiers from output if their confidence is below this threshold
+        self.classifier_confidence_minimum = \
+            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', 0.3)
 
-        if "$" not in self.classifiers_file and '/' not in self.classifiers_file:
-            self.classifiers_path = os.path.realpath(resource_filename(__name__, self.classifiers_file))
-        else:
-            self.classifiers_path = os.path.expandvars(self.classifiers_file)
+        self.classifiers_path = \
+            self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
 
-        if not os.path.exists(self.classifiers_path):
-            print('Failed to complete job due incorrect file path for the qwen classifiers path: '
-                             f'"{self.classifiers_path}"')
-            raise mpf.DetectionException(
-                'Invalid path provided for qwen classifiers path: '
-                f'"{self.classifiers_path}"',
-                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
+    @staticmethod
+    def _get_file_path(path: str) -> str:
+        expanded_path = os.path.expandvars(path)
+        if os.path.exists(expanded_path):
+            return expanded_path
+        resource = importlib.resources.files(__name__) / expanded_path
+        if resource.is_file():
+            return str(importlib.resources.as_file(resource).__enter__())
+        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
+            f"{path} does not exist.")
 
 def run_component_test(clientFactory = None):
     qsc = QwenSpeechSummaryComponent(clientFactory)
@@ -313,7 +336,6 @@ def run_component_test(clientFactory = None):
 
     print('About to call get_detections_from_all_video_tracks')
     return qsc.get_detections_from_all_video_tracks(job)
-
 
 
 if __name__ == '__main__':

@@ -91,7 +91,7 @@ def split_csv_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap
 def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, overlap: int = 500, min_grouping=-1):
     for i in range(0, len(arr)):
         if type(arr[i]) is not str:
-            arr[i] = arr[i].json() if hasattr(arr[i], 'json') else json.dumps(arr[i])
+            arr[i] = arr[i].model_dump_json() if hasattr(arr[i], 'model_dump_json') else json.dumps(arr[i])
     # serialize each object separately so we can insert newline tokens to facilitate letting the tokenizer
     # count for us
 
@@ -130,8 +130,16 @@ def summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, summa
     chunks = split_array_into_chunks(tokenizer, summaries, chunk_size, overlap, min_grouping=2)
     results = []
     for chunk in chunks:
-        if not model:
-            results.append(json.loads(get_output(chunk)))
+        # if the chunk is unary, pass it along without an LLM call
+        chunkarr = json.loads(chunk) if type(chunk) is str else chunk
+        if len(chunkarr) == 1:
+            results.append(chunkarr[0])
         else:
-            results.append(model.model_validate_json(get_output(chunk))) # type: ignore
+            # otherwise make the LLM summarize the summaries
+            summary = get_output(chunk)
+            if not model:
+                results.append(json.loads(summary))
+            else:
+                results.append(model.model_validate_json(summary)) # type: ignore
+    # recurse with all of our results
     return summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, results)
