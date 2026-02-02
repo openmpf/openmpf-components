@@ -185,11 +185,15 @@ class QwenSpeechSummaryComponent:
             if config.debug:
                 print(final_summary.model_dump_json())
             main_detection_properties = {
-                'TEXT': final_summary.summary,
-                'PRIMARY TOPIC': final_summary.primary_topic,
-                'OTHER TOPICS': ', '.join(final_summary.other_topics),
-                **{k.upper(): ', '.join(v) for (k,v) in final_summary.entities.__dict__.items()}
+                'TEXT': final_summary.summary
             }
+            if hasattr(final_summary, 'primary_topic'):
+                main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
+            if hasattr(final_summary, 'other_topics'):
+                main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
+            if hasattr(final_summary, 'entities'):
+                for (k,v) in final_summary.entities.__dict__.items():
+                    main_detection_properties[k.upper()] = ', '.join(v)
             results = [mpf.VideoTrack(
                     video_job.start_frame,
                     video_job.stop_frame,
