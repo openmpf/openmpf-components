@@ -1,0 +1,17 @@
+{
+  "results": {
+    "documents": [
+      {
+        "id": "1",
+        "detectedLanguage": {
+          "iso6391Name": "mn",
+          "confidenceScore": 0.99,
+          "scriptName": "Cyrillic",
+          "scriptIso15924Code": "Cyrl"
+        }
+      }
+    ],
+    "errors": [],
+    "modelVersion": "latest"
+  }
+}

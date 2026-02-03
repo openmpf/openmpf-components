@@ -139,7 +139,8 @@ class DetectResult(NamedTuple):
     primary_language_confidence: float
     alternative_language: Optional[str] = None
     alternative_language_confidence: Optional[float] = None
-
+    script_name: Optional[str] = None
+    script_code: Optional[str] = None
 
 class TranslationResult(NamedTuple):
     translated_text: str
@@ -158,8 +159,114 @@ class UnsupportedSourceLanguage(Exception):
 
 NO_SPACE_LANGS = ('JA',  # Japanese
                   'YUE',  # Cantonese (Traditional)
+                  'ZH',   # Chinese (General)
                   'ZH-HANS',  # Chinese Simplified
                   'ZH-HANT')  # Chinese Traditional
+
+
+# Mappings needed as Language Detection and Translation endpoints differ on these codes.
+DETECTION_LANG_CODE_OVERRIDES: Dict[str, str] = {
+    'DGO': 'doi',        # Dogri
+    'NO': 'nb',          # Norwegian (Bokmål)
+    'ZH_CHS': 'zh-Hans', # Chinese Simplified
+    'ZH_CHT': 'zh-Hant', # Chinese Traditional
+}
+
+
+# The *first* entry for each base language is used as the default when
+# we don't have a usable script code.
+SCRIPT_SPLIT_LANG_VARIANTS: Dict[str, Dict[str, str]] = {
+    'MN': {   # Mongolian
+        'Cyrl': 'mn-Cyrl',
+        'Mong': 'mn-Mong',
+    },
+    'SR': {   # Serbian
+        'Cyrl': 'sr-Cyrl',
+        'Latn': 'sr-Latn',
+    },
+}
+
+
+class AzureLanguageDetectionClient:
+    def __init__(self,
+                 endpoint: str,
+                 subscription_key: str,
+                 region: Optional[str] = None,
+                 http_retry: Optional[mpf_util.HttpRetry] = None):
+        self._endpoint = endpoint.rstrip('/')
+        self._subscription_key = subscription_key
+        self._region = region
+        self._http_retry = http_retry
+
+    def detect_language(self, text: str, country_hint: str = "") -> DetectResult:
+        url = f"{self._endpoint}/language/:analyze-text?api-version=2025-11-15-preview"
+
+        headers: Dict[str, str] = {
+            'Ocp-Apim-Subscription-Key': self._subscription_key,
+            'Content-type': 'application/json; charset=UTF-8',
+            'X-ClientTraceId': str(uuid.uuid4())
+        }
+        if self._region:
+            headers['Ocp-Apim-Subscription-Region'] = self._region
+
+        body = {
+            "kind": "LanguageDetection",
+            "parameters": {
+                "modelVersion": "latest"
+            },
+            "analysisInput": {
+                "documents": [
+                    {
+                        "id": "1",
+                        "text": text,
+                        "countryHint": country_hint
+                    }
+                ]
+            }
+        }
+
+        encoded_body = json.dumps(body).encode('utf-8')
+        request = urllib.request.Request(url, encoded_body, headers)
+
+        log.info(f'Sending language detection request to {url}')
+        log_json(body)
+
+        if self._http_retry:
+            with self._http_retry.urlopen(request) as response:
+                result = json.load(response)
+        else:
+            with urllib.request.urlopen(request) as response:
+                result = json.load(response)
+
+        log.info(f'Received response from {url}')
+        log_json(result)
+
+        try:
+            doc = result["results"]["documents"][0]
+            detected = doc["detectedLanguage"]
+        except (KeyError, IndexError):
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                'Language detection request did not return any document results.'
+            )
+
+        iso_name = detected.get("iso6391Name")
+        confidence = detected.get("confidenceScore", 0.0)
+        script_name = detected.get("scriptName")
+        script_code = detected.get("scriptIso15924Code")
+
+        if iso_name == "(Unknown)":
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                'The language detection service returned "(Unknown)".'
+            )
+
+        return DetectResult(
+            primary_language=iso_name,
+            primary_language_confidence=confidence,
+            alternative_language=None,
+            alternative_language_confidence=None,
+            script_name=script_name,
+            script_code=script_code,
+        )
 
 
 class TranslationClient:
@@ -169,8 +276,36 @@ class TranslationClient:
     DETECT_MAX_CHARS = 50_000
 
     def __init__(self, job_properties: Mapping[str, str], sentence_model: TextSplitterModel):
+        # Decide whether to use legacy (v3.0) or latest (preview) translation API.
+        api_version = job_properties.get('TRANSLATION_API_VERSION', 'LATEST').upper()
+        if api_version in ('LEGACY', '3.0'):
+            self._use_legacy_api = True
+        elif api_version in ('LATEST', 'PREVIEW_2025'):
+            self._use_legacy_api = False
+        else:
+            log.warning(f'Unknown TRANSLATION_API_VERSION "{api_version}". Defaulting to LATEST.', )
+            self._use_legacy_api = False
+        self._api_version_raw = api_version
+
+        # Optional endpoint for language detection (Azure Language Analyze Text).
+        self._language_detection_endpoint = job_properties.get(
+            'LANGUAGE_DETECTION_ENDPOINT', ''
+        ).strip()
+
         self._subscription_key = get_required_property('ACS_SUBSCRIPTION_KEY', job_properties)
         self._subscription_region = job_properties.get('ACS_SUBSCRIPTION_REGION', '')
+
+        # Optional translation parameters for the translation preview API.
+        self._deployment_name = job_properties.get('DEPLOYMENT_NAME', '').strip()
+        self._translation_tone = job_properties.get('TRANSLATION_TONE', '').strip().lower()
+        self._translation_gender = job_properties.get('TRANSLATION_GENDER', '').strip().lower()
+
+        self._to_script = self._normalize_script_code(
+            job_properties.get('TO_SCRIPT', '').strip()
+        )
+        self._suggested_from_script = self._normalize_script_code(
+            job_properties.get('SUGGESTED_FROM_SCRIPT', '').strip()
+        )
 
         self._http_retry = mpf_util.HttpRetry.from_properties(job_properties, log.warning)
 
@@ -178,7 +313,11 @@ class TranslationClient:
         self._translate_url = url_builder.url
         self._to_language = url_builder.to_language.upper()
         self._provided_from_language = url_builder.from_language
-        # Need to know the language's word separator in case the text needs to be split up in to
+
+        acs_url = get_required_property('ACS_URL', job_properties)
+        self._detect_url = create_url(acs_url, 'detect', {})
+
+        # Need to know the language's word separator in case the text needs to be split up into
         # multiple translation requests. In that case we will need to combine the results from
         # each request.
         self._to_lang_word_separator = '' if self._to_language in NO_SPACE_LANGS else ' '
@@ -191,9 +330,6 @@ class TranslationClient:
 
         self._detect_before_translate = mpf_util.get_property(job_properties,
                                                               'DETECT_BEFORE_TRANSLATE', True)
-        acs_url = get_required_property('ACS_URL', job_properties)
-        self._detect_url = create_url(acs_url, 'detect', {})
-
         self._sentence_splitter = SentenceSplitter(job_properties, sentence_model)
 
         prop_names = job_properties.get('FEED_FORWARD_PROP_TO_PROCESS', 'TEXT,TRANSCRIPT')
@@ -233,6 +369,9 @@ class TranslationClient:
                 detection_properties['TRANSLATION SOURCE LANGUAGE CONFIDENCE'] \
                     = source_lang_confidence
 
+                if detect_result.script_code:
+                    detection_properties['TRANSLATION SOURCE SCRIPT'] = detect_result.script_code
+
             if translation_result.skipped:
                 detection_properties['SKIPPED TRANSLATION'] = 'TRUE'
                 if translation_result.language_not_supported:
@@ -247,6 +386,51 @@ class TranslationClient:
 
             self.translation_count += 1
             return  # Only process first matched property.
+
+
+    def _normalize_source_language_for_translation(
+            self,
+            lang_code: Optional[str],
+            script_code: Optional[str]
+    ) -> Optional[str]:
+        """
+        Normalize a detected / upstream language code into the form expected
+        by the translation endpoint.
+        """
+        if not lang_code:
+            return None
+
+        code = lang_code.strip()
+        if not code:
+            return None
+
+        upper = code.upper()
+
+        if upper in DETECTION_LANG_CODE_OVERRIDES:
+            mapped = DETECTION_LANG_CODE_OVERRIDES[upper]
+            log.info(f'Mapping detected language code "{lang_code}" to translation code "{mapped}".')
+            return mapped
+
+        # Cases where translation requires a script-specific code.
+        if upper in SCRIPT_SPLIT_LANG_VARIANTS:
+            script_map = SCRIPT_SPLIT_LANG_VARIANTS[upper]
+            norm_script = self._normalize_script_code(script_code) if script_code else None
+
+            if norm_script and norm_script in script_map:
+                # Exact match of script code -> translation language code.
+                return script_map[norm_script]
+
+            # No script or unexpected script – fall back.
+            default_script, default_lang_tag = next(iter(script_map.items()))
+            log.warning(
+                f'Detected language "{lang_code}" without a usable script code (got {script_code}). '
+                f'Defaulting to translation language "{default_lang_tag}" (script "{default_script}"). If possible, '
+                'configure LANGUAGE_DETECTION_ENDPOINT to use the Azure "analyze-text" '
+                'API so scriptIso15924Code is always returned.'
+            )
+            return default_lang_tag
+
+        return code
 
 
     def _translate_text(self, text: str, detection_properties: Dict[str, str]) -> TranslationResult:
@@ -275,34 +459,65 @@ class TranslationClient:
             detect_result = None
             from_lang = from_lang_confidence = None
 
-
-        if from_lang and from_lang.casefold() == self._to_language.casefold():
-            assert from_lang_confidence is not None
-            translation_info = TranslationResult(
-                text, DetectResult(from_lang, from_lang_confidence), skipped=True)
+        if from_lang:
+            script_for_mapping: Optional[str] = None
+            if detect_result:
+                script_for_mapping = detect_result.script_code
+            normalized_from_lang = self._normalize_source_language_for_translation(
+                from_lang,
+                script_for_mapping
+            )
         else:
-            text_replaced_newlines = self._newline_behavior(text, from_lang)
+            normalized_from_lang = None
+
+        from_script: Optional[str] = None
+        if detect_result and detect_result.script_code:
+            from_script = detect_result.script_code
+        elif self._suggested_from_script:
+            # Fallback script.
+            from_script = self._suggested_from_script
+
+        # If the source and target languages are the same (after normalization),
+        # we can skip translation and just annotate metadata.
+        if normalized_from_lang and normalized_from_lang.casefold() == self._to_language.casefold():
+            assert from_lang_confidence is not None
+            # Transfer script info if also detected.
+            if detect_result is None:
+                detect = DetectResult(normalized_from_lang, from_lang_confidence)
+            else:
+                detect = detect_result
+            translation_info = TranslationResult(text, detect, skipped=True)
+
+        else:
+            newline_lang_hint = normalized_from_lang or from_lang
+            text_replaced_newlines = self._newline_behavior(text, newline_lang_hint)
             grouped_sentences = self._sentence_splitter.split_input_text(
-                text_replaced_newlines, from_lang, from_lang_confidence)
+                text_replaced_newlines,
+                normalized_from_lang,
+                from_lang_confidence
+            )
+
             if not detect_result and grouped_sentences.detected_language:
                 assert grouped_sentences.detected_language_confidence is not None
                 detect_result = DetectResult(grouped_sentences.detected_language,
                                              grouped_sentences.detected_language_confidence)
-            translation_info = self._translate_chunks(grouped_sentences, detect_result)
+
+            translation_info = self._translate_chunks(grouped_sentences, detect_result, from_script)
 
         self._translation_cache[text] = translation_info
         return translation_info
 
 
     def _translate_chunks(self, chunks: SplitTextResult,
-                          detect_result: Optional[DetectResult]) -> TranslationResult:
+                          detect_result: Optional[DetectResult],
+                          from_script: Optional[str]) -> TranslationResult:
         translated_text_chunks = []
         detected_lang = chunks.detected_language
         detected_lang_confidence = chunks.detected_language_confidence
 
         for chunk in chunks.chunks:
             try:
-                response_body = self._send_translation_request(chunk, detected_lang)
+                response_body = self._send_translation_request(chunk, detected_lang, from_script)
             except UnsupportedSourceLanguage:
                 assert detect_result is not None
                 return TranslationResult('', detect_result, True, True)
@@ -322,27 +537,98 @@ class TranslationClient:
                                      DetectResult(detected_lang, detected_lang_confidence))
 
 
-    def _send_translation_request(self, text: str,
-                                  from_language: Optional[str]) -> AcsResponses.Translate:
-        if from_language:
-            url = set_query_params(self._translate_url, {'from': from_language})
+    def _send_translation_request(self,
+                                  text: str,
+                                  from_language: Optional[str],
+                                  from_script: Optional[str]) -> AcsResponses.Translate:
+        headers = get_acs_headers(self._subscription_key, self._subscription_region)
+
+        if self._use_legacy_api:
+
+            # Original v3.0 API behavior.
+            if from_language:
+                url = set_query_params(self._translate_url, {'from': from_language})
+            else:
+                url = self._translate_url
+
+            request_body = [
+                {'Text': text}
+            ]
         else:
+            # Preview 2025-10-01 translation API.
             url = self._translate_url
-        request_body = [
-            {'Text': text}
-        ]
+
+            target: Dict[str, str] = {"language": self._to_language}
+            if self._deployment_name:
+                target["deploymentName"] = self._deployment_name
+            if self._translation_tone:
+                target["tone"] = self._translation_tone
+            if self._translation_gender:
+                target["gender"] = self._translation_gender
+            if self._to_script:
+                target["script"] = self._to_script
+
+            input_obj: Dict[str, object] = {
+                "text": text,
+                "targets": [target]
+            }
+            if from_language:
+                # Explicitly specify source language if we know it.
+                input_obj["language"] = from_language
+            if from_script:
+                # ISO 15924 script code for the source text.
+                input_obj["script"] = from_script
+
+            request_body = {
+                "inputs": [input_obj]
+            }
+
         encoded_body = json.dumps(request_body).encode('utf-8')
-        request = urllib.request.Request(url, encoded_body,
-                                         get_acs_headers(self._subscription_key, self._subscription_region))
+        request = urllib.request.Request(url, encoded_body, headers)
         log.info(f'Sending POST to {url}')
         log_json(request_body)
         with self._http_retry.urlopen(
-                    request,
-                    should_retry=self._prevent_retry_when_unsupported_language) as response:
-            response_body: AcsResponses.Translate = json.load(response)
-            log.info(f'Received response from {url}.')
-            log_json(response_body)
-            return response_body
+            request,
+            should_retry=self._prevent_retry_when_unsupported_language) as response:
+            raw_body = json.load(response)
+
+        log.info(f'Received response from {url}.')
+        log_json(raw_body)
+
+        if self._use_legacy_api:
+            response_body: AcsResponses.Translate = raw_body
+        else:
+            # Normalize preview response to the legacy AcsResponses.Translate shape so the
+            # rest of the code (e.g. _translate_chunks) does not need to change.
+            response_body_list: List[Dict[str, object]] = []
+            value_items = raw_body.get('value', [])
+            for item in value_items:
+                translations = []
+                for trans in item.get('translations', []):
+                    translations.append({
+                        'text': trans['text'],
+                        'to': trans.get('language', self._to_language)
+                    })
+                response_body_list.append({
+                    'translations': translations,
+                    'detectedLanguage': item.get('detectedLanguage')
+                })
+
+            response_body = response_body_list
+        return response_body
+
+    @staticmethod
+    def _normalize_script_code(script: str) -> Optional[str]:
+        """
+        Normalize user-provided script codes to the ISO 15924 canonical form
+        Azure expects, e.g. 'latn' -> 'Latn'. If blank, return None.
+        """
+        if not script:
+            return None
+        s = script.strip()
+        if len(s) == 4:
+            return s[0].upper() + s[1:].lower()
+        return s
 
     @staticmethod
     def _prevent_retry_when_unsupported_language(url: str, exception: urllib.error.URLError,
@@ -355,6 +641,17 @@ class TranslationClient:
         return True
 
     def _detect_language(self, text: str) -> DetectResult:
+        # Prefer the new Azure Language Analyze Text endpoint if provided.
+        if self._language_detection_endpoint:
+            detection_client = AzureLanguageDetectionClient(
+                self._language_detection_endpoint,
+                self._subscription_key,
+                self._subscription_region,
+                self._http_retry
+            )
+            return detection_client.detect_language(text)
+
+        # Fallback to legacy/detect behavior.
         response = self._send_detect_request(text)
         primary_language = response[0]['language']
         primary_language_score = response[0]['score']
@@ -584,28 +881,42 @@ class AcsTranslateUrlBuilder:
         url_parts = urllib.parse.urlparse(base_url)
 
         query_dict: Dict[str, List[str]] = urllib.parse.parse_qs(url_parts.query)
-        query_dict.setdefault('api-version', ['3.0'])
 
         self.to_language = (job_properties.get('TO_LANGUAGE')
                             or self.from_query_dict('to', query_dict)
                             or 'en')
-        query_dict['to'] = [self.to_language]
 
         self.from_language = (job_properties.get('FROM_LANGUAGE')
                               or self.from_query_dict('from', query_dict))
-        if self.from_language:
-            query_dict['from'] = [self.from_language]
 
-        if suggested_from := job_properties.get('SUGGESTED_FROM_LANGUAGE'):
-            query_dict['suggestedFrom'] = [suggested_from]
+        api_version = job_properties.get('TRANSLATION_API_VERSION', 'LATEST').upper()
+        use_legacy = api_version in ('LEGACY', '3.0')
 
-        if category := job_properties.get('CATEGORY'):
-            query_dict['category'] = [category]
+        if use_legacy:
+            # Setup v3.0 translate URL.
+            query_dict.setdefault('api-version', ['3.0'])
+            query_dict['to'] = [self.to_language]
+            if self.from_language:
+                query_dict['from'] = [self.from_language]
 
-        query_string = urllib.parse.urlencode(query_dict, doseq=True)
-        path = url_parts.path + '/translate'
-        replaced_parts = url_parts._replace(path=path, query=query_string)
-        self.url = urllib.parse.urlunparse(replaced_parts)
+            if suggested_from := job_properties.get('SUGGESTED_FROM_LANGUAGE'):
+                query_dict['suggestedFrom'] = [suggested_from]
+
+            if category := job_properties.get('CATEGORY'):
+                query_dict['category'] = [category]
+
+            query_string = urllib.parse.urlencode(query_dict, doseq=True)
+            path = url_parts.path + '/translate'
+            replaced_parts = url_parts._replace(path=path, query=query_string)
+            self.url = urllib.parse.urlunparse(replaced_parts)
+        else:
+            # Setup preview translate URL:
+            # {ACS_URL}/translate?api-version=2025-10-01-preview
+            base_path = url_parts.path.rstrip('/')
+            path = base_path + '/translate'
+            query_string = urllib.parse.urlencode({'api-version': '2025-10-01-preview'})
+            replaced_parts = url_parts._replace(path=path, query=query_string)
+            self.url = urllib.parse.urlunparse(replaced_parts)
 
     @staticmethod
     def from_query_dict(key: str, query_dict: Dict[str, List[str]]) -> Optional[str]:
