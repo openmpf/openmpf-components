@@ -60,7 +60,8 @@ RUN --mount=type=tmpfs,target=/tmp \
         | tar --extract --gzip \
     && mkdir -p tesseract-4.1.1/build \
     && cd tesseract-4.1.1/build \
-    && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local .. \
+    && PKG_CONFIG_PATH=/usr/local/lib/pkgconfig cmake3 -DCMAKE_INSTALL_PREFIX:PATH=/usr/local \
+        -DAUTO_OPTIMIZE=OFF .. \
     && make install -j $(nproc) \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/unicharset.h /usr/local/include/tesseract/ \
     && cp /tmp/tesseract/tesseract-4.1.1/src/ccutil/errcode.h /usr/local/include/tesseract/ \
