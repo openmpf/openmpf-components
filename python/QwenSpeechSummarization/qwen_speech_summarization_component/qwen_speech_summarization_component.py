@@ -63,7 +63,7 @@ class QwenSpeechSummaryComponent:
                 model=self.client_model_name, #model_name ## for ollama
                 # reasoning_effort='none',
                 messages=[
-                    {"role": "user", "content": prompt, "reasponse_format": response_format}
+                    {"role": "user", "content": prompt, "response_format": response_format}
                 ],
                 temperature=0,
                 stream=True,
