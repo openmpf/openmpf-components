@@ -32,7 +32,7 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
 
-RUN pip install --no-cache-dir openai-whisper==20240930
+RUN pip install --no-cache-dir --no-build-isolation openai-whisper==20240930
 
 RUN python -c 'import whisper; whisper.load_model("base")'
 RUN python -c 'import whisper; whisper.load_model("base.en")'
