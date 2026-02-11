@@ -87,6 +87,12 @@
           "defaultValue": "http://qwen-speech-summarization-server:11434/v1"
         },
         {
+          "name": "VLLM_HEALTH_URI",
+          "description": "An absolute OR relative URI of a healthcheck for the openai-api backend",
+          "type": "STRING",
+          "defaultValue": "../health"
+        },
+        {
           "name": "TARGET_SEGMENT_LENGTH",
           "description": "If this value is less than or equal to 0, no segmenting will be performed.",
           "type": "INT",

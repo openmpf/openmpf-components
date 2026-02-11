@@ -93,7 +93,7 @@ class QwenSpeechSummaryComponent:
         return func
 
     @staticmethod
-    def _get_openai_api_client_when_server_is_ready(timeout_seconds=300, retry_delay_seconds=5, **kwargs):
+    def _get_openai_api_client_when_server_is_ready(config, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
         start_time = time.time()
         base_url = kwargs['base_url']
         success = False
@@ -101,7 +101,7 @@ class QwenSpeechSummaryComponent:
         last_error = None
         while time.time() - start_time < timeout_seconds:
             try:
-                response = requests.get(f"{base_url}/../health", timeout=retry_delay_seconds)
+                response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
                 if response.status_code == 200:
                     if failed_ever:
                         logger.info("VLLM is now available")
@@ -141,7 +141,7 @@ class QwenSpeechSummaryComponent:
 
         if not self.client_factory:
             # Set OpenAI API base URL
-            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key=config.api_token)
+            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
@@ -234,6 +234,11 @@ class JobConfig:
 
         self.vllm_uri = \
             mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
+
+        self.vllm_health_uri = \
+            mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
+        if '://' not in self.vllm_health_uri:
+            self.vllm_health_uri = os.path.join(self.vllm_uri, self.vllm_health_uri)
 
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
