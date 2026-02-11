@@ -104,15 +104,15 @@ class QwenSpeechSummaryComponent:
                 response = requests.get(f"{base_url}/../health", timeout=retry_delay_seconds)
                 if response.status_code == 200:
                     if failed_ever:
-                        print("VLLM is now available")
+                        logger.info("VLLM is now available")
                     success = True
                     break
                 else:
                     failed_ever = True
-                    print(f"Received HTTP{response.status_code} from {base_url}")
+                    logger.warn(f"Received HTTP{response.status_code} from {base_url}")
             except Exception as e:
                 failed_ever = True
-                print(f"Waiting up to {timeout_seconds}s for VLLM at {base_url} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
+                logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {base_url} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
                 last_error = e
             time.sleep(retry_delay_seconds)
 
@@ -139,8 +139,6 @@ class QwenSpeechSummaryComponent:
         # vllm
         self.client_model_name = self.model_name_hf
 
-        logger.debug(f"Using VLLM URI: {config.vllm_uri}")  ## DEBUG
-
         if not self.client_factory:
             # Set OpenAI API base URL
             self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key=config.api_token)
@@ -149,9 +147,7 @@ class QwenSpeechSummaryComponent:
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
-        print(f'Received feed forward video job.')
-
-        #print('Received all tracks video job: {video_job}')
+        logger.info(f'Received feed forward video job.')
 
         config = JobConfig(video_job.job_properties)
         self._setup_client(config)
@@ -168,7 +164,7 @@ class QwenSpeechSummaryComponent:
             chunks = split_csv_into_chunks(self.tokenizer, input, self.chunk_size, self.overlap)
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
-                print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
+                logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
                 content = self._get_output(classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
@@ -177,7 +173,7 @@ class QwenSpeechSummaryComponent:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
                 final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
             if config.debug:
-                print(final_summary.model_dump_json())
+                logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary
             }
@@ -207,9 +203,9 @@ class QwenSpeechSummaryComponent:
                         final_summary.classifiers)
                 )
             )
-            print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
+            logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
             if config.debug:
-                print(f'get_detections_from_all_video_tracks results: {results}')
+                logger.debug(f'get_detections_from_all_video_tracks results: {results}')
             return results
 
         else:
@@ -217,7 +213,7 @@ class QwenSpeechSummaryComponent:
             raise the_roof
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
-        print(f'Received audio job.')
+        logger.info(f'Received audio job.')
 
         raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(f'Audio detection not supported.')
 
