@@ -94,32 +94,32 @@ class QwenSpeechSummaryComponent:
 
     @staticmethod
     def _get_openai_api_client_when_server_is_ready(config, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
-        start_time = time.time()
-        base_url = kwargs['base_url']
-        success = False
-        failed_ever = False
-        last_error = None
-        while time.time() - start_time < timeout_seconds:
-            try:
-                response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
-                if response.status_code == 200:
-                    if failed_ever:
-                        logger.info("VLLM is now available")
-                    success = True
-                    break
-                else:
+        if config.vllm_health_uri:
+            start_time = time.time()
+            success = False
+            failed_ever = False
+            last_error = None
+            while time.time() - start_time < timeout_seconds:
+                try:
+                    response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
+                    if response.status_code == 200:
+                        if failed_ever:
+                            logger.info("VLLM is now available")
+                        success = True
+                        break
+                    else:
+                        failed_ever = True
+                        logger.warn(f"Received HTTP{response.status_code} from {config.vllm_health_uri}")
+                except Exception as e:
                     failed_ever = True
-                    logger.warn(f"Received HTTP{response.status_code} from {base_url}")
-            except Exception as e:
-                failed_ever = True
-                logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {base_url} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
-                last_error = e
-            time.sleep(retry_delay_seconds)
+                    logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
+                    last_error = e
+                time.sleep(retry_delay_seconds)
 
-        if not success:
-            if last_error:
-                raise last_error
-            raise Exception("Timed out waiting for VLLM to be healthy")
+            if not success:
+                if last_error:
+                    raise last_error
+                raise Exception("Timed out waiting for VLLM to be healthy")
 
         return OpenAI(**kwargs)
 
