@@ -50,8 +50,6 @@ from .llm_util.classifiers import get_classifier_lines
 from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
 from .llm_util.input_cleanup import convert_tracks_to_csv
 
-import importlib.resources
-
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
 class QwenSpeechSummaryComponent:
