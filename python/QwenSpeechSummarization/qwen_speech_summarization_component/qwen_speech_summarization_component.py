@@ -225,7 +225,7 @@ class QwenSpeechSummaryComponent:
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         print(f'Received audio job.')
 
-        raise Exception('Getting 1 track at a time is going to be rough')
+        raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(f'Audio detection not supported.')
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str]):
