@@ -81,12 +81,6 @@ class QwenSpeechSummaryComponent:
                         content += event.choices[0].delta.content
         return content
 
-    # DEBUG: Test with CLI Runner
-    def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
-        config = JobConfig(job.job_properties)
-        self._setup_client(config)
-        raise NotImplementedError('Generic jobs are not supported by QwenSpeechSummaryComponent')
-
     @staticmethod
     def _get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
         detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
@@ -133,12 +127,12 @@ class QwenSpeechSummaryComponent:
         self.client_factory = clientFactory
 
     def _setup_client(self, config):
-        self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+        self.model_name_hf = config.vllm_model
 
         # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
-        self.max_model_len = int(os.environ.get('MAX_MODEL_LEN', 45000))
-        self.chunk_size = int(os.environ.get('INPUT_TOKEN_CHUNK_SIZE', 10000))
-        self.overlap = int(os.environ.get('INPUT_CHUNK_TOKEN_OVERLAP', 500))
+        self.max_model_len = config.max_model_len
+        self.chunk_size = config.chunk_size
+        self.overlap = config.overlap
 
         # TODO: warn if chunk_size is TOO LARGE of a proportion of max_model_len
 
@@ -149,7 +143,7 @@ class QwenSpeechSummaryComponent:
 
         if not self.client_factory:
             # Set OpenAI API base URL
-            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key="whatever")
+            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key=config.api_token)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
@@ -231,6 +225,14 @@ class JobConfig:
     def __init__(self, props: Mapping[str, str]):
         # if debug is true will return which corpus sentences triggered the match
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+
+        self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
+        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 10000))
+        self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 500))
+
+        self.api_token = mpf_util.get_property(props, 'API_TOKEN', "Must be set for anonymous VLLM, but can be anything")
 
         self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
 

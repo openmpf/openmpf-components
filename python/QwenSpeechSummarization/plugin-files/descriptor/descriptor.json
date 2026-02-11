@@ -21,6 +21,36 @@
       ],
       "properties": [
         {
+          "name": "VLLM_MODEL",
+          "description": "The model being served by the openai-api running at VLLM_URI",
+          "type": "STRING",
+          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        },
+        {
+          "name": "API_TOKEN",
+          "description": "The API Token that can access the openai api",
+          "type": "STRING",
+          "defaultValue": "Must be set for anonymous VLLM, but can be anything"
+        },
+        {
+          "name": "MAX_MODEL_LEN",
+          "description": "The largest model length that can fit on the GPU",
+          "type": "INT",
+          "defaultValue": 45000
+        },
+        {
+          "name": "INPUT_TOKEN_CHUNK_SIZE",
+          "description": "The input size maximum, roughly 20%-25% of max model length",
+          "type": "INT",
+          "defaultValue": 10000
+        },
+        {
+          "name": "INPUT_CHUNK_TOKEN_OVERLAP",
+          "description": "Overlap between split input chunks. Probably much smaller than INPUT_TOKEN_CHUNK_SIZE",
+          "type": "INT",
+          "defaultValue": "500"
+        },
+        {
           "name": "CLASSIFIERS_LIST",
           "description": "Comma-separated list of classifiers to include in the summary output.",
           "type": "STRING",
