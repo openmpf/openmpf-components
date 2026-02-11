@@ -44,7 +44,7 @@ dependencies = [
 ]
 
 [project.entry-points."mpf.exported_component"]
-component = "qwen_speech_summarization_component:QwenSpeechSummaryComponent"
+component = "qwen_speech_summarization_component.qwen_speech_summarization_component:QwenSpeechSummaryComponent"
 
 [tool.setuptools.package-data]
 qwen_speech_summarization_component = [
