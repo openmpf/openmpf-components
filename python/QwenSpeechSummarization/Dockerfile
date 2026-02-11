@@ -31,7 +31,7 @@ ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
-RUN set -x; DEPS="transformers>=4.51.0 accelerate pydantic openai jinja2"; \
+RUN set -x; DEPS="transformers>=4.51.0 accelerate==1.12.0 pydantic==2.12.5 openai==2.16.0 jinja2"; \
     if [ "${RUN_TESTS,,}" == true ]; then DEPS="$DEPS pytest"; fi; \
     pip3 install --no-cache-dir $DEPS
 
