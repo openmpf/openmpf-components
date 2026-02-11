@@ -68,6 +68,7 @@ configure_mpf_component(TesseractOCRTextDetection TARGETS  mpfTesseractOCRTextDe
 add_subdirectory(test)
 
 # TODO: Figure out where the model updater files came from and update them to Tesseract 5.
+# Will be addressed in https://github.com/openmpf/openmpf/issues/1999
 # add_subdirectory(model_updater_tesseract_src)
 
 # Build executable

@@ -96,6 +96,7 @@ COPY --from=build_component $BUILD_DIR/plugin/TesseractOCRTextDetection $PLUGINS
 COPY --from=build_component $BUILD_DIR/libmpfTesseractOCRTextDetection.so \
                             $PLUGINS_DIR/TesseractOCRTextDetection/lib/
 
+# Will be addressed in https://github.com/openmpf/openmpf/issues/1999
 # COPY --from=build_component $BUILD_DIR/tessdata_model_updater \
 #                             /opt/mpf/tessdata_model_updater
 
