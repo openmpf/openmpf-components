@@ -43,12 +43,19 @@ from transformers import AutoTokenizer
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-# No local model loading; using remote API
-from .schema import response_format, StructuredResponse
+# If import fails with ., assume we are running in pydebug and the CWD is proper
+try:
+    from .schema import response_format, StructuredResponse
 
-from .llm_util.classifiers import get_classifier_lines
-from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
-from .llm_util.input_cleanup import convert_tracks_to_csv
+    from .llm_util.classifiers import get_classifier_lines
+    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from .llm_util.input_cleanup import convert_tracks_to_csv
+except:
+    from schema import response_format, StructuredResponse
+
+    from llm_util.classifiers import get_classifier_lines
+    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from llm_util.input_cleanup import convert_tracks_to_csv
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
