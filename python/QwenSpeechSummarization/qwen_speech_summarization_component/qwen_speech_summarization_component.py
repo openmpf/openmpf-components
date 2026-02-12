@@ -145,6 +145,14 @@ class QwenSpeechSummaryComponent:
         self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
 
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
+        """
+        Process:
+        1. Convert all input tracks to a CSV format
+        2. Split CSV into chunks to fit in context window, retaining header row on each chunk
+        3. Run each chunk through the LLM, templating classifiers and each chunk into the prompt, receiving its summary
+        4. Recursively summarize summaries until only 1 remains
+        5. Convert to final summary VideoTracks for output
+        """
         logger.info(f'Received feed forward video job.')
 
         config = JobConfig(video_job.job_properties)
