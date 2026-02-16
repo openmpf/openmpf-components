@@ -30,9 +30,9 @@ import json
 def test_chunk_within_limits():
     input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-    token_count_at_boundaries = [0, 0, 0, 2, 0, 0, 0, 0, 0, 0]
+    token_count_at_boundaries = [0, 0, 0, 2, 1, 1, 0, 0, 0, 0]
 
-    expected = [[0, 1, 2], [3], [4, 5, 6, 7, 8, 9]]
+    expected = [[0, 1, 2], [3, 4], [5, 6, 7, 8, 9]]
 
     actual = _chunk_within_limits(10, 1, 0, token_count_at_boundaries, None, lambda i: input[i])
 
@@ -57,7 +57,7 @@ def test_chunk_within_limits_min_grouping():
 
     token_count_at_boundaries = [1, 10, 10, 1, 10, 10, 1, 1, 1, 1]
 
-    expected = [[0, 1], [2, 3], [4, 5], [6, 7, 8], [9]]
+    expected = [[0, 1], [2, 3], [4, 5], [6, 7, 8, 9]]
 
     actual = _chunk_within_limits(10, 3, 0, token_count_at_boundaries, 2, lambda i: input[i])
 

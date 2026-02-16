@@ -47,20 +47,21 @@ def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_
             if chunk_data:
                 chunks.append(convert_chunk_for_output(chunk_data))
 
-            # Start the new chunk with overlap
-            # Determine how many rows from the end of the last chunk to include in the new one
             overlap_data = []
-            overlap_items = 0
             overlap_tokens = 0
-            for j in range(i-1, 0, -1):
-                if token_count_at_boundaries[j] + overlap_tokens <= overlap:
-                    overlap_data.append(get_partial_chunk(j)) # type: ignore
-                    overlap_tokens += token_count_at_boundaries[j]
-                else:
-                    # When the limit is hit, finalize the current chunk
-                    break
-            overlap_items += len(overlap_data)
-            
+            overlap_items = 0
+            if overlap > 0:
+                # Start the new chunk with overlap
+                # Determine how many rows from the end of the last chunk to include in the new one
+                for j in range(i-1, 0, -1):
+                    if token_count_at_boundaries[j] + overlap_tokens <= overlap:
+                        overlap_data.append(get_partial_chunk(j)) # type: ignore
+                        overlap_tokens += token_count_at_boundaries[j]
+                    else:
+                        # When the limit is hit, finalize the current chunk
+                        break
+                overlap_items += len(overlap_data)
+
             chunk_data = [*overlap_data, get_partial_chunk(i)] # type: ignore
             chunk_tokens = overlap_tokens
     if chunk_data:
