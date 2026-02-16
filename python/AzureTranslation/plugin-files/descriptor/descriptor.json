@@ -171,6 +171,44 @@
       "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
       "algorithm": "AZURETRANSLATION",
       "properties": []
+    },
+     {
+      "name": "AZURE TRANSLATION LEGACY (WITH FF REGION) ACTION",
+      "description": "Uses Azure Cognitive Services v3.0 translation API on feed-forward tracks and detections.",
+      "algorithm": "AZURETRANSLATION",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "IS_ANNOTATOR",
+          "value": "TRUE"
+        },
+        {
+          "name": "TRANSLATION_API_VERSION",
+          "value": "3.0"
+        },
+        {
+          "name": "LANGUAGE_DETECTION_ENDPOINT",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "name": "AZURE TRANSLATION LEGACY TEXT FILE ACTION",
+      "description": "Uses Azure Cognitive Services v3.0 translation API on a plain text file.",
+      "algorithm": "AZURETRANSLATION",
+      "properties": [
+        {
+          "name": "TRANSLATION_API_VERSION",
+          "value": "3.0"
+        },
+        {
+          "name": "LANGUAGE_DETECTION_ENDPOINT",
+          "value": ""
+        }
+      ]
     }
   ],
   "tasks": [
@@ -187,6 +225,20 @@
       "actions": [
         "AZURE TRANSLATION TEXT FILE ACTION"
       ]
+    },
+        {
+      "name": "AZURE TRANSLATION LEGACY (WITH FF REGION) TASK",
+      "description": "Uses Azure Cognitive Services v3.0 translation API on feed-forward tracks and detections.",
+      "actions": [
+        "AZURE TRANSLATION LEGACY (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "AZURE TRANSLATION LEGACY TEXT FILE TASK",
+      "description": "Uses Azure Cognitive Services v3.0 translation API on a plain text file.",
+      "actions": [
+        "AZURE TRANSLATION LEGACY TEXT FILE ACTION"
+      ]
     }
   ],
   "pipelines": [
@@ -195,6 +247,20 @@
       "description": "Uses Azure Cognitive Services to perform translation on a plain text file.",
       "tasks": [
         "AZURE TRANSLATION TEXT FILE TASK"
+      ]
+    },
+        {
+      "name": "AZURE TRANSLATION LEGACY (WITH FF REGION) PIPELINE",
+      "description": "Uses Azure Cognitive Services v3.0 translation API on feed-forward tracks and detections.",
+      "tasks": [
+        "AZURE TRANSLATION LEGACY (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "AZURE TRANSLATION LEGACY TEXT FILE PIPELINE",
+      "description": "Uses Azure Cognitive Services v3.0 translation API on a plain text file.",
+      "tasks": [
+        "AZURE TRANSLATION LEGACY TEXT FILE TASK"
       ]
     }
   ]

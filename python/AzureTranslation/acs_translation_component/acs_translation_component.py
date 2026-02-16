@@ -461,8 +461,10 @@ class TranslationClient:
 
         if from_lang:
             script_for_mapping: Optional[str] = None
-            if detect_result:
+            if detect_result and detect_result.script_code:
                 script_for_mapping = detect_result.script_code
+            elif self._suggested_from_script:
+                script_for_mapping = self._suggested_from_script
             normalized_from_lang = self._normalize_source_language_for_translation(
                 from_lang,
                 script_for_mapping

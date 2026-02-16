@@ -613,6 +613,56 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual('MN', docs[0]['countryHint'])
         self.assertEqual(text, docs[0]['text'])
 
+    def test_serbian_preview_translate_uses_suggested_script(self):
+
+        serbian_text = 'Ово је тест' # This is a test.
+        self.set_results_file('preview-translate-single.json')
+
+        # By default, if we don't get use language detection
+        # Serbian defaults to Cyrillic text.
+        props = get_test_properties(
+            TRANSLATION_API_VERSION='LATEST',
+            FROM_LANGUAGE='sr',
+            SUGGESTED_FROM_SCRIPT='')
+        client = TranslationClient(props, self.wtp_model)
+
+        detection_props = dict(TEXT=serbian_text)
+        client.add_translations(detection_props)
+
+        translate_url, translate_body = self.get_request()
+        parsed = urllib.parse.urlparse(translate_url)
+        qd = urllib.parse.parse_qs(parsed.query)
+
+        inputs = translate_body['inputs']
+        self.assertEqual(1, len(inputs))
+        result = inputs[0]
+
+        self.assertEqual(serbian_text, result['text'])
+        self.assertEqual('sr-Cyrl', result['language'])
+
+        self.set_results_file('preview-translate-single.json')
+
+        # Shift to the Latin variant:
+        props = get_test_properties(
+            TRANSLATION_API_VERSION='LATEST',
+            FROM_LANGUAGE='sr',
+            SUGGESTED_FROM_SCRIPT='Latn')
+
+        detection_props = dict(TEXT=serbian_text)
+        client.add_translations(detection_props)
+
+        translate_url, translate_body = self.get_request()
+        parsed = urllib.parse.urlparse(translate_url)
+        qd = urllib.parse.parse_qs(parsed.query)
+
+        inputs = translate_body['inputs']
+        self.assertEqual(1, len(inputs))
+        result = inputs[0]
+
+        self.assertEqual(serbian_text, result['text'])
+        self.assertEqual('sr-Latn', result['language'])
+        self.assertEqual('Latn', result['script'])
+
 
 
     def test_different_to_language(self):
