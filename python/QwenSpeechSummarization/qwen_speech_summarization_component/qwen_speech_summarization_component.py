@@ -171,7 +171,7 @@ class QwenSpeechSummaryComponent:
                         break
                     else:
                         failed_ever = True
-                        logger.warn(f"Received HTTP{response.status_code} from {config.vllm_health_uri}")
+                        logger.warning(f"Received HTTP{response.status_code} from {config.vllm_health_uri}")
                 except Exception as e:
                     failed_ever = True
                     logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
