@@ -261,8 +261,7 @@ class QwenSpeechSummaryComponent:
             return results
 
         else:
-            the_roof = Exception("Received no feed forward tracks")
-            raise the_roof
+            raise mpf.DetectionError.MPF_OTHER_DETECTION_ERROR_TYPE.exception('Received no feed forward tracks')
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         logger.info(f'Received audio job.')
