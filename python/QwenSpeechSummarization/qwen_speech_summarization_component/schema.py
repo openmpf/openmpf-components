@@ -47,11 +47,4 @@ class StructuredResponse(BaseModel):
     classifiers: List[Classifier]
     entities: EntitiesObject
 
-response_format = {
-    "type": "json_schema",
-    "json_schema": {
-        "name": "StructuredResponse",
-        "schema": StructuredResponse.model_json_schema(),
-        "strict": True
-    }
-}
+response_format_json_schema = StructuredResponse.model_json_schema()

@@ -28,6 +28,7 @@ import importlib.resources
 import logging
 import math
 import os
+from openai.types import ResponseFormatJSONSchema
 import requests
 import sys
 import time
@@ -45,13 +46,13 @@ import mpf_component_util as mpf_util
 
 # If import fails with ., assume we are running in pydebug and the CWD is proper
 try:
-    from .schema import response_format, StructuredResponse
+    from .schema import response_format_json_schema, StructuredResponse
 
     from .llm_util.classifiers import get_classifier_lines
     from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
     from .llm_util.input_cleanup import convert_tracks_to_csv
 except:
-    from schema import response_format, StructuredResponse
+    from schema import response_format_json_schema, StructuredResponse
 
     from llm_util.classifiers import get_classifier_lines
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
@@ -59,21 +60,77 @@ except:
 
 logger = logging.getLogger('QwenSpeechSummaryComponent')
 
+
+class JobConfig:
+    def __init__(self, props: Mapping[str, str]):
+        # if debug is true will return which corpus sentences triggered the match
+        self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+
+        self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
+        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 10000))
+        self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 500))
+
+        self.api_token = mpf_util.get_property(props, 'API_TOKEN', "Must be set for anonymous VLLM, but can be anything")
+
+        self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
+
+        self.vllm_uri = \
+            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
+
+        self.vllm_health_uri = \
+            mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
+        if '://' not in self.vllm_health_uri:
+            self.vllm_health_uri = os.path.join(self.vllm_uri, self.vllm_health_uri)
+
+        self.enabled_classifiers = \
+            mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
+
+        # exclude classifiers from output if their confidence is below this threshold
+        self.classifier_confidence_minimum = \
+            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', 0.3)
+
+        self.classifiers_path = \
+            self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
+
+    @staticmethod
+    def _get_file_path(path: str) -> str:
+        expanded_path = os.path.expandvars(path)
+        if os.path.exists(expanded_path):
+            return expanded_path
+        resource = importlib.resources.files(__name__) / expanded_path
+        if resource.is_file():
+            return str(importlib.resources.as_file(resource).__enter__())
+        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
+            f"{path} does not exist.")
+
 class QwenSpeechSummaryComponent:
-    
-    def _get_output(self, classifiers, input):
-        prompt = self.template.render(input = input, classifiers=classifiers)
-        with self.client_factory() as client:
+    def _get_output(self, config: JobConfig, template, classifiers, input):
+        if self.client_factory:
+            client_factory = self.client_factory
+        else:
+            client_factory = lambda: QwenSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
+        prompt = template.render(input = input, classifiers=classifiers)
+        with client_factory() as client:
             stream = client.chat.completions.create(
-                model=self.client_model_name, #model_name ## for ollama
+                model=config.vllm_model, #model_name ## for ollama
                 # reasoning_effort='none',
                 messages=[
-                    {"role": "user", "content": prompt, "response_format": response_format}
+                    {"role": "user", "content": prompt}
                 ],
                 temperature=0,
                 stream=True,
-                max_tokens=0.95 * (self.max_model_len - self.chunk_size - self.overlap),
+                max_completion_tokens=int(math.floor(0.95 * (config.max_model_len - config.chunk_size - config.overlap))),
                 timeout=300,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "StructuredResponse",
+                        "schema": response_format_json_schema,
+                        "strict": True
+                    }
+                }
             )
             content = ""
             for event in stream:
@@ -131,26 +188,6 @@ class QwenSpeechSummaryComponent:
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
 
-    def _setup_client(self, config):
-        self.model_name_hf = config.vllm_model
-
-        # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
-        self.max_model_len = config.max_model_len
-        self.chunk_size = config.chunk_size
-        self.overlap = config.overlap
-
-        # TODO: warn if chunk_size is TOO LARGE of a proportion of max_model_len
-
-        # vllm
-        self.client_model_name = self.model_name_hf
-
-        if not self.client_factory:
-            # Set OpenAI API base URL
-            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
-        self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
-
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
         """
         Process:
@@ -163,10 +200,12 @@ class QwenSpeechSummaryComponent:
         logger.info(f'Received feed forward video job.')
 
         config = JobConfig(video_job.job_properties)
-        self._setup_client(config)
 
-        self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-        self.template = self.env.get_template(os.path.basename(config.prompt_template))
+        tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
+
+        env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        template = env.get_template(os.path.basename(config.prompt_template))
 
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
@@ -174,17 +213,17 @@ class QwenSpeechSummaryComponent:
             input = convert_tracks_to_csv(video_job.feed_forward_tracks)
 
             summaries = []
-            chunks = split_csv_into_chunks(self.tokenizer, input, self.chunk_size, self.overlap)
+            chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
                 logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
-                content = self._get_output(classifiers, chunk)
+                content = self._get_output(config, template, classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
-                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
             if config.debug:
                 logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
@@ -229,50 +268,6 @@ class QwenSpeechSummaryComponent:
         logger.info(f'Received audio job.')
 
         raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(f'Audio detection not supported.')
-
-class JobConfig:
-    def __init__(self, props: Mapping[str, str]):
-        # if debug is true will return which corpus sentences triggered the match
-        self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
-
-        self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
-
-        self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
-        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 10000))
-        self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 500))
-
-        self.api_token = mpf_util.get_property(props, 'API_TOKEN', "Must be set for anonymous VLLM, but can be anything")
-
-        self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
-
-        self.vllm_uri = \
-            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
-
-        self.vllm_health_uri = \
-            mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
-        if '://' not in self.vllm_health_uri:
-            self.vllm_health_uri = os.path.join(self.vllm_uri, self.vllm_health_uri)
-
-        self.enabled_classifiers = \
-            mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
-
-        # exclude classifiers from output if their confidence is below this threshold
-        self.classifier_confidence_minimum = \
-            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', 0.3)
-
-        self.classifiers_path = \
-            self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
-
-    @staticmethod
-    def _get_file_path(path: str) -> str:
-        expanded_path = os.path.expandvars(path)
-        if os.path.exists(expanded_path):
-            return expanded_path
-        resource = importlib.resources.files(__name__) / expanded_path
-        if resource.is_file():
-            return str(importlib.resources.as_file(resource).__enter__())
-        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
-            f"{path} does not exist.")
 
 def run_component_test(clientFactory = None):
     qsc = QwenSpeechSummaryComponent(clientFactory)
