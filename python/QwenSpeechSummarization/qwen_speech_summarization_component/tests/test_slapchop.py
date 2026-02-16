@@ -39,6 +39,19 @@ def test_chunk_within_limits():
     assert len(expected) == len(actual)
     assert all([a == b for a, b in zip(actual, expected)])
 
+
+def test_chunk_with_overlap():
+    input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+    token_count_at_boundaries = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    expected = [[0, 1], [1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8, 9]]
+
+    actual = _chunk_within_limits(10, 2, 1, token_count_at_boundaries, None, lambda i: input[i])
+
+    assert len(expected) == len(actual)
+    assert all([a == b for a, b in zip(actual, expected)])
+
 def test_chunk_within_limits_min_grouping():
     input = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
