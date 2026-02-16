@@ -85,7 +85,7 @@ class JobConfig:
             self.vllm_health_uri = os.path.join(self.vllm_uri, self.vllm_health_uri)
 
         self.enabled_classifiers = \
-            mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
+            mpf_util.get_property(props, 'CLASSIFIERS_LIST', "ALL")
 
         # exclude classifiers from output if their confidence is below this threshold
         self.classifier_confidence_minimum = \
