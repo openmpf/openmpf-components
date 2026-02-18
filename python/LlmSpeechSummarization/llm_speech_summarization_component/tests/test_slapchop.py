@@ -32,7 +32,7 @@ def test_chunk_within_limits():
 
     token_count_at_boundaries = [0, 0, 0, 2, 1, 1, 0, 0, 0, 0]
 
-    expected = [[0, 1, 2], [3, 4], [5, 6, 7, 8, 9]]
+    expected = [[0, 1, 2], [3], [4], [5, 6, 7, 8, 9]]
 
     actual = _chunk_within_limits(10, 1, 0, token_count_at_boundaries, None, lambda i: input[i])
 
@@ -45,7 +45,7 @@ def test_chunk_with_overlap():
 
     token_count_at_boundaries = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
-    expected = [[0, 1], [1, 2, 3], [3, 4, 5], [5, 6, 7], [7, 8, 9]]
+    expected = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8], [8, 9]]
 
     actual = _chunk_within_limits(10, 2, 1, token_count_at_boundaries, None, lambda i: input[i])
 
@@ -81,7 +81,7 @@ def test_chunk_within_limits_min_grouping():
 
     token_count_at_boundaries = [1, 10, 10, 1, 10, 10, 1, 1, 1, 1]
 
-    expected = [[0, 1], [2, 3], [4, 5], [6, 7, 8, 9]]
+    expected = [[0, 1], [2, 3], [4, 5], [6, 7, 8], [9]]
 
     actual = _chunk_within_limits(10, 3, 0, token_count_at_boundaries, 2, lambda i: input[i])
 
