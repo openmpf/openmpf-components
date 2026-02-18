@@ -77,7 +77,7 @@ class JobConfig:
         self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
 
         self.vllm_uri = \
-            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
+            mpf_util.get_property(props, 'VLLM_URI', "http://llm-speech-summarization-server:11434/v1")
 
         self.vllm_health_uri = \
             mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
