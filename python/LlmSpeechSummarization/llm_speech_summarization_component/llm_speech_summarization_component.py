@@ -82,7 +82,8 @@ class JobConfig:
         self.vllm_health_uri = \
             mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
         if '://' not in self.vllm_health_uri:
-            self.vllm_health_uri = os.path.join(self.vllm_uri, self.vllm_health_uri)
+            from urllib.parse import urljoin
+            self.vllm_health_uri = urljoin(self.vllm_uri, self.vllm_health_uri)
 
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'CLASSIFIERS_LIST', "ALL")
