@@ -110,7 +110,7 @@ class LlmSpeechSummaryComponent:
             client_factory = self.client_factory
         else:
             client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
-        prompt = template.render(input = input, classifiers=classifiers)
+        prompt = template.render(input=input, classifiers=classifiers, response_format_json_schema=response_format_json_schema)
         with client_factory() as client:
             stream = client.chat.completions.create(
                 model=config.vllm_model, #model_name ## for ollama

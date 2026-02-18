@@ -24,27 +24,36 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List
 
 class EntitiesObject(BaseModel):
-    names_of_people: List[str]
-    places: List[str]
-    companies: List[str]
-    body_parts: List[str]
-    organs: List[str]
-    emotions: List[str]
+    """
+    An object containing lists of entities of interest
+    """
+    names_of_people: List[str] = Field(
+        default=[],
+        title="A list of people's names",
+        description="CLARIFICATION: only include people referred to in the conversation. Unless the speakers use each others' names or refer to each other somehow in an utterance, do not include the speakers."
+    )
+    places: List[str] = Field(default=[], title="Names of or references to specific places")
+    companies: List[str] = Field(default=[], title="Names of or references to companies, businesses, and/or institutions")
+    body_parts: List[str] = Field(default=[], title="Parts of the human body: organs or otherwise")
+    emotions: List[str] = Field(default=[], title="Emotions, feelings, and/or sentiments")
 
 class Classifier(BaseModel):
-    classifier: str
-    confidence: float
-    reasoning: str
+    """
+    One classifier object
+    """
+    classifier: str = Field(title='name', description="the name of this classifier")
+    confidence: float = Field(title='confidence', description='How confident you are in the presence or absence of this classifier in the input you are summarizing', ge=0, le=1)
+    reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category.")
 
 class StructuredResponse(BaseModel):
-    summary: str
-    primary_topic: str
-    other_topics: List[str]
-    classifiers: List[Classifier]
+    summary: str = Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation")
+    primary_topic: str = Field(title='The primary topic of conversation')
+    other_topics: List[str] = Field(title='Other topics of conversation', description="INSTRUCTION: do not include the primary_topic in this list")
+    classifiers: List[Classifier] = Field(title='A list of classifier results', description="INSTRUCTION: produce based on the Classifiers between <classifiers></classifiers>. ")
     entities: EntitiesObject
 
 response_format_json_schema = StructuredResponse.model_json_schema()
