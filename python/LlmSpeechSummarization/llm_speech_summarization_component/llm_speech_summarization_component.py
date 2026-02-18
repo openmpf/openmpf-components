@@ -49,13 +49,13 @@ try:
     from .schema import response_format_json_schema, StructuredResponse
 
     from .llm_util.classifiers import get_classifier_lines
-    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from .llm_util.input_cleanup import convert_tracks_to_csv
 except:
     from schema import response_format_json_schema, StructuredResponse
 
     from llm_util.classifiers import get_classifier_lines
-    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from llm_util.input_cleanup import convert_tracks_to_csv
 
 logger = logging.getLogger('LLMSpeechSummaryComponent')
@@ -77,12 +77,13 @@ class JobConfig:
         self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
 
         self.vllm_uri = \
-            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
+            mpf_util.get_property(props, 'VLLM_URI', "http://llm-speech-summarization-server:11434/v1")
 
         self.vllm_health_uri = \
             mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
         if '://' not in self.vllm_health_uri:
-            self.vllm_health_uri = os.path.join(self.vllm_uri, self.vllm_health_uri)
+            from urllib.parse import urljoin
+            self.vllm_health_uri = urljoin(self.vllm_uri, self.vllm_health_uri)
 
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'CLASSIFIERS_LIST', "ALL")
@@ -101,7 +102,8 @@ class JobConfig:
             return expanded_path
         resource = importlib.resources.files(__name__) / expanded_path
         if resource.is_file():
-            return str(importlib.resources.as_file(resource).__enter__())
+            with importlib.resources.as_file(resource) as f:
+                return str(f)
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
             f"{path} does not exist.")
 
@@ -202,7 +204,7 @@ class LlmSpeechSummaryComponent:
         config = JobConfig(video_job.job_properties)
 
         tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
-        tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
+        tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
         env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
         template = env.get_template(os.path.basename(config.prompt_template))
