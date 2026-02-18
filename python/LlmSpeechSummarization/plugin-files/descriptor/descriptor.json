@@ -1,13 +1,13 @@
 {
-  "componentName": "QwenSpeechSummarization",
+  "componentName": "LlmSpeechSummarization",
   "componentVersion": "10.0",
   "middlewareVersion": "10.0",
   "sourceLanguage": "python",
-  "batchLibrary": "QwenSpeechSummarization",
+  "batchLibrary": "LlmSpeechSummarization",
   "environmentVariables": [],
   "algorithm": {
-    "name": "QWENSPEECHSUMMARIZATION",
-    "description": "Uses Qwen3 to summarize speech",
+    "name": "LLMSPEECHSUMMARIZATION",
+    "description": "Uses an LLM to summarize speech",
     "actionType": "DETECTION",
     "trackType": "TEXT",
     "requiresCollection": {
@@ -17,7 +17,7 @@
       "states": [
         "DETECTION",
         "DETECTION_TEXT",
-        "DETECTION_TEXT_QWEN_SPEECH_SUMMARIZATION"
+        "DETECTION_TEXT_LLM_SPEECH_SUMMARIZATION"
       ],
       "properties": [
         {
@@ -110,9 +110,9 @@
   },
   "actions": [
     {
-      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
-      "description": "Performs Qwen summarization Video|Audio tracks.",
-      "algorithm": "QWENSPEECHSUMMARIZATION",
+      "name": "LLM SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs LLM summarization Video|Audio tracks.",
+      "algorithm": "LLMSPEECHSUMMARIZATION",
       "properties": [
         {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
         {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
@@ -121,20 +121,20 @@
   ],
   "tasks": [
     {
-      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK",
-      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "name": "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs LLM summarization Video|Audio tracks.",
       "actions": [
-        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+        "LLM SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
       ]
     }
   ],
   "pipelines": [
      {
-      "name": "WHISPER SPEECH DETECTION WITH QWEN SUMMARIZATION PIPELINE",
-      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using QWEN.",
+      "name": "WHISPER SPEECH DETECTION WITH LLM SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using an LLM.",
       "tasks": [
         "WHISPER SPEECH DETECTION TASK",
-        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+        "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK"
       ]
     }
   ]

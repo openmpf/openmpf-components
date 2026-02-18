@@ -58,7 +58,7 @@ except:
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
     from llm_util.input_cleanup import convert_tracks_to_csv
 
-logger = logging.getLogger('QwenSpeechSummaryComponent')
+logger = logging.getLogger('LLMSpeechSummaryComponent')
 
 
 class JobConfig:
@@ -105,12 +105,12 @@ class JobConfig:
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
             f"{path} does not exist.")
 
-class QwenSpeechSummaryComponent:
+class LlmSpeechSummaryComponent:
     def _get_output(self, config: JobConfig, template, classifiers, input):
         if self.client_factory:
             client_factory = self.client_factory
         else:
-            client_factory = lambda: QwenSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
+            client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
         prompt = template.render(input = input, classifiers=classifiers)
         with client_factory() as client:
             stream = client.chat.completions.create(
@@ -151,7 +151,7 @@ class QwenSpeechSummaryComponent:
 
     @staticmethod
     def _get_classifier_track(video_job):
-        func = lambda classifier: QwenSpeechSummaryComponent._get_video_track_for_classifier(video_job, classifier)
+        func = lambda classifier: LlmSpeechSummaryComponent._get_video_track_for_classifier(video_job, classifier)
         return func
 
     @staticmethod
@@ -269,7 +269,7 @@ class QwenSpeechSummaryComponent:
         raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(f'Audio detection not supported.')
 
 def run_component_test(clientFactory = None):
-    qsc = QwenSpeechSummaryComponent(clientFactory)
+    qsc = LlmSpeechSummaryComponent(clientFactory)
     input = None
     with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
         input = f.read()

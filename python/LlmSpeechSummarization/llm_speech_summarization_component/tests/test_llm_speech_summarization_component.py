@@ -26,7 +26,7 @@
 
 import os
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "0"
-from qwen_speech_summarization_component.qwen_speech_summarization_component import run_component_test
+from llm_speech_summarization_component.llm_speech_summarization_component import run_component_test
 
 class FakeClass():
     def __enter__(self):
