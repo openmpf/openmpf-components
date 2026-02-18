@@ -30,6 +30,8 @@ from typing import List
 class EntitiesObject(BaseModel):
     """
     An object containing lists of entities of interest
+
+    COMBINATION_INSTRUCTION: In your output, lists of strings (entities, topics, etc.) should each be the union of the corresponding fields in your input objects.
     """
     names_of_people: List[str] = Field(
         default=[],
@@ -44,10 +46,12 @@ class EntitiesObject(BaseModel):
 class Classifier(BaseModel):
     """
     One classifier object
+
+    COMBINATION_INSTRUCTION: You must combine classifiers with the same name, such that classifier names are unique in your output. Combine confidences and reasonings, with higher confidence inputs (and the corresponding reasonings) receiving precedence.
     """
     classifier: str = Field(title='name', description="the name of this classifier")
     confidence: float = Field(title='confidence', description='How confident you are in the presence or absence of this classifier in the input you are summarizing', ge=0, le=1)
-    reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category.")
+    reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category. COMBINATION INSTRUCTION: include the union of your inputs' items of interest in your output's reasoning.")
 
 class StructuredResponse(BaseModel):
     summary: str = Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation")

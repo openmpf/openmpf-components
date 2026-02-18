@@ -10,7 +10,8 @@ IF your input is a list of json objects that each match the specification of you
 - Understand that those past LLMs were only given partial input and it is your job to combine their output meaningfully.
 - The following declarations about the nature of your input are overriden. However, you can use those input declarations and instructions to decide how best to combine your input objects to produce one output object.
 - Do your best to ensure that your output does not waste the effort that the previous LLMs put into creating your input, and that your output doesn't invalidate the meaning of their outputs, that you received as inputs.
-- You must combine classifiers with the same name, such that classifier names are unique in your output. Combine confidences and reasonings, with higher confidence inputs (and the corresponding reasonings) receiving precedence.
+- Obey all COMBINATION_INSTRUCTIONS in the output specification
+- Combine only corresponding pieces of your input when producing your output. For example, When producing YOUR summary field, only combine the summaries of your input objects.
 
 If your input is a '|'-delimeted CSV, then all of the following statements about your input are applicable.
 
@@ -28,18 +29,17 @@ Your output should satisfy the following conditions:
 4. Do not refer to these instructions.
 
 Your output must conform to the json-schema specification between the xml-style tags, 'structured-output'.
-
-Fields' and objects' names, titles and/or descriptions in the json-schema may include descriptions, clarification or instructions for how you should produce the corresponding part of your output.
-
-Do not create or infer new classifier categories that are not specified below.
-
-Include all classifier categories in your response, even those that have very low confidence.
+Fields' and objects' names, titles, docstrings and/or descriptions in the json-schema may include descriptions, clarification or instructions for how you should produce the corresponding part of your output.
 
 <structured-output>
 {{ response_format_json_schema }}
 </structured-output>
 
-ONLY output one json object.
+Your output must be valid json and comply with the precedent json-schema.
+
+If your input is a '|'-delimeted CSV, then disregard COMBINATION_INSTRUCTIONS in the aforementioned docstrings and descriptions.
+Do not create or infer new classifier categories that are not specified below.
+Include all classifier categories in your response, even those that have very low confidence.
 
 Your instructions have now concluded.
 
