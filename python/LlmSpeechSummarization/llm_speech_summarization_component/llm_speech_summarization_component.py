@@ -102,7 +102,8 @@ class JobConfig:
             return expanded_path
         resource = importlib.resources.files(__name__) / expanded_path
         if resource.is_file():
-            return str(importlib.resources.as_file(resource).__enter__())
+            with importlib.resources.as_file(resource) as f:
+                return str(f)
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
             f"{path} does not exist.")
 
