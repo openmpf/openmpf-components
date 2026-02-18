@@ -49,13 +49,13 @@ try:
     from .schema import response_format_json_schema, StructuredResponse
 
     from .llm_util.classifiers import get_classifier_lines
-    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from .llm_util.input_cleanup import convert_tracks_to_csv
 except:
     from schema import response_format_json_schema, StructuredResponse
 
     from llm_util.classifiers import get_classifier_lines
-    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from llm_util.input_cleanup import convert_tracks_to_csv
 
 logger = logging.getLogger('LLMSpeechSummaryComponent')
@@ -204,7 +204,7 @@ class LlmSpeechSummaryComponent:
         config = JobConfig(video_job.job_properties)
 
         tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
-        tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
+        tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
         env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
         template = env.get_template(os.path.basename(config.prompt_template))
