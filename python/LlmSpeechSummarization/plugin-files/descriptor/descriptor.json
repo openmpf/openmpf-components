@@ -1,13 +1,13 @@
 {
-  "componentName": "QwenSpeechSummarization",
+  "componentName": "LlmSpeechSummarization",
   "componentVersion": "10.0",
   "middlewareVersion": "10.0",
   "sourceLanguage": "python",
-  "batchLibrary": "QwenSpeechSummarization",
+  "batchLibrary": "LlmSpeechSummarization",
   "environmentVariables": [],
   "algorithm": {
-    "name": "QWENSPEECHSUMMARIZATION",
-    "description": "Uses Qwen3 to summarize speech",
+    "name": "LLMSPEECHSUMMARIZATION",
+    "description": "Uses an LLM to summarize speech",
     "actionType": "DETECTION",
     "trackType": "TEXT",
     "requiresCollection": {
@@ -17,9 +17,39 @@
       "states": [
         "DETECTION",
         "DETECTION_TEXT",
-        "DETECTION_TEXT_QWEN_SPEECH_SUMMARIZATION"
+        "DETECTION_TEXT_LLM_SPEECH_SUMMARIZATION"
       ],
       "properties": [
+        {
+          "name": "VLLM_MODEL",
+          "description": "The model being served by the openai-api running at VLLM_URI",
+          "type": "STRING",
+          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        },
+        {
+          "name": "API_TOKEN",
+          "description": "The API Token that can access the openai api",
+          "type": "STRING",
+          "defaultValue": "Must be set for anonymous VLLM, but can be anything"
+        },
+        {
+          "name": "MAX_MODEL_LEN",
+          "description": "The largest model length that can fit on the GPU",
+          "type": "INT",
+          "defaultValue": 45000
+        },
+        {
+          "name": "INPUT_TOKEN_CHUNK_SIZE",
+          "description": "The input size maximum, roughly 20%-25% of max model length",
+          "type": "INT",
+          "defaultValue": 10000
+        },
+        {
+          "name": "INPUT_CHUNK_TOKEN_OVERLAP",
+          "description": "Overlap between split input chunks. Probably much smaller than INPUT_TOKEN_CHUNK_SIZE",
+          "type": "INT",
+          "defaultValue": "500"
+        },
         {
           "name": "CLASSIFIERS_LIST",
           "description": "Comma-separated list of classifiers to include in the summary output.",
@@ -57,6 +87,12 @@
           "defaultValue": "http://qwen-speech-summarization-server:11434/v1"
         },
         {
+          "name": "VLLM_HEALTH_URI",
+          "description": "An absolute OR relative URI of a healthcheck for the openai-api backend",
+          "type": "STRING",
+          "defaultValue": "../health"
+        },
+        {
           "name": "TARGET_SEGMENT_LENGTH",
           "description": "If this value is less than or equal to 0, no segmenting will be performed.",
           "type": "INT",
@@ -74,9 +110,9 @@
   },
   "actions": [
     {
-      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
-      "description": "Performs Qwen summarization Video|Audio tracks.",
-      "algorithm": "QWENSPEECHSUMMARIZATION",
+      "name": "LLM SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs LLM summarization Video|Audio tracks.",
+      "algorithm": "LLMSPEECHSUMMARIZATION",
       "properties": [
         {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
         {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
@@ -85,20 +121,20 @@
   ],
   "tasks": [
     {
-      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK",
-      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "name": "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs LLM summarization Video|Audio tracks.",
       "actions": [
-        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+        "LLM SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
       ]
     }
   ],
   "pipelines": [
      {
-      "name": "WHISPER SPEECH DETECTION WITH QWEN SUMMARIZATION PIPELINE",
-      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using QWEN.",
+      "name": "WHISPER SPEECH DETECTION WITH LLM SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using an LLM.",
       "tasks": [
         "WHISPER SPEECH DETECTION TASK",
-        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+        "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK"
       ]
     }
   ]

@@ -47,7 +47,7 @@ RUN --mount=type=tmpfs,target=/tmp \
         wget -O- 'https://github.com/openai/CLIP/tarball/master' \
             | tar --extract --gzip --directory /tmp/CLIP; \
         cd /tmp/CLIP/*; \
-        pip3 install .
+        pip3 install --no-build-isolation .
 
 ARG RUN_TESTS=false
 

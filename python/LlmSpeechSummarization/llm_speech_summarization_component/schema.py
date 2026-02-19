@@ -24,35 +24,27 @@
 # limitations under the License.                                            #
 #############################################################################
 
-FROM ubuntu:20.04 AS download_model
+from pydantic import BaseModel
+from typing import List
 
-RUN --mount=type=tmpfs,target=/var/cache/apt \
-    --mount=type=tmpfs,target=/var/lib/apt/lists  \
-    --mount=type=tmpfs,target=/tmp \
-    apt-get update && apt-get install --no-install-recommends -y curl ca-certificates python3-venv python3-pip python3-certifi python3-urllib3 && \
-    pip install huggingface_hub[cli]
+class EntitiesObject(BaseModel):
+    names_of_people: List[str]
+    places: List[str]
+    companies: List[str]
+    body_parts: List[str]
+    organs: List[str]
+    emotions: List[str]
 
-ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
-ENV VLLM_MODEL="${VLLM_MODEL}"
-RUN HF_HUB_DISABLE_XET=1 hf download ${VLLM_MODEL}
+class Classifier(BaseModel):
+    classifier: str
+    confidence: float
+    reasoning: str
 
+class StructuredResponse(BaseModel):
+    summary: str
+    primary_topic: str
+    other_topics: List[str]
+    classifiers: List[Classifier]
+    entities: EntitiesObject
 
-FROM vllm/vllm-openai:latest
-ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
-ENV VLLM_MODEL="${VLLM_MODEL}"
-
-USER root
-RUN mkdir -p /root/.cache
-COPY --chown=root:root --from=download_model /root/.cache/huggingface /root/.cache/huggingface
-
-# default value
-ENV MAX_MODEL_LEN=45000
-
-COPY --chown=root:root vllm-entrypoint.sh /usr/bin/
-
-ENTRYPOINT ["/usr/bin/vllm-entrypoint.sh"]
-
-CMD [ \
-    "--host", "0.0.0.0",\
-    "--port", "11434"\
-    ]
+response_format_json_schema = StructuredResponse.model_json_schema()

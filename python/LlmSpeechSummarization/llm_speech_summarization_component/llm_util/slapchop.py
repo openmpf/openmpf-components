@@ -25,10 +25,12 @@
 #############################################################################
 
 import json
-from typing import Any, List
+from typing import Any, List, Final
 import pandas as pd
 import io
 from math import inf
+
+BOUNDARY_TOKEN_FOR_COUNTING: Final[str] = '<|newline|>'
 
 def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_count_at_boundaries: List[int], min_grouping: int|None, get_partial_chunk = None, convert_chunk_for_output = lambda x: x):
     if not min_grouping:
@@ -47,37 +49,38 @@ def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_
             if chunk_data:
                 chunks.append(convert_chunk_for_output(chunk_data))
 
-            # Start the new chunk with overlap
-            # Determine how many rows from the end of the last chunk to include in the new one
-            overlap_rows = []
-            overlap_count = 0
+            overlap_data = []
+            overlap_tokens = 0
             overlap_items = 0
-            for overlap_row in reversed(chunk_data):
-                # Approximation for row overlap token count
-                overlap_count += token_count_at_boundaries[i]
-                if overlap_count < overlap:
-                    overlap_rows.insert(0, overlap_row)
-                    overlap_items += 1
-                else:
-                    break
-            
-            chunk_data = overlap_rows + [get_partial_chunk(i)] # type: ignore
-            chunk_tokens = overlap_count
+            if overlap > 0:
+                # Start the new chunk with overlap
+                # Determine how many rows from the end of the last chunk to include in the new one
+                for j in range(i-1, -1, -1):
+                    if token_count_at_boundaries[j] + overlap_tokens <= overlap:
+                        overlap_data.insert(0, get_partial_chunk(j)) # type: ignore
+                        overlap_tokens += token_count_at_boundaries[j]
+                    else:
+                        # When the limit is hit, finalize the current chunk
+                        break
+                overlap_items += len(overlap_data)
+
+            chunk_data = [*overlap_data, get_partial_chunk(i)] # type: ignore
+            chunk_tokens = overlap_tokens + token_count_at_boundaries[i]
     if chunk_data:
         chunks.append(convert_chunk_for_output(chunk_data))
 
     return chunks
 
 def split_csv_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap: int = 500, min_grouping=-1):
-    newline_token_id = tokenizer.encode('<|newline|>')[0]
-    token_ids = tokenizer.encode(text.replace('\r\n', '\n').replace('\n', '<|newline|>'))
+    newline_token_id = tokenizer.encode(BOUNDARY_TOKEN_FOR_COUNTING)[0]
+    token_ids = tokenizer.encode(text.replace('\r\n', '\n').replace('\n', BOUNDARY_TOKEN_FOR_COUNTING))
     # find all the newlines in the tokenized text
     token_count_before_line = [index for index, element in enumerate(token_ids) if element == newline_token_id]
     token_count_at_line = [x for x in token_count_before_line]
     for i in range(1, len(token_count_at_line)):
         token_count_at_line[i] -= token_count_at_line[i-1]
 
-    df = pd.read_csv(io.StringIO(tokenizer.decode(token_ids).replace('<|newline|>', '\n')),sep='|')
+    df = pd.read_csv(io.StringIO(tokenizer.decode(token_ids).replace(BOUNDARY_TOKEN_FOR_COUNTING, '\n')),sep='|')
     
     total_rows = len(df)
 
@@ -95,8 +98,10 @@ def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, 
     # serialize each object separately so we can insert newline tokens to facilitate letting the tokenizer
     # count for us
 
-    newline_token_id = tokenizer.encode('<|newline|>')[0]
-    token_ids = tokenizer.encode('[' + (',<|newline|>'.join(arr)) + ',<|newline|>{}]')
+    newline_token_id = tokenizer.encode(BOUNDARY_TOKEN_FOR_COUNTING)[0]
+    comma_prefixed_boundary_token = f',{BOUNDARY_TOKEN_FOR_COUNTING}'
+    # note: an extra empty object is included after the final real object so that every real object has a leading and trailing BOUNDARY_TOKEN_FOR_COUNTING
+    token_ids = tokenizer.encode('[' + (comma_prefixed_boundary_token.join(arr)) + comma_prefixed_boundary_token + '{}]')
     # find all the newlines in the tokenized text
     token_count_before_obj = [index for index, element in enumerate(token_ids) if element == newline_token_id]
     token_count_at_obj = token_count_before_obj

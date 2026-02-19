@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.2
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -24,28 +26,26 @@
 # limitations under the License.                                            #
 #############################################################################
 
-[metadata]
-name = QwenSpeechSummarization
-version = 10.0
+ARG BUILD_REGISTRY
+ARG BUILD_TAG=latest
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-[options]
-packages_dir = 
-    = qwen_speech_summarization_component
-packages = find:
-install_requires =
-    mpf_component_api>=10.0
-    mpf_component_util>=10.0
-    pandas
-    transformers>=4.51.0
-    accelerate
-    pydantic
-    openai
-    jinja2
-    requests
+ARG RUN_TESTS=false
+RUN set -x; DEPS="transformers>=4.51.0 accelerate==1.12.0 pydantic==2.12.5 openai==2.16.0 jinja2"; \
+    if [ "${RUN_TESTS,,}" == true ]; then DEPS="$DEPS pytest"; fi; \
+    pip3 install --no-cache-dir $DEPS
 
-[options.entry_points]
-mpf.exported_component =
-    component = qwen_speech_summarization_component.qwen_speech_summarization_component:QwenSpeechSummaryComponent
+ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
 
-[options.package_data]
-qwen_speech_summarization_component=test_data/test.txt, classifiers.json, templates/prompt.jinja
+RUN --mount=target=.,readwrite \
+    install-component.sh; \
+    # make sure the tokenizer is available offline
+    /opt/mpf/plugin-venv/bin/python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\"${VLLM_MODEL}\")"; \
+    if [ "${RUN_TESTS,,}" == true ]; then pytest llm_speech_summarization_component; fi
+
+LABEL org.label-schema.license="Apache 2.0" \
+      org.label-schema.name="OpenMPF LLM Speech Summarization" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.url="https://openmpf.github.io" \
+      org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
+      org.label-schema.vendor="MITRE"

@@ -27,3 +27,28 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "LlmSpeechSummarization"
+version = "10.0"
+dependencies = [
+    "mpf_component_api>=10.0",
+    "mpf_component_util>=10.0",
+    "pandas",
+    "transformers>=4.51.0",
+    "accelerate==1.12.0",
+    "pydantic==2.12.5",
+    "openai==2.16.0",
+    "jinja2",
+    "requests"
+]
+
+[project.entry-points."mpf.exported_component"]
+component = "llm_speech_summarization_component.llm_speech_summarization_component:LlmSpeechSummaryComponent"
+
+[tool.setuptools.package-data]
+llm_speech_summarization_component = [
+    "test_data/test.txt",
+    "classifiers.json",
+    "templates/prompt.jinja"
+]

@@ -5,11 +5,11 @@
 # under contract, and is subject to the Rights in Data-General Clause       #
 # 52.227-14, Alt. IV (DEC 2007).                                            #
 #                                                                           #
-# Copyright 2023 The MITRE Corporation. All Rights Reserved.                #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
 #############################################################################
 
 #############################################################################
-# Copyright 2023 The MITRE Corporation                                      #
+# Copyright 2025 The MITRE Corporation                                      #
 #                                                                           #
 # Licensed under the Apache License, Version 2.0 (the "License");           #
 # you may not use this file except in compliance with the License.          #
@@ -28,6 +28,7 @@ import importlib.resources
 import logging
 import math
 import os
+from openai.types import ResponseFormatJSONSchema
 import requests
 import sys
 import time
@@ -43,37 +44,95 @@ from transformers import AutoTokenizer
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-# work with or without parent package
+# If import fails with ., assume we are running in pydebug and the CWD is proper
 try:
-    from .schema import response_format, StructuredResponse
+    from .schema import response_format_json_schema, StructuredResponse
+
     from .llm_util.classifiers import get_classifier_lines
-    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from .llm_util.input_cleanup import convert_tracks_to_csv
 except:
-    from schema import response_format, StructuredResponse
+    from schema import response_format_json_schema, StructuredResponse
+
     from llm_util.classifiers import get_classifier_lines
-    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries
+    from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from llm_util.input_cleanup import convert_tracks_to_csv
 
-import importlib.resources
+logger = logging.getLogger('LLMSpeechSummaryComponent')
 
-logger = logging.getLogger('QwenSpeechSummaryComponent')
 
-class QwenSpeechSummaryComponent:
-    
-    def _get_output(self, classifiers, input):
-        prompt = self.template.render(input = input, classifiers=classifiers)
-        with self.client_factory() as client:
+class JobConfig:
+    def __init__(self, props: Mapping[str, str]):
+        # if debug is true will return which corpus sentences triggered the match
+        self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+
+        self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
+        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 10000))
+        self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 500))
+
+        self.api_token = mpf_util.get_property(props, 'API_TOKEN', "Must be set for anonymous VLLM, but can be anything")
+
+        self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
+
+        self.vllm_uri = \
+            mpf_util.get_property(props, 'VLLM_URI', "http://llm-speech-summarization-server:11434/v1")
+
+        self.vllm_health_uri = \
+            mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
+        if '://' not in self.vllm_health_uri:
+            from urllib.parse import urljoin
+            self.vllm_health_uri = urljoin(self.vllm_uri, self.vllm_health_uri)
+
+        self.enabled_classifiers = \
+            mpf_util.get_property(props, 'CLASSIFIERS_LIST', "ALL")
+
+        # exclude classifiers from output if their confidence is below this threshold
+        self.classifier_confidence_minimum = \
+            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', 0.3)
+
+        self.classifiers_path = \
+            self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
+
+    @staticmethod
+    def _get_file_path(path: str) -> str:
+        expanded_path = os.path.expandvars(path)
+        if os.path.exists(expanded_path):
+            return expanded_path
+        resource = importlib.resources.files(__name__) / expanded_path
+        if resource.is_file():
+            with importlib.resources.as_file(resource) as f:
+                return str(f)
+        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
+            f"{path} does not exist.")
+
+class LlmSpeechSummaryComponent:
+    def _get_output(self, config: JobConfig, template, classifiers, input):
+        if self.client_factory:
+            client_factory = self.client_factory
+        else:
+            client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
+        prompt = template.render(input = input, classifiers=classifiers)
+        with client_factory() as client:
             stream = client.chat.completions.create(
-                model=self.client_model_name, #model_name ## for ollama
+                model=config.vllm_model, #model_name ## for ollama
                 # reasoning_effort='none',
                 messages=[
-                    {"role": "user", "content": prompt, "reasponse_format": response_format}
+                    {"role": "user", "content": prompt}
                 ],
                 temperature=0,
                 stream=True,
-                max_tokens=0.95 * (self.max_model_len - self.chunk_size - self.overlap),
+                max_completion_tokens=int(math.floor(0.95 * (config.max_model_len - config.chunk_size - config.overlap))),
                 timeout=300,
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "StructuredResponse",
+                        "schema": response_format_json_schema,
+                        "strict": True
+                    }
+                }
             )
             content = ""
             for event in stream:
@@ -86,12 +145,6 @@ class QwenSpeechSummaryComponent:
                         content += event.choices[0].delta.content
         return content
 
-    # DEBUG: Test with CLI Runner
-    def get_detections_from_generic(self, job: mpf.GenericJob) -> Sequence[mpf.GenericTrack]:
-        config = JobConfig(job.job_properties)
-        self._setup_client(config)
-        raise NotImplementedError('Generic jobs are not supported by QwenSpeechSummaryComponent')
-
     @staticmethod
     def _get_track_for_classifier(t, video_job: mpf.VideoJob, classifier, arg_factory):
         detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
@@ -100,75 +153,61 @@ class QwenSpeechSummaryComponent:
 
     @staticmethod
     def _get_classifier_track(t, job, arg_factory=lambda _classifier, _detection_properties: []):
-        func = lambda classifier: QwenSpeechSummaryComponent._get_track_for_classifier(t, job, classifier, arg_factory)
+        func = lambda classifier: LlmSpeechSummaryComponent._get_track_for_classifier(t, job, classifier, arg_factory)
         return func
 
     @staticmethod
-    def _get_openai_api_client_when_server_is_ready(timeout_seconds=300, retry_delay_seconds=5, **kwargs):
-        start_time = time.time()
-        base_url = kwargs['base_url']
-        success = False
-        failed_ever = False
-        last_error = None
-        while time.time() - start_time < timeout_seconds:
-            try:
-                response = requests.get(f"{base_url}/../health", timeout=retry_delay_seconds)
-                if response.status_code == 200:
-                    if failed_ever:
-                        print("VLLM is now available")
-                    success = True
-                    break
-                else:
+    def _get_openai_api_client_when_server_is_ready(config, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
+        if config.vllm_health_uri:
+            start_time = time.time()
+            success = False
+            failed_ever = False
+            last_error = None
+            while time.time() - start_time < timeout_seconds:
+                try:
+                    response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
+                    if response.status_code == 200:
+                        if failed_ever:
+                            logger.info("VLLM is now available")
+                        success = True
+                        break
+                    else:
+                        failed_ever = True
+                        logger.warning(f"Received HTTP{response.status_code} from {config.vllm_health_uri}")
+                except Exception as e:
                     failed_ever = True
-                    print(f"Received HTTP{response.status_code} from {base_url}")
-            except Exception as e:
-                failed_ever = True
-                print(f"Waiting up to {timeout_seconds}s for VLLM at {base_url} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
-                last_error = e
-            time.sleep(retry_delay_seconds)
+                    logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
+                    last_error = e
+                time.sleep(retry_delay_seconds)
 
-        if not success:
-            if last_error:
-                raise last_error
-            raise Exception("Timed out waiting for VLLM to be healthy")
+            if not success:
+                if last_error:
+                    raise last_error
+                raise Exception("Timed out waiting for VLLM to be healthy")
 
         return OpenAI(**kwargs)
 
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
 
-    def _setup_client(self, config):
-        self.model_name_hf = os.environ.get("VLLM_MODEL", "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
-
-        # max_model_len (must match vllm container) >> chunk_size + overlap + completion max_tokens (above)
-        self.max_model_len = int(os.environ.get('MAX_MODEL_LEN', 45000))
-        self.chunk_size = int(os.environ.get('INPUT_TOKEN_CHUNK_SIZE', 10000))
-        self.overlap = int(os.environ.get('INPUT_CHUNK_TOKEN_OVERLAP', 500))
-
-        # TODO: warn if chunk_size is TOO LARGE of a proportion of max_model_len
-
-        # vllm
-        self.client_model_name = self.model_name_hf
-
-        logger.debug(f"Using VLLM URI: {config.vllm_uri}")  ## DEBUG
-
-        if not self.client_factory:
-            # Set OpenAI API base URL
-            self.client_factory = lambda: self._get_openai_api_client_when_server_is_ready(base_url=config.vllm_uri, api_key="whatever")
-
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_hf, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
-        self.tokenizer.add_special_tokens({'sep_token': '<|newline|>'})
-
     def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
-        print(f'Received feed forward video job.')
-
-        #print('Received all tracks video job: {video_job}')
+        """
+        Process:
+        1. Convert all input tracks to a CSV format
+        2. Split CSV into chunks to fit in context window, retaining header row on each chunk
+        3. Run each chunk through the LLM, templating classifiers and each chunk into the prompt, receiving its summary
+        4. Recursively summarize summaries until only 1 remains
+        5. Convert to final summary VideoTracks for output
+        """
+        logger.info(f'Received feed forward video job.')
 
         config = JobConfig(video_job.job_properties)
-        self._setup_client(config)
 
-        self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-        self.template = self.env.get_template(os.path.basename(config.prompt_template))
+        tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
+
+        env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        template = env.get_template(os.path.basename(config.prompt_template))
 
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
@@ -176,19 +215,19 @@ class QwenSpeechSummaryComponent:
             input = convert_tracks_to_csv(video_job.feed_forward_tracks)
 
             summaries = []
-            chunks = split_csv_into_chunks(self.tokenizer, input, self.chunk_size, self.overlap)
+            chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
-                print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
-                content = self._get_output(classifiers, chunk)
+                logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
+                content = self._get_output(config, template, classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
-                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
             if config.debug:
-                print(final_summary.model_dump_json())
+                logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary
             }
@@ -218,45 +257,52 @@ class QwenSpeechSummaryComponent:
                         final_summary.classifiers)
                 )
             )
-            print(f'get_detections_from_all_video_tracks found: {len(results)} detections')
+            logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
             if config.debug:
-                print(f'get_detections_from_all_video_tracks results: {results}')
+                logger.debug(f'get_detections_from_all_video_tracks results: {results}')
             return results
 
         else:
-            the_roof = Exception("Received no feed forward tracks")
-            raise the_roof
+            raise mpf.DetectionError.MPF_OTHER_DETECTION_ERROR_TYPE.exception('Received no feed forward tracks')
 
     def get_detections_from_all_audio_tracks(self, audio_job: mpf.AllAudioTracksJob) -> Sequence[mpf.AudioTrack]:
-        
-        print(f'Received feed forward audio job.')
-
-        #print('Received all tracks audio job: {audio_job}')
+        """
+        Process:
+        1. Convert all input tracks to a CSV format
+        2. Split CSV into chunks to fit in context window, retaining header row on each chunk
+        3. Run each chunk through the LLM, templating classifiers and each chunk into the prompt, receiving its summary
+        4. Recursively summarize summaries until only 1 remains
+        5. Convert to final summary AudioTracks for output
+        """
+        logger.info(f'Received feed forward audio job.')
 
         config = JobConfig(audio_job.job_properties)
-        self.env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-        self.template = self.env.get_template(os.path.basename(config.prompt_template))
 
+        tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
+
+        env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        template = env.get_template(os.path.basename(config.prompt_template))
 
         if audio_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
 
-            # TODO implement one for audio specifically... probably
             input = convert_tracks_to_csv(audio_job.feed_forward_tracks)
 
             summaries = []
-            chunks = split_csv_into_chunks(self.tokenizer, input, self.chunk_size, self.overlap)
+            chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
             nchunks = len(chunks)
             for idx,chunk in enumerate(chunks):
-                print(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)", flush=True)
-                content = self._get_output(classifiers, chunk)
+                logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
+                content = self._get_output(config, template, classifiers, chunk)
                 summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
             if nchunks == 1:
                 final_summary = summaries[0]
             else:
-                final_summary = summarize_summaries(StructuredResponse, self.tokenizer, lambda input: self._get_output(classifiers, input), self.chunk_size, self.overlap, summaries)
+                # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
+                final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
             if config.debug:
-                print(final_summary.json())
+                logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary
             }
@@ -282,48 +328,16 @@ class QwenSpeechSummaryComponent:
                         final_summary.classifiers)
                 )
             )
-            print(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
+            logger.info(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
             if config.debug:
-                print(f'get_detections_from_all_audio_tracks results: {results}')
+                logger.debug(f'get_detections_from_all_audio_tracks results: {results}')
             return results
 
         else:
-            the_roof = Exception("Received no feed forward tracks")
-            raise the_roof
-
-class JobConfig:
-    def __init__(self, props: Mapping[str, str]):
-        # if debug is true will return which corpus sentences triggered the match
-        self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
-
-        self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
-
-        self.vllm_uri = \
-            mpf_util.get_property(props, 'VLLM_URI', "http://qwen-speech-summarization-server:11434/v1")
-
-        self.enabled_classifiers = \
-            mpf_util.get_property(props, 'ENABLED_CLASSIFIERS', "ALL")
-
-        # exclude classifiers from output if their confidence is below this threshold
-        self.classifier_confidence_minimum = \
-            mpf_util.get_property(props, 'CLASSIFIER_CONFIDENCE_MINIMUM', 0.3)
-
-        self.classifiers_path = \
-            self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
-
-    @staticmethod
-    def _get_file_path(path: str) -> str:
-        expanded_path = os.path.expandvars(path)
-        if os.path.exists(expanded_path):
-            return expanded_path
-        resource = importlib.resources.files(__name__) / expanded_path
-        if resource.is_file():
-            return str(importlib.resources.as_file(resource).__enter__())
-        raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
-            f"{path} does not exist.")
+            raise mpf.DetectionError.MPF_OTHER_DETECTION_ERROR_TYPE.exception('Received no feed forward tracks')
 
 def run_component_test(clientFactory = None):
-    qsc = QwenSpeechSummaryComponent(clientFactory)
+    qsc = LlmSpeechSummaryComponent(clientFactory)
     input = None
     with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
         input = f.read()

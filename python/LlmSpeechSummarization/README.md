@@ -1,6 +1,10 @@
 # Overview
 
-This folder contains source code for the OpenMPF Qwen speech summarization component.
+LlmSpeechSummarization component uses a vllm-served LLM model (Qwen3 by default) to summarize FeedForward video tracks' speech detections.
+
+# Details
+
+This folder contains source code for the OpenMPF LLM Speech Summarization Component.
 
 This component requires a base image python3.10+ and an mpf_component_api that supports mpf.AllVideoTracksJob.
 
@@ -33,7 +37,7 @@ In either case, the component assumes anonymous access to the openai-api-compati
 
 # Docker build-args
 
-- `VLLM_MODEL`: if building Dockerfile.vllm for vllm (which downloads the model during docker build), this is the ONLY model that your qwen_speech_summarization_component will be able to use.
+- `VLLM_MODEL`: if building Dockerfile.vllm for vllm (which downloads the model during docker build), this is the ONLY model that your llm_speech_summarization_component will be able to use.
 
 NOTE: if you have an internet connection at runtime, you may use the image `vllm/vllm-openai:latest` directly in lieu of building Dockerfile.vllm. We do not support this arrangement BUT it is possible with the right command on the docker service.
 
@@ -41,8 +45,8 @@ NOTE: if you have an internet connection at runtime, you may use the image `vllm
 
 - `VLLM_MODEL`: must MATCH the model name being served by vllm OR be available at whichver openai-api-compatible API you choose to talk to.
 - `VLLM_URI`: the base_url of the openai-api-compatible API providing access to your model. If your vllm service is named vllm, then this would need to be `http://vllm:11434/v1`.
-- `MODEL_MAX_LEN` should be defined on both the qwen container AND the vllm container. It is the maximum input+output token count you can use without erroring. We have tried 45000 for the -FP8 model and 120000 for the nonquantized model on a 40GB and 80GB card, respectively.
-- `INPUT_TOKEN_CHUNK_SIZE` should be about 20%-30% of your `MODEL_MAX_LEN`, and is the token size that your input will be split into during chunking before making a series of calls to the LLM.
+- `MAX_MODEL_LEN` should be defined on both the llm-speech-summarization container AND the llm-speech-summarization-server (VLLM) container. It is the maximum input+output token count you can use without erroring. We have tried 45000 for the -FP8 model and 120000 for the nonquantized model on a 40GB and 80GB card, respectively.
+- `INPUT_TOKEN_CHUNK_SIZE` should be about 20%-30% of your `MAX_MODEL_LEN`, and is the token size that your input will be split into during chunking before making a series of calls to the LLM.
 - `INPUT_CHUNK_TOKEN_OVERLAP` should be small and constant. If it is too small, there will be no overlap between chunks, which could negatively impact performance with huge input tracks.
 
 # Outputs
