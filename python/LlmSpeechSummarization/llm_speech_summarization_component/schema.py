@@ -57,7 +57,7 @@ class StructuredResponse(BaseModel):
     summary: str = Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation")
     primary_topic: str = Field(title='The primary topic of conversation')
     other_topics: List[str] = Field(title='Other topics of conversation', description="INSTRUCTION: do not include the primary_topic in this list")
-    classifiers: List[Classifier] = Field(title='A list of classifier results', description="INSTRUCTION: produce based on the Classifiers between <classifiers></classifiers>. ")
+    classifiers: List[Classifier] = Field(title='A list of classifier results', description="INSTRUCTION: produce based on the Classifiers between <classifiers></classifiers>. Do not create or infer new classifier categories that are not specified below. Include all classifier categories in your response, even those that have very low confidence.")
     entities: EntitiesObject
 
 response_format_json_schema = StructuredResponse.model_json_schema()

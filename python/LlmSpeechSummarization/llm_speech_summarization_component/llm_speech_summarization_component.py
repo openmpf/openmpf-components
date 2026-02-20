@@ -246,15 +246,16 @@ class LlmSpeechSummaryComponent:
                     },
                     main_detection_properties
                 )]
-            classifier_confidence_minimum = config.classifier_confidence_minimum
-            results += list(
-                map(
-                    self._get_classifier_track(video_job),
-                    filter(
-                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
-                        final_summary.classifiers)
+            if hasattr(final_summary, 'classifiers'):
+                classifier_confidence_minimum = config.classifier_confidence_minimum
+                results += list(
+                    map(
+                        self._get_classifier_track(video_job),
+                        filter(
+                            lambda classifier: classifier.confidence >= classifier_confidence_minimum,
+                            final_summary.classifiers)
+                    )
                 )
-            )
             logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
             if config.debug:
                 logger.debug(f'get_detections_from_all_video_tracks results: {results}')
