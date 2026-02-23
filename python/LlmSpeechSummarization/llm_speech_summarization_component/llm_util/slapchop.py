@@ -30,6 +30,10 @@ import pandas as pd
 import io
 from math import inf
 
+import logging
+logger = logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop')
+
+
 BOUNDARY_TOKEN_FOR_COUNTING: Final[str] = '<|newline|>'
 
 def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_count_at_boundaries: List[int], min_grouping: int|None, get_partial_chunk = None, convert_chunk_for_output = lambda x: x):
@@ -123,7 +127,7 @@ def split_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap: in
     return decoded
 
 def summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, summaries):
-    print(f'Summarizing {len(summaries)} summaries...')
+    logger.info(f'Summarizing {len(summaries)} summaries...')
 
     # bisecting or n-secting the chunks is probably a smarter way to handle this... but greedy for now
 

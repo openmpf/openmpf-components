@@ -139,8 +139,9 @@ class LlmSpeechSummaryComponent:
                 if event.choices[0].finish_reason != None:
                     break
                 if event.object == "chat.completion.chunk":
-                    if hasattr(event.choices[0].delta, 'reasoning'):
-                        print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
+                    # if hasattr(event.choices[0].delta, 'reasoning'):
+                    #     # logger.debug cannot be used here because thinking streams onto the same line
+                    #     print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
                     if len(event.choices[0].delta.content) > 0:
                         content += event.choices[0].delta.content
         return content
@@ -236,7 +237,7 @@ class LlmSpeechSummaryComponent:
             if hasattr(final_summary, 'other_topics'):
                 main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
             if hasattr(final_summary, 'entities'):
-                for (k,v) in final_summary.entities.__dict__.items():
+                for (k,v) in final_summary.entities.model_dump().items():
                     main_detection_properties[k.upper()] = ', '.join(v)
             results = [mpf.VideoTrack(
                     video_job.start_frame,
@@ -288,7 +289,6 @@ def run_component_test(clientFactory = None):
         }) for x in input.split('\n\n') # type: ignore
     ])
 
-    print('About to call get_detections_from_all_video_tracks')
     return qsc.get_detections_from_all_video_tracks(job)
 
 
