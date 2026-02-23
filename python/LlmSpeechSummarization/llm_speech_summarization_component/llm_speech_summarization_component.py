@@ -237,7 +237,7 @@ class LlmSpeechSummaryComponent:
             if hasattr(final_summary, 'other_topics'):
                 main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
             if hasattr(final_summary, 'entities'):
-                for (k,v) in final_summary.entities.__dict__.items():
+                for (k,v) in final_summary.entities.model_dump().items():
                     main_detection_properties[k.upper()] = ', '.join(v)
             results = [mpf.VideoTrack(
                     video_job.start_frame,
