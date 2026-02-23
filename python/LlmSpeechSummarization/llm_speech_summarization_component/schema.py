@@ -54,7 +54,7 @@ class Classifier(BaseModel):
     reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category. COMBINATION INSTRUCTION: include the union of your inputs' items of interest in your output's reasoning.")
 
 class StructuredResponse(BaseModel):
-    summary: str = Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation")
+    summary: str = Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation. COMBINATION_INSTRUCTION: only combine the summaries of your input. Do not cross-contaminate your summary with any other pieces of your input objects.")
     primary_topic: str = Field(title='The primary topic of conversation')
     other_topics: List[str] = Field(title='Other topics of conversation', description="INSTRUCTION: do not include the primary_topic in this list")
     classifiers: List[Classifier] = Field(title='A list of classifier results', description="INSTRUCTION: produce based on the Classifiers between <classifiers></classifiers>. Do not create or infer new classifier categories that are not specified below. Include all classifier categories in your response, even those that have very low confidence.")
