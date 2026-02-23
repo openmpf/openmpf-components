@@ -285,7 +285,7 @@ def run_component_test(clientFactory = None):
             "SPEAKER_ID": None,
             "GENDER": None,
             "TRANSCRIPT": x
-        }) for x in input.split('\n\n') # type: ignore
+        }) for x in input.split('\n') if len(x) # type: ignore
     ])
 
     return qsc.get_detections_from_all_video_tracks(job)
