@@ -50,13 +50,13 @@ try:
 
     from .llm_util.classifiers import get_classifier_lines
     from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-    from .llm_util.input_cleanup import convert_tracks_to_csv
+    from .llm_util.input_cleanup import convert_speech_tracks_to_csv
 except:
     from schema import response_format_json_schema, StructuredResponse
 
     from llm_util.classifiers import get_classifier_lines
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-    from llm_util.input_cleanup import convert_tracks_to_csv
+    from llm_util.input_cleanup import convert_speech_tracks_to_csv
 
 logger = logging.getLogger('LLMSpeechSummaryComponent')
 
@@ -213,7 +213,7 @@ class LlmSpeechSummaryComponent:
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
 
-            input = convert_tracks_to_csv(video_job.feed_forward_tracks)
+            input = convert_speech_tracks_to_csv(video_job.feed_forward_tracks)
 
             summaries = []
             chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
