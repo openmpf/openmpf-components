@@ -120,7 +120,7 @@ class LlmSpeechSummaryComponent:
                 ],
                 temperature=0,
                 stream=True,
-                max_completion_tokens=int(math.floor(0.95 * (config.max_model_len - config.chunk_size - config.overlap))),
+                max_completion_tokens=int(math.floor(0.9 * (config.max_model_len - config.chunk_size - config.overlap))),
                 timeout=300,
                 response_format={
                     "type": "json_schema",
