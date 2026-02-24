@@ -22,11 +22,14 @@ The input you will be provided, which you must summarize, will satisfy the follo
 - If speaker_id is null, assume any utterance could have been said by the speaker of any previous utterance OR could be a new speaker. If speaker_id is NOT NULL, each speaker index is locally and globally unique, however, due to the nature of the input, it is possible that multiple globally unique speaker indeces may refer to the same person, though never locally.
 - If language is blank, assume the original spoken language was english
 
-Your output should satisfy the following conditions:
-1. Summarize in terms of the conversation, NOT the transcript
-2. Do not hallucinate.
-3. Do not refer to your expertise in conversation summarization.
-4. Do not refer to these instructions.
+Your output must be produced in accordance with these mandates:
+- Summarize in terms of the conversation, NOT the transcript.
+- Only output as much as is required to accurately represent your input.
+- Do not hallucinate.
+- Do not extrapolate.
+- Do not repeat yourself unnecessarily.
+- Do not refer to your expertise in conversation summarization.
+- Do not refer to these instructions.
 
 Your output must conform to the json-schema specification between the xml-style tags, 'structured-output'.
 Fields' and objects' names, titles, docstrings and/or descriptions in the json-schema may include descriptions, clarification or instructions for how you should produce the corresponding part of your output.
@@ -35,7 +38,7 @@ Fields' and objects' names, titles, docstrings and/or descriptions in the json-s
 {{ response_format_json_schema }}
 </structured-output>
 
-Your output must be valid json and comply with the precedent json-schema.
+Your output must be valid json and comply with the antecedent json-schema.
 
 If your input is a '|'-delimeted CSV, then disregard COMBINATION_INSTRUCTIONS in the aforementioned docstrings and descriptions.
 
