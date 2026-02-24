@@ -58,9 +58,6 @@ except:
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from llm_util.input_cleanup import convert_speech_tracks_to_csv
 
-logger = logging.getLogger('LLMSpeechSummaryComponent')
-
-
 class JobConfig:
     def __init__(self, props: Mapping[str, str]):
         # if debug is true will return which corpus sentences triggered the match
@@ -278,7 +275,9 @@ def run_component_test(clientFactory = None):
         input = f.read()
     input = input.replace("\r\n", "\n")
 
-    job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {}, {}, [
+    job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {
+        **os.environ
+    }, {}, [
         mpf.VideoTrack(0, 1, -100, {}, {
             "DEFAULT_LANGUAGE": "eng",
             "LANGUAGE": "eng",
@@ -292,4 +291,11 @@ def run_component_test(clientFactory = None):
 
 
 if __name__ == '__main__':
+    log_level_env = os.environ.get('LOG_LEVEL', 'INFO').upper()
+
+    logging.basicConfig()
+
+    logger = logging.getLogger('LLMSpeechSummaryComponent')
+    logger.setLevel(log_level_env)
+
     run_component_test()
