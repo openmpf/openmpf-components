@@ -297,5 +297,6 @@ if __name__ == '__main__':
 
     logger = logging.getLogger('LLMSpeechSummaryComponent')
     logger.setLevel(log_level_env)
+    logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop').setLevel(log_level_env)
 
     run_component_test()
