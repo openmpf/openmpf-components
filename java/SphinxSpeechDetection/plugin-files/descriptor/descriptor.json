@@ -1,9 +1,9 @@
 {
   "componentName": "SphinxSpeechDetection",
-  "componentVersion": "9.0",
-  "middlewareVersion": "9.0",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
   "sourceLanguage": "java",
-  "batchLibrary": "mpf-sphinx-speech-detection-component-9.0.jar",
+  "batchLibrary": "mpf-sphinx-speech-detection-component-10.0.jar",
   "environmentVariables": [
     {
       "name": "LD_LIBRARY_PATH",

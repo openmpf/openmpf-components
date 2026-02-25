@@ -30,11 +30,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "FastTextLanguageDetection"
-version = "9.0"
+version = "10.0"
 dependencies = [
-    "mpf_component_api>=9.0",
+    "mpf_component_api>=10.0",
     "fasttext",
-    "huggingface_hub",
     "numpy<2"
 ]
 

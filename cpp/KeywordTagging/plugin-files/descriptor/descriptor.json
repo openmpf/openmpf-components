@@ -1,7 +1,7 @@
 {
   "componentName": "KeywordTagging",
-  "componentVersion": "9.0",
-  "middlewareVersion": "9.0",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
   "sourceLanguage": "c++",
   "batchLibrary": "${MPF_HOME}/plugins/KeywordTagging/lib/libmpfKeywordTagging.so",
   "environmentVariables": [
@@ -64,7 +64,7 @@
           "value": "REGION"
         },
         {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "name": "IS_ANNOTATOR",
           "value": "TRUE"
         }
       ]
@@ -79,7 +79,7 @@
           "value": "REGION"
         },
         {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "name": "IS_ANNOTATOR",
           "value": "TRUE"
         },
         {

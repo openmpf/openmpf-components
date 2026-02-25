@@ -100,7 +100,9 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
      *
      * @param pdDocument PDF document
      * @param handler    SAX content handler
+     * @param context
      * @param metadata   PDF metadata
+     * @param config
      * @throws SAXException  if the content handler fails to process SAX events
      * @throws TikaException if there was an exception outside of per page processing
      */
@@ -137,7 +139,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
                 throw new TikaException("Unable to extract PDF content", e);
             }
         }
-        if (pdfMarkedContent2XHTML.exceptions.size() > 0) {
+        if (!pdfMarkedContent2XHTML.exceptions.isEmpty()) {
             //throw the first
             throw new TikaException("Unable to extract PDF content",
                     pdfMarkedContent2XHTML.exceptions.get(0));
@@ -175,14 +177,13 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
                     COSBase kidbase = ((COSObject) kid).getObject();
                     if (kidbase instanceof COSDictionary) {
                         COSDictionary dict = (COSDictionary) kidbase;
-                        if (dict.containsKey(COSName.TYPE) &&
-                                COSName.PAGE.equals(dict.getCOSName(COSName.TYPE))) {
-                            pageRefs.add(new ObjectRef(((COSObject) kid).getObjectNumber(),
-                                    ((COSObject) kid).getGenerationNumber()));
+                        if (COSName.PAGE.equals(dict.getCOSName(COSName.TYPE))) {
+                            pageRefs.add(new ObjectRef(((COSObject) kid).getKey().getNumber(),
+                                    ((COSObject) kid).getKey().getGeneration()));
                             continue;
                         }
-                        if (((COSDictionary) kidbase).containsKey(COSName.KIDS)) {
-                            findPages(((COSDictionary) kidbase).getItem(COSName.KIDS), pageRefs);
+                        if (dict.containsKey(COSName.KIDS)) {
+                            findPages(dict.getDictionaryObject(COSName.KIDS), pageRefs);
                         }
                     }
                 }
@@ -191,7 +192,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
     }
 
     @Override
-    protected void processPages(PDPageTree pages) throws IOException {
+    protected void processPages(PDPageTree pageTree) throws IOException {
 
         //this is a 0-indexed list of object refs for each page
         //we need this to map the mcids later...
@@ -199,7 +200,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
 
         List<ObjectRef> pageRefs = new ArrayList<>();
         //STEP 1: get the page refs
-        findPages(pdDocument.getPages().getCOSObject().getItem(COSName.KIDS), pageRefs);
+        findPages(pageTree.getCOSObject().getDictionaryObject(COSName.KIDS), pageRefs);
         //confirm the right number of pages was found
         if (pageRefs.size() != pdDocument.getNumberOfPages()) {
             throw new IOException(new TikaException(
@@ -214,7 +215,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
         Map<String, HtmlTag> roleMap = loadRoleMap(structureTreeRoot.getRoleMap());
 
         //STEP 3: load all of the text, mapped to MCIDs
-        Map<MCID, String> paragraphs = loadTextByMCID(pageRefs);
+        Map<MCID, String> paragraphs = loadTextByMCID(pageTree, pageRefs);
 
         //STEP 4: now recurse the the structure tree root and output the structure
         //and the text bits from paragraphs
@@ -253,7 +254,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
         //TODO: figure out when we're crossing page boundaries during the recursion
         // step above and do the page by page processing then...rather than dumping this
         // all here.
-        for (PDPage page : pdDocument.getPages()) {
+        for (PDPage page : pageTree) {
             startPage(page);
             endPage(page);
         }
@@ -273,29 +274,33 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
             for (COSBase k : ((COSArray) kids)) {
                 recurse(k, currentPageRef, depth, paragraphs, roleMap);
             }
-        } else if (kids instanceof COSObject) {
-            COSBase cosType = ((COSObject) kids).getItem(COSName.TYPE);
-            if (cosType != null && cosType instanceof COSName) {
-                if ("OBJR".equals(((COSName) cosType).getName())) {
-                    recurse(((COSObject) kids).getDictionaryObject(COSName.OBJ), currentPageRef,
-                            depth + 1, paragraphs, roleMap);
-                }
+        } else if (kids instanceof COSObject && 
+                ((COSObject) kids).getObject() instanceof COSDictionary) {
+            //TODO should be merged with COSDictionary segment below?
+            // and maybe dereference COSObject first, i.e. before the first "if"?
+            // No, because we're using the object key for a map
+            // However, we could replace ObjectRef with COSBase for currentPageRef. 
+            COSDictionary dict = (COSDictionary) ((COSObject) kids).getObject();
+            COSName type = dict.getCOSName(COSName.TYPE);
+            if (COSName.OBJR.equals(type)) {
+                recurse(dict.getDictionaryObject(COSName.OBJ), currentPageRef, depth + 1, paragraphs,
+                        roleMap);
             }
 
-            COSBase n = ((COSObject) kids).getItem(COSName.S);
+            COSName n = dict.getCOSName(COSName.S);
             String name = "";
-            if (n instanceof COSName) {
+            if (n != null) {
                 name = ((COSName) n).getName();
             }
-            COSBase grandkids = ((COSObject) kids).getItem(COSName.K);
+            COSBase grandkids = dict.getItem(COSName.K);
             if (grandkids == null) {
                 return;
             }
-            COSBase pageBase = ((COSObject) kids).getItem(COSName.PG);
+            COSBase pageBase = dict.getItem(COSName.PG);
 
-            if (pageBase != null && pageBase instanceof COSObject) {
-                currentPageRef = new ObjectRef(((COSObject) pageBase).getObjectNumber(),
-                        ((COSObject) pageBase).getGenerationNumber());
+            if (pageBase instanceof COSObject) {
+                currentPageRef = new ObjectRef(((COSObject) pageBase).getKey().getNumber(),
+                        ((COSObject) pageBase).getKey().getGeneration());
             }
 
             HtmlTag tag = getTag(name, roleMap);
@@ -314,7 +319,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
                     ignoreTag = true;
                 }
                 if (!ignoreTag) {
-                    if (tag.clazz != null && tag.clazz.trim().length() > 0) {
+                    if (tag.clazz != null && !tag.clazz.isBlank()) {
                         xhtml.startElement(tag.tag, "class", tag.clazz);
                     } else {
                         xhtml.startElement(tag.tag);
@@ -362,7 +367,6 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
                 } else if (dict.containsKey(COSName.OBJ)) {
                     recurse(dict.getDictionaryObject(COSName.OBJ), currentPageRef, depth + 1,
                             paragraphs, roleMap);
-
                 }
             }
         } else {
@@ -374,7 +378,7 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
         //This is only for uris, obv.
         //If we want to catch within doc references (GOTO, we need to cache those in state.
         //See testPDF_childAttachments.pdf for examples
-        if (state.uri != null && state.uri.trim().length() > 0) {
+        if (state.uri != null && !state.uri.isBlank()) {
             xhtml.startElement("a", "href", state.uri);
             xhtml.characters(state.hrefAnchorBuilder.toString());
             xhtml.endElement("a");
@@ -404,10 +408,10 @@ public class PDFMarkedContent2XHTML extends PDF2XHTML {
         return roleMap.get(name);
     }
 
-    private Map<MCID, String> loadTextByMCID(List<ObjectRef> pageRefs) throws IOException {
+    private Map<MCID, String> loadTextByMCID(PDPageTree pageTree, List<ObjectRef> pageRefs) throws IOException {
         int pageCount = 1;
         Map<MCID, String> paragraphs = new HashMap<>();
-        for (PDPage page : pdDocument.getPages()) {
+        for (PDPage page : pageTree) {
             ObjectRef pageRef = pageRefs.get(pageCount - 1);
             PDFMarkedContentExtractor ex = new PDFMarkedContentExtractor();
             try {
