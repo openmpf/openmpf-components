@@ -32,6 +32,7 @@ from openai.types import ResponseFormatJSONSchema
 import requests
 import sys
 import time
+import re
 
 from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
@@ -50,26 +51,26 @@ try:
 
     from .llm_util.classifiers import get_classifier_lines
     from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-    from .llm_util.input_cleanup import convert_tracks_to_csv
+    from .llm_util.input_cleanup import convert_speech_tracks_to_csv
 except:
     from schema import response_format_json_schema, StructuredResponse
 
     from llm_util.classifiers import get_classifier_lines
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-    from llm_util.input_cleanup import convert_tracks_to_csv
-
-logger = logging.getLogger('LLMSpeechSummaryComponent')
-
+    from llm_util.input_cleanup import convert_speech_tracks_to_csv
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str]):
-        # if debug is true will return which corpus sentences triggered the match
+        # if debug is true will output extra information AND log response stream
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.allow_partial_response = mpf_util.get_property(props, 'ALLOW_PARTIAL_RESPONSE', False)
+        self.allow_refusal_response = mpf_util.get_property(props, 'ALLOW_REFUSAL_RESPONSE', False)
 
         self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
         self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
-        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 10000))
+        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 2000))
         self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 500))
 
         self.api_token = mpf_util.get_property(props, 'API_TOKEN', "Must be set for anonymous VLLM, but can be anything")
@@ -113,7 +114,7 @@ class LlmSpeechSummaryComponent:
             client_factory = self.client_factory
         else:
             client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
-        prompt = template.render(input = input, classifiers=classifiers)
+        prompt = template.render(input=input, classifiers=classifiers, response_format_json_schema=response_format_json_schema)
         with client_factory() as client:
             stream = client.chat.completions.create(
                 model=config.vllm_model, #model_name ## for ollama
@@ -123,7 +124,7 @@ class LlmSpeechSummaryComponent:
                 ],
                 temperature=0,
                 stream=True,
-                max_completion_tokens=int(math.floor(0.95 * (config.max_model_len - config.chunk_size - config.overlap))),
+                max_completion_tokens=int(math.floor(0.9 * (config.max_model_len - config.chunk_size - config.overlap))),
                 timeout=300,
                 response_format={
                     "type": "json_schema",
@@ -135,14 +136,33 @@ class LlmSpeechSummaryComponent:
                 }
             )
             content = ""
+            debug_buf = ""
+            success = False
             for event in stream:
-                if event.choices[0].finish_reason != None:
+                if event.choices[0].finish_reason == "stop":
+                    success = True
                     break
                 if event.object == "chat.completion.chunk":
-                    if hasattr(event.choices[0].delta, 'reasoning'):
-                        print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
-                    if len(event.choices[0].delta.content) > 0:
+                    if event.choices[0].delta.refusal and len(event.choices[0].delta.refusal) > 0:
+                        if not config.allow_refusal_response:
+                            raise Exception(f"Received LLM refusal: {event.choices[0].delta.refusal}")
+                        logger.error(f"Received LLM refusal: {event.choices[0].delta.refusal}")
+                    if event.choices[0].delta.content and len(event.choices[0].delta.content) > 0:
                         content += event.choices[0].delta.content
+                        if config.debug:
+                            debug_buf += event.choices[0].delta.content
+                            match = re.search(r"(.*)\n(.*)", debug_buf)
+                            while match:
+                                # nibble whole lines off the front of debug_buf
+                                logger.error(f'COMPLETION: {match.group(1)}')
+                                debug_buf = match.group(2)
+                                match = re.search(r"(.*)\n(.*)", debug_buf)
+            if debug_buf:
+                logger.error(f'COMPLETION: {debug_buf}')
+            if not success:
+                if not config.allow_partial_response:
+                    raise Exception("LLM Completion did not terminate successfully")
+                logger.error("LLM completion seems to have not completed successfully")
         return content
 
     @staticmethod
@@ -212,7 +232,7 @@ class LlmSpeechSummaryComponent:
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
 
-            input = convert_tracks_to_csv(video_job.feed_forward_tracks)
+            input = convert_speech_tracks_to_csv(video_job.feed_forward_tracks)
 
             summaries = []
             chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
@@ -236,7 +256,7 @@ class LlmSpeechSummaryComponent:
             if hasattr(final_summary, 'other_topics'):
                 main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
             if hasattr(final_summary, 'entities'):
-                for (k,v) in final_summary.entities.__dict__.items():
+                for (k,v) in final_summary.entities.model_dump().items():
                     main_detection_properties[k.upper()] = ', '.join(v)
             results = [mpf.VideoTrack(
                     video_job.start_frame,
@@ -248,15 +268,16 @@ class LlmSpeechSummaryComponent:
                     },
                     main_detection_properties
                 )]
-            classifier_confidence_minimum = config.classifier_confidence_minimum
-            results += list(
-                map(
-                    self._get_classifier_track(mpf.VideoTrack, video_job, lambda classifier, detection_properties: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}),
-                    filter(
-                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
-                        final_summary.classifiers)
+            if hasattr(final_summary, 'classifiers'):
+                classifier_confidence_minimum = config.classifier_confidence_minimum
+                results += list(
+                    map(
+                        self._get_classifier_track(mpf.VideoTrack, video_job, lambda classifier, detection_properties: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}),
+                        filter(
+                            lambda classifier: classifier.confidence >= classifier_confidence_minimum,
+                            final_summary.classifiers)
+                    )
                 )
-            )
             logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
             if config.debug:
                 logger.debug(f'get_detections_from_all_video_tracks results: {results}')
@@ -343,19 +364,28 @@ def run_component_test(clientFactory = None):
         input = f.read()
     input = input.replace("\r\n", "\n")
 
-    job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {}, {}, [
+    job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {
+        **os.environ
+    }, {}, [
         mpf.VideoTrack(0, 1, -100, {}, {
             "DEFAULT_LANGUAGE": "eng",
             "LANGUAGE": "eng",
             "SPEAKER_ID": None,
             "GENDER": None,
             "TRANSCRIPT": x
-        }) for x in input.split('\n\n') # type: ignore
+        }) for x in input.split('\n') if len(x) # type: ignore
     ])
 
-    print('About to call get_detections_from_all_video_tracks')
     return qsc.get_detections_from_all_video_tracks(job)
 
 
 if __name__ == '__main__':
+    log_level_env = os.environ.get('LOG_LEVEL', 'INFO').upper()
+
+    logging.basicConfig()
+
+    logger = logging.getLogger('LLMSpeechSummaryComponent')
+    logger.setLevel(log_level_env)
+    logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop').setLevel(log_level_env)
+
     run_component_test()

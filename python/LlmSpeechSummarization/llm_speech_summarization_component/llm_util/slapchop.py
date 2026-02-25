@@ -30,6 +30,10 @@ import pandas as pd
 import io
 from math import inf
 
+import logging
+logger = logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop')
+
+
 BOUNDARY_TOKEN_FOR_COUNTING: Final[str] = '<|newline|>'
 
 def _chunk_within_limits(total_count: int, chunk_size: int, overlap: int, token_count_at_boundaries: List[int], min_grouping: int|None, get_partial_chunk = None, convert_chunk_for_output = lambda x: x):
@@ -77,8 +81,8 @@ def split_csv_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap
     # find all the newlines in the tokenized text
     token_count_before_line = [index for index, element in enumerate(token_ids) if element == newline_token_id]
     token_count_at_line = [x for x in token_count_before_line]
-    for i in range(1, len(token_count_at_line)):
-        token_count_at_line[i] -= token_count_at_line[i-1]
+    for i in range(len(token_count_at_line)-2, 0, -1):
+        token_count_at_line[i+1] -= token_count_at_line[i]
 
     df = pd.read_csv(io.StringIO(tokenizer.decode(token_ids).replace(BOUNDARY_TOKEN_FOR_COUNTING, '\n')),sep='|')
     
@@ -105,8 +109,8 @@ def split_array_into_chunks(tokenizer, arr: List[Any], chunk_size: int = 10000, 
     # find all the newlines in the tokenized text
     token_count_before_obj = [index for index, element in enumerate(token_ids) if element == newline_token_id]
     token_count_at_obj = token_count_before_obj
-    for i in range(1, len(token_count_at_obj)):
-        token_count_at_obj[i] -= token_count_at_obj[i-1]
+    for i in range(len(token_count_at_obj)-2, 0, -1):
+        token_count_at_obj[i+1] -= token_count_at_obj[i]
 
     total_objects = len(arr)
 
@@ -123,7 +127,7 @@ def split_into_chunks(tokenizer, text: str, chunk_size: int = 10000, overlap: in
     return decoded
 
 def summarize_summaries(model, tokenizer, get_output, chunk_size, overlap, summaries):
-    print(f'Summarizing {len(summaries)} summaries...')
+    logger.info(f'Summarizing {len(summaries)} summaries...')
 
     # bisecting or n-secting the chunks is probably a smarter way to handle this... but greedy for now
 
