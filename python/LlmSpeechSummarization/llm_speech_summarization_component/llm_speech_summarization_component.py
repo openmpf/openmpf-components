@@ -32,6 +32,7 @@ from openai.types import ResponseFormatJSONSchema
 import requests
 import sys
 import time
+import re
 
 from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
@@ -60,8 +61,11 @@ except:
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str]):
-        # if debug is true will return which corpus sentences triggered the match
+        # if debug is true will output extra information AND log response stream
         self.debug = mpf_util.get_property(props, 'ENABLE_DEBUG', False)
+
+        self.allow_partial_response = mpf_util.get_property(props, 'ALLOW_PARTIAL_RESPONSE', False)
+        self.allow_refusal_response = mpf_util.get_property(props, 'ALLOW_REFUSAL_RESPONSE', False)
 
         self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
 
@@ -132,15 +136,33 @@ class LlmSpeechSummaryComponent:
                 }
             )
             content = ""
+            debug_buf = ""
+            success = False
             for event in stream:
-                if event.choices[0].finish_reason != None:
+                if event.choices[0].finish_reason == "stop":
+                    success = True
                     break
                 if event.object == "chat.completion.chunk":
-                    # if hasattr(event.choices[0].delta, 'reasoning'):
-                    #     # logger.debug cannot be used here because thinking streams onto the same line
-                    #     print(event.choices[0].delta.reasoning, end="", file=sys.stderr)
-                    if len(event.choices[0].delta.content) > 0:
+                    if event.choices[0].delta.refusal and len(event.choices[0].delta.refusal) > 0:
+                        if not config.allow_refusal_response:
+                            raise Exception(f"Received LLM refusal: {event.choices[0].delta.refusal}")
+                        logger.error(f"Received LLM refusal: {event.choices[0].delta.refusal}")
+                    if event.choices[0].delta.content and len(event.choices[0].delta.content) > 0:
                         content += event.choices[0].delta.content
+                        if config.debug:
+                            debug_buf += event.choices[0].delta.content
+                            match = re.search(r"(.*)\n(.*)", debug_buf)
+                            while match:
+                                # nibble whole lines off the front of debug_buf
+                                logger.error(f'COMPLETION: {match.group(1)}')
+                                debug_buf = match.group(2)
+                                match = re.search(r"(.*)\n(.*)", debug_buf)
+            if debug_buf:
+                logger.error(f'COMPLETION: {debug_buf}')
+            if not success:
+                if not config.allow_partial_response:
+                    raise Exception("LLM Completion did not terminate successfully")
+                logger.error("LLM completion seems to have not completed successfully")
         return content
 
     @staticmethod
