@@ -42,7 +42,7 @@
           "name": "INPUT_TOKEN_CHUNK_SIZE",
           "description": "The input size maximum, roughly 20%-25% of max model length",
           "type": "INT",
-          "defaultValue": 10000
+          "defaultValue": 2000
         },
         {
           "name": "INPUT_CHUNK_TOKEN_OVERLAP",
@@ -71,6 +71,18 @@
         {
           "name": "ENABLE_DEBUG",
           "description": "If true, each detection will include extra debug output.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "ALLOW_PARTIAL_RESPONSE",
+          "description": "If false, incomplete responses from the LLM will throw immediately.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "ALLOW_REFUSAL_RESPONSE",
+          "description": "If false, any refused delta in the completion stream throws.",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
         },
