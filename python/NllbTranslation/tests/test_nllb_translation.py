@@ -543,6 +543,7 @@ satisfeitos de si.
         test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '100'
         test_generic_job_props['SENTENCE_SPLITTER_INCLUDE_INPUT_LANG'] = 'True'
+        test_generic_job_props['FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES'] = "disabled"
 
         arz_text="هناك استياء بين بعض أعضاء جمعية ويلز الوطنية من الاقتراح بتغيير مسماهم الوظيفي إلى MWPs (أعضاء في برلمان ويلز). وقد نشأ ذلك بسبب وجود خطط لتغيير اسم الجمعية إلى برلمان ويلز."
 
@@ -554,6 +555,159 @@ satisfeitos de si.
 
         result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(arz_text_translation, result_props["TRANSLATION"])
+
+
+    def test_token_soft_limit_splits_under_hard_limit(self):
+        """
+        Covers the new preferred/soft limit behavior:
+        - If soft limit disabled: do NOT split when text <= hard limit
+        - If soft limit enabled: split when text > soft limit even if text <= hard limit
+        Assumption: "tokens" ~= word count.
+        """
+        from unittest.mock import patch
+        from nllb_component.nllb_translation_component import JobConfig
+
+        # Fake tokenizer: "token count" == word count
+        class FakeTokenizer:
+            def __call__(self, txt, **kwargs):
+                return {"input_ids": txt.split()}
+
+        # 12 "tokens"
+        text = " ".join(f"w{i:02d}" for i in range(1, 13))
+
+        # Base props: hard limit 20, sentence splitter defaults
+        base_props = dict(self.defaultProps)
+        base_props.update({
+            "DEFAULT_SOURCE_LANGUAGE": "deu",
+            "DEFAULT_SOURCE_SCRIPT": "Latn",
+            "USE_NLLB_TOKEN_LENGTH": "TRUE",
+            "NLLB_TRANSLATION_TOKEN_LIMIT": "20",          # hard limit
+            "SENTENCE_SPLITTER_MODE": "DEFAULT",
+            "SENTENCE_SPLITTER_NEWLINE_BEHAVIOR": "NONE",
+            "SENTENCE_MODEL": "wtp-bert-mini",            # won't load because we patch TextSplitterModel
+        })
+
+        ff_props = {}
+
+        # Deterministic stub splitter: chunk by preferred_limit words
+        def chunk_by_preferred_limit_words(txt: str, preferred: int) -> list[str]:
+            words = txt.split()
+            chunks = []
+            for i in range(0, len(words), preferred):
+                chunks.append(" ".join(words[i:i + preferred]))
+            return chunks
+
+        orig_tokenizer = getattr(self.component, "_tokenizer", None)
+        try:
+            self.component._tokenizer = FakeTokenizer()
+
+            # ---- Case 1: soft limit disabled => should NOT split (since 12 <= hard(20)) ----
+            props_no_soft = dict(base_props)
+            props_no_soft["NLLB_TRANSLATION_TOKEN_SOFT_LIMIT"] = "0"   # disabled
+            config_no_soft = JobConfig(props_no_soft, ff_props)
+
+            with patch.object(self.component, "_check_model", return_value=None), \
+                 patch.object(self.component, "_load_tokenizer", return_value=None), \
+                 patch("nllb_component.nllb_translation_component.should_translate", return_value=False), \
+                 patch("nllb_component.nllb_translation_component.TextSplitterModel", return_value=object()), \
+                 patch("nllb_component.nllb_translation_component.TextSplitter.split") as split_mock:
+
+                _ = self.component._get_translation(config_no_soft, {"TEXT": text})
+                split_mock.assert_not_called()
+
+            # ---- Case 2: soft limit enabled => should split even though under hard limit ----
+            props_soft = dict(base_props)
+            props_soft["NLLB_TRANSLATION_TOKEN_SOFT_LIMIT"] = "5"      # preferred limit
+            config_soft = JobConfig(props_soft, ff_props)
+
+            captured_chunks: list[str] = []
+
+            def fake_split(txt, limit, num_boundary_chars, get_text_size, sentence_model, in_lang=None, **kwargs):
+                preferred = int(kwargs.get("preferred_limit", -1))
+                chunks = chunk_by_preferred_limit_words(txt, preferred)
+                captured_chunks[:] = chunks
+                return iter(chunks)
+
+            with patch.object(self.component, "_check_model", return_value=None), \
+                 patch.object(self.component, "_load_tokenizer", return_value=None), \
+                 patch("nllb_component.nllb_translation_component.should_translate", return_value=False), \
+                 patch("nllb_component.nllb_translation_component.TextSplitterModel", return_value=object()), \
+                 patch("nllb_component.nllb_translation_component.TextSplitter.split", side_effect=fake_split):
+
+                _ = self.component._get_translation(config_soft, {"TEXT": text})
+
+            # Expect 12 words split into 5,5,2 => 3 chunks
+            self.assertEqual(3, len(captured_chunks))
+            self.assertEqual([5, 5, 2], [len(c.split()) for c in captured_chunks])
+
+        finally:
+            self.component._tokenizer = orig_tokenizer
+
+
+    def test_difficult_language_overrides_only_for_arabic_languages(self):
+        """
+        Verifies difficult-language behavior:
+        - Arabic language (arb_Arab) forces SENTENCE splitting and clamps token limit to <= 50.
+        - A non-Arabic language that uses Arabic script (urd_Arab) should NOT trigger the override.
+        Assumption: "tokens" ~= word count.
+        """
+        from unittest.mock import patch
+        from nllb_component.nllb_translation_component import JobConfig
+
+        class FakeTokenizer:
+            def __call__(self, txt, **kwargs):
+                return {"input_ids": txt.split()}
+
+        # 110 "tokens" to ensure we exceed the non-Arabic hard limit (100) and trigger splitting.
+        text = " ".join(f"w{i:03d}" for i in range(1, 111))
+
+        base_props = dict(self.defaultProps)
+        base_props.update({
+            "USE_NLLB_TOKEN_LENGTH": "TRUE",
+            "NLLB_TRANSLATION_TOKEN_LIMIT": "100",          # should clamp to 50 for Arabic, remain 100 for Urdu
+            "NLLB_TRANSLATION_TOKEN_SOFT_LIMIT": "0",       # keep soft limit out of the picture here
+            "SENTENCE_SPLITTER_MODE": "DEFAULT",
+            "SENTENCE_SPLITTER_NEWLINE_BEHAVIOR": "NONE",
+            "FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES": "arabic",
+            "SENTENCE_MODEL": "wtp-bert-mini",              # won't load because we patch TextSplitterModel
+        })
+
+        orig_tokenizer = getattr(self.component, "_tokenizer", None)
+        try:
+            self.component._tokenizer = FakeTokenizer()
+
+            def run_case(src_lang: str, src_script: str, expected_mode: str, expected_limit: int):
+                props = dict(base_props)
+                props["DEFAULT_SOURCE_LANGUAGE"] = src_lang
+                props["DEFAULT_SOURCE_SCRIPT"] = src_script
+                config = JobConfig(props, ff_props={})
+
+                captured = {}
+
+                def fake_split(txt, limit, num_boundary_chars, get_text_size, sentence_model, in_lang=None, **kwargs):
+                    captured["limit"] = int(limit)
+                    captured["split_mode"] = str(kwargs.get("split_mode", "DEFAULT")).upper()
+                    return iter([txt])  # only validating parameters/overrides
+
+                with patch.object(self.component, "_check_model", return_value=None), \
+                     patch.object(self.component, "_load_tokenizer", return_value=None), \
+                     patch("nllb_component.nllb_translation_component.should_translate", return_value=False), \
+                     patch("nllb_component.nllb_translation_component.TextSplitterModel", return_value=object()), \
+                     patch("nllb_component.nllb_translation_component.TextSplitter.split", side_effect=fake_split):
+
+                    _ = self.component._get_translation(config, {"TEXT": text})
+
+                self.assertEqual(expected_limit, captured["limit"])
+                self.assertEqual(expected_mode, captured["split_mode"])
+
+            with self.subTest("Arabic language triggers overrides"):
+                run_case("arb", "Arab", expected_mode="SENTENCE", expected_limit=50)
+
+            with self.subTest("Arabic script but non-Arabic language does not trigger overrides"):
+                run_case("urd", "Arab", expected_mode="DEFAULT", expected_limit=100)
+
+        finally:
+            self.component._tokenizer = orig_tokenizer
 
     def test_should_translate(self):
 
@@ -736,204 +890,204 @@ satisfeitos de si.
 
     def test_wtp_iso_conversion(self):
         # checks ISO normalization and WTP ("Where's The Point" Sentence Splitter) lookup
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ace_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ace_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('acm_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('acq_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('aeb_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('afr_Latn')), 'af')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ajp_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('amh_Ethi')), 'am')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('apc_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('arb_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ars_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ary_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('arz_Arab')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('asm_Beng')), 'bn')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ast_Latn')), 'es')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('awa_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ayr_Latn')), 'es')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('azb_Arab')), 'az')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('azj_Latn')), 'az')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bak_Cyrl')), 'ru')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bam_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ban_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bel_Cyrl')), 'be')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ben_Beng')), 'bn')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bho_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bjn_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bug_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bul_Cyrl')), 'bg')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('cat_Latn')), 'ca')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ceb_Latn')), 'ceb')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ces_Latn')), 'cs')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('cjk_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ckb_Arab')), 'ku')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('crh_Latn')), 'tr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('cym_Latn')), 'cy')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dan_Latn')), 'da')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('deu_Latn')), 'de')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dik_Latn')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dyu_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ell_Grek')), 'el')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('eng_Latn')), 'en')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('epo_Latn')), 'eo')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('est_Latn')), 'et')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('eus_Latn')), 'eu')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fin_Latn')), 'fi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fon_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fra_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fur_Latn')), 'it')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fuv_Latn')), 'ha')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('gla_Latn')), 'gd')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('gle_Latn')), 'ga')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('glg_Latn')), 'gl')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('grn_Latn')), 'es')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('guj_Gujr')), 'gu')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hat_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hau_Latn')), 'ha')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('heb_Hebr')), 'he')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hin_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hne_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hun_Latn')), 'hu')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hye_Armn')), 'hy')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ibo_Latn')), 'ig')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ind_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('isl_Latn')), 'is')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ita_Latn')), 'it')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('jav_Latn')), 'jv')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('jpn_Jpan')), 'ja')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kab_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kac_Latn')), 'my')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kan_Knda')), 'kn')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kas_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kat_Geor')), 'ka')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kbp_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kea_Latn')), 'pt')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('khm_Khmr')), 'km')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('khk_Cyrl')), 'mn')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kir_Cyrl')), 'ky')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kmb_Latn')), 'pt')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kmr_Latn')), 'ku')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('knc_Latn')), 'ha')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kon_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kor_Hang')), 'ko')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lij_Latn')), 'it')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lim_Latn')), 'nl')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lin_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lit_Latn')), 'lt')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lmo_Latn')), 'it')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ltg_Latn')), 'lv')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lua_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lus_Latn')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lvs_Latn')), 'lv')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mag_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mai_Deva')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mal_Mlym')), 'ml')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mar_Deva')), 'mr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('min_Latn')), 'id')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mkd_Cyrl')), 'mk')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mlt_Latn')), 'mt')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mni_Beng')), 'bn')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mos_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mya_Mymr')), 'my')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nld_Latn')), 'nl')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nno_Latn')), 'no')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nob_Latn')), 'no')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('npi_Deva')), 'ne')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nus_Latn')), 'ar')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pan_Guru')), 'pa')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pap_Latn')), 'es')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pbt_Arab')), 'ps')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pes_Arab')), 'fa')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('plt_Latn')), 'mg')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pol_Latn')), 'pl')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('por_Latn')), 'pt')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('prs_Arab')), 'fa')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ron_Latn')), 'ro')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('rus_Cyrl')), 'ru')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sag_Latn')), 'fr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sat_Olck')), 'hi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('scn_Latn')), 'it')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('shn_Mymr')), 'my')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sin_Sinh')), 'si')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('slk_Latn')), 'sk')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('slv_Latn')), 'sl')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('spa_Latn')), 'es')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('als_Latn')), 'sq')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('srp_Cyrl')), 'sr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('swe_Latn')), 'sv')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('szl_Latn')), 'pl')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tam_Taml')), 'ta')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tel_Telu')), 'te')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tgk_Cyrl')), 'tg')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tha_Thai')), 'th')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tur_Latn')), 'tr')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ukr_Cyrl')), 'uk')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('umb_Latn')), 'pt')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('urd_Arab')), 'ur')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('uzn_Latn')), 'uz')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('vec_Latn')), 'it')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('vie_Latn')), 'vi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('xho_Latn')), 'xh')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ydd_Hebr')), 'yi')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('yor_Latn')), 'yo')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('yue_Hant')), 'zh')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zho_Hans')), 'zh')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zsm_Latn')), 'ms')
-        self.assertEqual(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('zul_Latn')), 'zu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ace_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ace_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('acm_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('acq_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('aeb_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('afr_Latn'), 'af')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ajp_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('amh_Ethi'), 'am')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('apc_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('arb_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ars_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ary_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('arz_Arab'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('asm_Beng'), 'bn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ast_Latn'), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('awa_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ayr_Latn'), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('azb_Arab'), 'az')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('azj_Latn'), 'az')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bak_Cyrl'), 'ru')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bam_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ban_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bel_Cyrl'), 'be')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ben_Beng'), 'bn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bho_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bjn_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bug_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('bul_Cyrl'), 'bg')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('cat_Latn'), 'ca')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ceb_Latn'), 'ceb')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ces_Latn'), 'cs')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('cjk_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ckb_Arab'), 'ku')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('crh_Latn'), 'tr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('cym_Latn'), 'cy')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('dan_Latn'), 'da')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('deu_Latn'), 'de')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('dik_Latn'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('dyu_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ell_Grek'), 'el')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('eng_Latn'), 'en')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('epo_Latn'), 'eo')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('est_Latn'), 'et')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('eus_Latn'), 'eu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('fin_Latn'), 'fi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('fon_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('fra_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('fur_Latn'), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('fuv_Latn'), 'ha')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('gla_Latn'), 'gd')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('gle_Latn'), 'ga')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('glg_Latn'), 'gl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('grn_Latn'), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('guj_Gujr'), 'gu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('hat_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('hau_Latn'), 'ha')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('heb_Hebr'), 'he')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('hin_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('hne_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('hun_Latn'), 'hu')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('hye_Armn'), 'hy')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ibo_Latn'), 'ig')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ind_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('isl_Latn'), 'is')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ita_Latn'), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('jav_Latn'), 'jv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('jpn_Jpan'), 'ja')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kab_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kac_Latn'), 'my')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kan_Knda'), 'kn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kas_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kat_Geor'), 'ka')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kbp_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kea_Latn'), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('khm_Khmr'), 'km')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('khk_Cyrl'), 'mn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kir_Cyrl'), 'ky')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kmb_Latn'), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kmr_Latn'), 'ku')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('knc_Latn'), 'ha')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kon_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('kor_Hang'), 'ko')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lij_Latn'), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lim_Latn'), 'nl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lin_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lit_Latn'), 'lt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lmo_Latn'), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ltg_Latn'), 'lv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lua_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lus_Latn'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('lvs_Latn'), 'lv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mag_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mai_Deva'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mal_Mlym'), 'ml')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mar_Deva'), 'mr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('min_Latn'), 'id')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mkd_Cyrl'), 'mk')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mlt_Latn'), 'mt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mni_Beng'), 'bn')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mos_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('mya_Mymr'), 'my')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('nld_Latn'), 'nl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('nno_Latn'), 'no')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('nob_Latn'), 'no')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('npi_Deva'), 'ne')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('nus_Latn'), 'ar')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('pan_Guru'), 'pa')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('pap_Latn'), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('pbt_Arab'), 'ps')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('pes_Arab'), 'fa')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('plt_Latn'), 'mg')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('pol_Latn'), 'pl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('por_Latn'), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('prs_Arab'), 'fa')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ron_Latn'), 'ro')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('rus_Cyrl'), 'ru')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('sag_Latn'), 'fr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('sat_Olck'), 'hi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('scn_Latn'), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('shn_Mymr'), 'my')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('sin_Sinh'), 'si')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('slk_Latn'), 'sk')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('slv_Latn'), 'sl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('spa_Latn'), 'es')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('als_Latn'), 'sq')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('srp_Cyrl'), 'sr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('swe_Latn'), 'sv')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('szl_Latn'), 'pl')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('tam_Taml'), 'ta')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('tel_Telu'), 'te')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('tgk_Cyrl'), 'tg')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('tha_Thai'), 'th')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('tur_Latn'), 'tr')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ukr_Cyrl'), 'uk')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('umb_Latn'), 'pt')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('urd_Arab'), 'ur')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('uzn_Latn'), 'uz')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('vec_Latn'), 'it')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('vie_Latn'), 'vi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('xho_Latn'), 'xh')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('ydd_Hebr'), 'yi')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('yor_Latn'), 'yo')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('yue_Hant'), 'zh')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('zho_Hans'), 'zh')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('zsm_Latn'), 'ms')
+        self.assertEqual(WtpLanguageSettings.convert_to_iso('zul_Latn'), 'zu')
 
         # languages supported by NLLB but not supported by WTP Splitter
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('aka_Latn'))) # 'ak'  Akan
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bem_Latn'))) # 'sw'  Bemba
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bod_Tibt'))) # 'bo'  Tibetan
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('bos_Latn'))) # 'bs'  Bosnian
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('dzo_Tibt'))) # 'dz'  Dzongkha
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ewe_Latn'))) # 'ee'  Ewe
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fao_Latn'))) # 'fo'  Faroese
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('fij_Latn'))) # 'fj'  Fijian
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('gaz_Latn'))) # 'om'  Oromo
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('hrv_Latn'))) # 'hr'  Croatian
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ilo_Latn'))) # 'tl'  Ilocano
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kam_Latn'))) # 'sw'  Kamba
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kik_Latn'))) # 'sw'  Kikuyu
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('kin_Latn'))) # 'rw'  Kinyarwanda
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lao_Laoo'))) # 'lo'  Lao
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ltz_Latn'))) # 'lb'  Luxembourgish
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('lug_Latn'))) # 'lg'  Ganda
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('luo_Latn'))) # 'luo' Luo
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('mri_Latn'))) # 'mi'  Maori
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nso_Latn'))) # 'st'  Northern Sotho
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('nya_Latn'))) # 'ny'  Chichewa
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('oci_Latn'))) # 'oc'  Occitan
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ory_Orya'))) # 'or'  Odia
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('pag_Latn'))) # 'tl'  Pangasinan
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('quy_Latn'))) # 'qu'  Quechua
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('run_Latn'))) # 'rn'  Rundi
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('san_Deva'))) # 'sa'  Sanskrit
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('smo_Latn'))) # 'sm'  Samoan
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sna_Latn'))) # 'sn'  Shona
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('snd_Arab'))) # 'sd'  Sindhi
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('som_Latn'))) # 'so'  Somali
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sot_Latn'))) # 'st'  Southern Sotho
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('srd_Latn'))) # 'sc'  Sardinian
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('ssw_Latn'))) # 'ss'  Swati
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('sun_Latn'))) # 'su'  Sundanese
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('swh_Latn'))) # 'sw'  Swahili
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('taq_Latn'))) # 'ber' Tamasheq
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tat_Cyrl'))) # 'tt'  Tatar
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tgl_Latn'))) # 'tl'  Tagalog
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tir_Ethi'))) # 'ti'  Tigrinya
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tpi_Latn'))) # 'tpi' Tok Pisin
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tsn_Latn'))) # 'tn'  Tswana
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tso_Latn'))) # 'ts'  Tsonga
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tuk_Latn'))) # 'tk'  Turkmen
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tum_Latn'))) # 'ny'  Tumbuka
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('twi_Latn'))) # 'ak'  Twi
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('tzm_Tfng'))) # 'ber' Central Atlas Tamazight (Berber)
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('uig_Arab'))) # 'ug'  Uyghur
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('war_Latn'))) # 'tl'  Waray
-        self.assertIsNone(WtpLanguageSettings.convert_to_iso(NllbLanguageMapper.get_normalized_iso('wol_Latn'))) # 'wo'  Wolof
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('aka_Latn')) # 'ak'  Akan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('bem_Latn')) # 'sw'  Bemba
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('bod_Tibt')) # 'bo'  Tibetan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('bos_Latn')) # 'bs'  Bosnian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('dzo_Tibt')) # 'dz'  Dzongkha
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('ewe_Latn')) # 'ee'  Ewe
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('fao_Latn')) # 'fo'  Faroese
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('fij_Latn')) # 'fj'  Fijian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('gaz_Latn')) # 'om'  Oromo
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('hrv_Latn')) # 'hr'  Croatian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('ilo_Latn')) # 'tl'  Ilocano
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('kam_Latn')) # 'sw'  Kamba
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('kik_Latn')) # 'sw'  Kikuyu
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('kin_Latn')) # 'rw'  Kinyarwanda
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('lao_Laoo')) # 'lo'  Lao
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('ltz_Latn')) # 'lb'  Luxembourgish
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('lug_Latn')) # 'lg'  Ganda
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('luo_Latn')) # 'luo' Luo
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('mri_Latn')) # 'mi'  Maori
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('nso_Latn')) # 'st'  Northern Sotho
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('nya_Latn')) # 'ny'  Chichewa
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('oci_Latn')) # 'oc'  Occitan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('ory_Orya')) # 'or'  Odia
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('pag_Latn')) # 'tl'  Pangasinan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('quy_Latn')) # 'qu'  Quechua
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('run_Latn')) # 'rn'  Rundi
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('san_Deva')) # 'sa'  Sanskrit
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('smo_Latn')) # 'sm'  Samoan
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('sna_Latn')) # 'sn'  Shona
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('snd_Arab')) # 'sd'  Sindhi
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('som_Latn')) # 'so'  Somali
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('sot_Latn')) # 'st'  Southern Sotho
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('srd_Latn')) # 'sc'  Sardinian
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('ssw_Latn')) # 'ss'  Swati
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('sun_Latn')) # 'su'  Sundanese
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('swh_Latn')) # 'sw'  Swahili
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('taq_Latn')) # 'ber' Tamasheq
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tat_Cyrl')) # 'tt'  Tatar
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tgl_Latn')) # 'tl'  Tagalog
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tir_Ethi')) # 'ti'  Tigrinya
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tpi_Latn')) # 'tpi' Tok Pisin
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tsn_Latn')) # 'tn'  Tswana
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tso_Latn')) # 'ts'  Tsonga
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tuk_Latn')) # 'tk'  Turkmen
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tum_Latn')) # 'ny'  Tumbuka
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('twi_Latn')) # 'ak'  Twi
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('tzm_Tfng')) # 'ber' Central Atlas Tamazight (Berber)
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('uig_Arab')) # 'ug'  Uyghur
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('war_Latn')) # 'tl'  Waray
+        self.assertIsNone(WtpLanguageSettings.convert_to_iso('wol_Latn')) # 'wo'  Wolof
 
 if __name__ == '__main__':
     unittest.main()

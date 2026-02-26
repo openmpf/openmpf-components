@@ -69,6 +69,12 @@
           "defaultValue": "512"
         },
         {
+          "name": "NLLB_TRANSLATION_TOKEN_SOFT_LIMIT",
+          "description": "Ideal token size for translation chunks when USE_NLLB_TOKEN_LENGTH=TRUE. If > 0 and less than NLLB_TRANSLATION_TOKEN_LIMIT, the splitter will attempt to produce chunks near this size (and will split even if the full text fits under the hard limit). Must be <= hard limit. Recommended ~130.",
+          "type": "INT",
+          "defaultValue": "130"
+        },
+        {
           "name": "SENTENCE_MODEL",
           "description":  "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model, Segment any Text (SaT) `sat-3l-sm` model, and Where's the Point (WtP) `wtp-bert-mini` model.",
           "type": "STRING",
@@ -127,6 +133,12 @@
           "description": "The text splitter treats newline characters as sentence boundaries. To prevent this newlines can be removed from the input text during splitting. Valid values are SPACE (replace with space character), REMOVE (remove newlines), NONE (leave newlines as they are), and GUESS (If source language is Chinese or Japanese use REMOVE, else use SPACE).",
           "type": "STRING",
           "defaultValue": "GUESS"
+        },
+        {
+          "name": "FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES",
+          "description": "Comma-separated list of languages that should force sentence-by-sentence splitting and reduce the hard token limit. Default includes 'arabic'.",
+          "type": "STRING",
+          "defaultValue": "arabic"
         }
       ]
     }
