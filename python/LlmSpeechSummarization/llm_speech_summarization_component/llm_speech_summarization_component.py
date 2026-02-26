@@ -110,6 +110,11 @@ class JobConfig:
 
 logger = logging.getLogger('LLMSpeechSummaryComponent')
 
+def _log_exception(err: mpf.DetectionError, msg: str|None):
+    if msg:
+        logger.error(msg)
+    return err.exception(msg)
+
 class LlmSpeechSummaryComponent:
     def _get_output(self, config: JobConfig, template, classifiers, input):
         if self.client_factory:
