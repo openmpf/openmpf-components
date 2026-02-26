@@ -173,10 +173,18 @@ class LlmSpeechSummaryComponent:
         return content
 
     @staticmethod
-    def _get_track_for_classifier(t, video_job: mpf.VideoJob, classifier, arg_factory):
+    def _get_track_for_classifier(t, job: mpf.VideoJob|mpf.AudioJob, classifier, arg_factory):
         detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
-        return t(video_job.start_frame, video_job.stop_frame, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
+        start: int = None
+        end: int = None
+        if type(job) is mpf.VideoJob:
+            start = job.start_frame
+            end = job.stop_frame
+        elif type(job) is mpf.AudioJob:
+            start = job.start_time
+            end = job.stop_time
+        return t(start, end, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
 
     @staticmethod
     def _get_classifier_track(t, job, arg_factory=lambda _classifier, _detection_properties: []):
