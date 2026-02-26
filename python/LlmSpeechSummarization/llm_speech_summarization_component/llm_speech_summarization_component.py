@@ -253,8 +253,6 @@ class LlmSpeechSummaryComponent:
             else:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
                 final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
-            if config.debug:
-                logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary
             }
@@ -286,8 +284,6 @@ class LlmSpeechSummaryComponent:
                     )
                 )
             logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
-            if config.debug:
-                logger.debug(f'get_detections_from_all_video_tracks results: {results}')
             return results
 
         else:
