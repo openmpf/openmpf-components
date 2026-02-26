@@ -26,7 +26,8 @@
 
 import os
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "0"
-from llm_speech_summarization_component.llm_speech_summarization_component import run_component_test
+import mpf_component_api as mpf
+from llm_speech_summarization_component.llm_speech_summarization_component import run_component_test, _log_exception
 
 class FakeClass():
     def __enter__(self):
@@ -514,3 +515,12 @@ def test_invocation_with_fake_client():
     assert main_detection.detection_properties['TEXT'] == "The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance."
     assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
     assert classifier_detection.confidence == 0.95
+
+def test_exception_throwing():
+    try:
+        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'It worked')
+        assert False
+    except mpf.DetectionException as e:
+        assert True
+    except:
+        assert False

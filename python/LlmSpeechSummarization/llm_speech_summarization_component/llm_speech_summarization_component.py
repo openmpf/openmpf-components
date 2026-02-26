@@ -108,6 +108,13 @@ class JobConfig:
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
             f"{path} does not exist.")
 
+logger = logging.getLogger('LLMSpeechSummaryComponent')
+
+def _log_exception(err: mpf.DetectionError, msg: str|None):
+    if msg:
+        logger.error(msg)
+    return err.exception(msg)
+
 class LlmSpeechSummaryComponent:
     def _get_output(self, config: JobConfig, template, classifiers, input):
         if self.client_factory:
@@ -145,7 +152,7 @@ class LlmSpeechSummaryComponent:
                 if event.object == "chat.completion.chunk":
                     if event.choices[0].delta.refusal and len(event.choices[0].delta.refusal) > 0:
                         if not config.allow_refusal_response:
-                            raise Exception(f"Received LLM refusal: {event.choices[0].delta.refusal}")
+                            raise _log_exception(mpf.DetectionError.DETECTION_FAILED, f"Received LLM refusal: {event.choices[0].delta.refusal}")
                         logger.error(f"Received LLM refusal: {event.choices[0].delta.refusal}")
                     if event.choices[0].delta.content and len(event.choices[0].delta.content) > 0:
                         content += event.choices[0].delta.content
@@ -154,14 +161,14 @@ class LlmSpeechSummaryComponent:
                             match = re.search(r"(.*)\n(.*)", debug_buf)
                             while match:
                                 # nibble whole lines off the front of debug_buf
-                                logger.error(f'COMPLETION: {match.group(1)}')
+                                logger.debug(f'COMPLETION: {match.group(1)}')
                                 debug_buf = match.group(2)
                                 match = re.search(r"(.*)\n(.*)", debug_buf)
             if debug_buf:
-                logger.error(f'COMPLETION: {debug_buf}')
+                logger.debug(f'COMPLETION: {debug_buf}')
             if not success:
                 if not config.allow_partial_response:
-                    raise Exception("LLM Completion did not terminate successfully")
+                    raise _log_exception(mpf.DetectionError.DETECTION_FAILED, "LLM completion did not terminate successfully")
                 logger.error("LLM completion seems to have not completed successfully")
         return content
 
@@ -182,7 +189,7 @@ class LlmSpeechSummaryComponent:
             start_time = time.time()
             success = False
             failed_ever = False
-            last_error = None
+            last_error: str|None = None
             while time.time() - start_time < timeout_seconds:
                 try:
                     response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
@@ -197,13 +204,13 @@ class LlmSpeechSummaryComponent:
                 except Exception as e:
                     failed_ever = True
                     logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
-                    last_error = e
+                    last_error = e.format_exc()
                 time.sleep(retry_delay_seconds)
 
             if not success:
                 if last_error:
-                    raise last_error
-                raise Exception("Timed out waiting for VLLM to be healthy")
+                    raise _log_exception(mpf.DetectionError.NETWORK_ERROR, last_error)
+                raise _log_exception(mpf.DetectionError.NETWORK_ERROR, "Timed out waiting for VLLM to be healthy")
 
         return OpenAI(**kwargs)
 
@@ -246,8 +253,6 @@ class LlmSpeechSummaryComponent:
             else:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
                 final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
-            if config.debug:
-                logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary
             }
@@ -279,12 +284,10 @@ class LlmSpeechSummaryComponent:
                     )
                 )
             logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
-            if config.debug:
-                logger.debug(f'get_detections_from_all_video_tracks results: {results}')
             return results
 
         else:
-            raise mpf.DetectionError.MPF_OTHER_DETECTION_ERROR_TYPE.exception('Received no feed forward tracks')
+            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
 
     def get_detections_from_all_audio_tracks(self, audio_job: mpf.AllAudioTracksJob) -> Sequence[mpf.AudioTrack]:
         """
@@ -308,7 +311,7 @@ class LlmSpeechSummaryComponent:
         if audio_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
 
-            input = convert_tracks_to_csv(audio_job.feed_forward_tracks)
+            input = convert_speech_tracks_to_csv(audio_job.feed_forward_tracks)
 
             summaries = []
             chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
@@ -322,8 +325,6 @@ class LlmSpeechSummaryComponent:
             else:
                 # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
                 final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
-            if config.debug:
-                logger.debug(final_summary.model_dump_json())
             main_detection_properties = {
                 'TEXT': final_summary.summary
             }
@@ -350,12 +351,10 @@ class LlmSpeechSummaryComponent:
                 )
             )
             logger.info(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
-            if config.debug:
-                logger.debug(f'get_detections_from_all_audio_tracks results: {results}')
             return results
 
         else:
-            raise mpf.DetectionError.MPF_OTHER_DETECTION_ERROR_TYPE.exception('Received no feed forward tracks')
+            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
 
 def run_component_test(clientFactory = None):
     qsc = LlmSpeechSummaryComponent(clientFactory)
@@ -384,7 +383,6 @@ if __name__ == '__main__':
 
     logging.basicConfig()
 
-    logger = logging.getLogger('LLMSpeechSummaryComponent')
     logger.setLevel(log_level_env)
     logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop').setLevel(log_level_env)
 
