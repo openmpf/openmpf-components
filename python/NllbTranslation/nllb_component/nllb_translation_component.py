@@ -202,7 +202,7 @@ class NllbTranslationComponent:
         for prop_to_translate, text in text_to_translate.items():
             if config.use_token_length:
                 hard_limit = config.nllb_token_limit
-                preferred_limit = self.nllb_token_soft_limit
+                preferred_limit = config.nllb_token_soft_limit
             else:
                 hard_limit = config.nllb_character_limit
                 preferred_limit = -1
