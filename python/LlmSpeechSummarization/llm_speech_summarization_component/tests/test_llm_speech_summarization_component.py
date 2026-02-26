@@ -44,7 +44,9 @@ class FakeClass():
 # When that function is called, return an array of event-like instances, regardless of arguments
 FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda  *_args, **_kwargs: [ \
             FakeClass(choices=[FakeClass(finish_reason=None, \
-                                 delta=FakeClass(content="""{
+                                 delta=FakeClass(
+                                 refusal=None,
+                                 content="""{
   "summary": "The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance.",
   "primary_topic": "Publication of a memoir by a former Major League Baseball player offering advice to aspiring players",
   "other_topics": [
@@ -504,7 +506,9 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
     ]
   }
 }"""))], object="chat.completion.chunk"), \
-            FakeClass(choices=[FakeClass(finish_reason=True)]), \
+            FakeClass(choices=[FakeClass(finish_reason="stop", delta=FakeClass(
+                                 refusal=None,
+                                 content=""))], object="chat.completion.chunk"), \
         ])))
 
 def test_invocation_with_fake_client():
