@@ -25,9 +25,12 @@
 #############################################################################
 
 import os
+import logging
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "0"
 import mpf_component_api as mpf
-from llm_speech_summarization_component.llm_speech_summarization_component import run_component_test, _log_exception
+from llm_speech_summarization_component.llm_speech_summarization_component import run_component_test, _log_exception, logger
+
+logger.setLevel(logging.DEBUG)
 
 class FakeClass():
     def __enter__(self):
@@ -507,8 +510,22 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
             FakeClass(choices=[FakeClass(finish_reason=True)]), \
         ])))
 
-def test_invocation_with_fake_client():
+def test_video_invocation_with_fake_client():
     result = run_component_test(FakeLLM)
+    assert len(result) == 2
+    main_detection = result[0]
+    classifier_detection = result[1]
+    assert main_detection.detection_properties['TEXT'] == "The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance."
+    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
+    assert classifier_detection.confidence == 0.95
+
+def test_audio_invocation_with_fake_client():
+    result = run_component_test(FakeLLM, 'get_detections_from_all_audio_tracks', mpf.AllAudioTracksJob, lambda transcript: mpf.AudioTrack(0, 1, -100, { # type: ignore
+                            "DEFAULT_LANGUAGE": "eng",
+                            "LANGUAGE": "eng",
+                            "SPEAKER_ID": None,
+                            "GENDER": None,
+                            "TRANSCRIPT": transcript}))
     assert len(result) == 2
     main_detection = result[0]
     classifier_detection = result[1]

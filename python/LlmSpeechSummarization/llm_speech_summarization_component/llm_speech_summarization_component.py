@@ -356,26 +356,30 @@ class LlmSpeechSummaryComponent:
         else:
             raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
 
-def run_component_test(clientFactory = None):
+def run_component_test(clientFactory = None,
+                       detection_func_name = 'get_detections_from_all_video_tracks',
+                       jobType=mpf.AllVideoTracksJob,
+                       trackFactory=lambda transcript: mpf.VideoTrack(0, 1, -100, {}, { # type: ignore
+                            "DEFAULT_LANGUAGE": "eng",
+                            "LANGUAGE": "eng",
+                            "SPEAKER_ID": None,
+                            "GENDER": None,
+                            "TRANSCRIPT": transcript})):
     qsc = LlmSpeechSummaryComponent(clientFactory)
+    if not hasattr(qsc, detection_func_name):
+        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
     input = None
     with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
         input = f.read()
     input = input.replace("\r\n", "\n")
 
-    job = mpf.AllVideoTracksJob('Test Job', '/dev/null', 0, 9000, {
+    job = jobType('Test Job', '/dev/null', 0, 9000, {
         **os.environ
     }, {}, [
-        mpf.VideoTrack(0, 1, -100, {}, {
-            "DEFAULT_LANGUAGE": "eng",
-            "LANGUAGE": "eng",
-            "SPEAKER_ID": None,
-            "GENDER": None,
-            "TRANSCRIPT": x
-        }) for x in input.split('\n') if len(x) # type: ignore
+        trackFactory(x) for x in input.split('\n') if len(x) # type: ignore
     ])
 
-    return qsc.get_detections_from_all_video_tracks(job)
+    return getattr(qsc, detection_func_name)(job)
 
 
 if __name__ == '__main__':
