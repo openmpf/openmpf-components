@@ -152,7 +152,7 @@ class LlmSpeechSummaryComponent:
                 if event.object == "chat.completion.chunk":
                     if event.choices[0].delta.refusal and len(event.choices[0].delta.refusal) > 0:
                         if not config.allow_refusal_response:
-                            raise Exception(f"Received LLM refusal: {event.choices[0].delta.refusal}")
+                            raise _log_exception(mpf.DetectionError.DETECTION_FAILED, f"Received LLM refusal: {event.choices[0].delta.refusal}")
                         logger.error(f"Received LLM refusal: {event.choices[0].delta.refusal}")
                     if event.choices[0].delta.content and len(event.choices[0].delta.content) > 0:
                         content += event.choices[0].delta.content
@@ -168,7 +168,7 @@ class LlmSpeechSummaryComponent:
                 logger.error(f'COMPLETION: {debug_buf}')
             if not success:
                 if not config.allow_partial_response:
-                    raise Exception("LLM Completion did not terminate successfully")
+                    raise _log_exception(mpf.DetectionError.DETECTION_FAILED, "LLM completion did not terminate successfully")
                 logger.error("LLM completion seems to have not completed successfully")
         return content
 
@@ -189,7 +189,7 @@ class LlmSpeechSummaryComponent:
             start_time = time.time()
             success = False
             failed_ever = False
-            last_error = None
+            last_error: str|None = None
             while time.time() - start_time < timeout_seconds:
                 try:
                     response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
@@ -204,13 +204,13 @@ class LlmSpeechSummaryComponent:
                 except Exception as e:
                     failed_ever = True
                     logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
-                    last_error = e
+                    last_error = e.format_exc()
                 time.sleep(retry_delay_seconds)
 
             if not success:
                 if last_error:
-                    raise last_error
-                raise Exception("Timed out waiting for VLLM to be healthy")
+                    raise _log_exception(mpf.DetectionError.NETWORK_ERROR, last_error)
+                raise _log_exception(mpf.DetectionError.NETWORK_ERROR, "Timed out waiting for VLLM to be healthy")
 
         return OpenAI(**kwargs)
 
@@ -291,12 +291,12 @@ class LlmSpeechSummaryComponent:
             return results
 
         else:
-            raise mpf.DetectionError.MPF_OTHER_DETECTION_ERROR_TYPE.exception('Received no feed forward tracks')
+            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         logger.info(f'Received audio job.')
 
-        raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(f'Audio detection not supported.')
+        raise _log_exception(mpf.DetectionError.UNSUPPORTED_DATA_TYPE, 'Audio detection not supported.')
 
 def run_component_test(clientFactory = None):
     qsc = LlmSpeechSummaryComponent(clientFactory)
