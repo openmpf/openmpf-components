@@ -161,11 +161,11 @@ class LlmSpeechSummaryComponent:
                             match = re.search(r"(.*)\n(.*)", debug_buf)
                             while match:
                                 # nibble whole lines off the front of debug_buf
-                                logger.error(f'COMPLETION: {match.group(1)}')
+                                logger.debug(f'COMPLETION: {match.group(1)}')
                                 debug_buf = match.group(2)
                                 match = re.search(r"(.*)\n(.*)", debug_buf)
             if debug_buf:
-                logger.error(f'COMPLETION: {debug_buf}')
+                logger.debug(f'COMPLETION: {debug_buf}')
             if not success:
                 if not config.allow_partial_response:
                     raise _log_exception(mpf.DetectionError.DETECTION_FAILED, "LLM completion did not terminate successfully")
