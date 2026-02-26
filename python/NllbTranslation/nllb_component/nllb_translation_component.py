@@ -207,8 +207,8 @@ class NllbTranslationComponent:
                 hard_limit = config.nllb_character_limit
                 preferred_limit = -1
 
-            split_mode = self._sentence_split_mode.upper()
-            difficult_set = self.force_sentence_splits_for_difficult_languages
+            split_mode = config._sentence_split_mode.upper()
+            difficult_set = config.force_sentence_splits_for_difficult_languages
 
             # Difficult-language override (Arabic languages only)
             if _is_difficult_language(config.translate_from_language, difficult_set):

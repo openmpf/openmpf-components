@@ -239,34 +239,14 @@ class NllbLanguageMapper:
     'zsm' : {'latn': 'zsm_Latn'},	# Standard Malay
     'zul' : {'latn': 'zul_Latn'}}	# Zulu
 
-    @classmethod
-    def get_code(cls, lang: str, script: str):
-        lang = lang.lower()
-        script = script.lower() if script else None
 
-        if script:
-            lang_scripts = cls._iso_to_flores200.get(lang)
-            if lang_scripts:
-                flores_code = lang_scripts.get(script)
-                if flores_code:
-                    return flores_code
-                else:
-                    raise mpf.DetectionException(
-                        f'Language/script combination ({lang}_{script}) is invalid or not supported',
-                        mpf.DetectionError.INVALID_PROPERTY
-                    )
+    @classmethod
+    def get_code(cls, lang : str, script : str):
+        if script and lang.lower() in cls._iso_to_flores200:
+            if script.lower() in cls._iso_to_flores200[lang.lower()]:
+                return cls._iso_to_flores200[lang.lower()][script.lower()]
             else:
                 raise mpf.DetectionException(
-                    f'Language ({lang}) is unsupported or invalid',
-                    mpf.DetectionError.INVALID_PROPERTY
-                )
-        else:
-            default_script = WtpLanguageSettings.default_script_for_lang(lang)
-            if default_script:
-                flores_code = cls._iso_to_flores200[lang][default_script.lower()]
-                return flores_code
-            else:
-                raise mpf.DetectionException(
-                    f'No default script available for language ({lang}), and no script provided.',
-                    mpf.DetectionError.INVALID_PROPERTY
-                )
+                    f'Language/script combination ({lang}_{script}) is invalid or not supported',
+                mpf.DetectionError.INVALID_PROPERTY)
+        return cls._iso_default_script_flores200.get(lang.lower())
