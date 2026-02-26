@@ -220,6 +220,12 @@ void TritonClient::setupShmRegion(const std::string& shm_key, const size_t byte_
 
     LOG_TRACE("Registered shared memory with key " << shm_key << " of size " << byte_size << " bytes at address "
                                                    << std::hex << (void *) shm_addr);
+
+    // DEBUG: Unlink shared memory region immediately after registration
+    //        This will help ensure cleanup if the client crashes before it can unlink.
+    TR_CHECK_OK(triton::client::UnlinkSharedMemoryRegion(shm_key),
+                MPF_MEMORY_ALLOCATION_FAILED,
+                "Unable to unlink shared memory region " + shm_key + " on host");
 }
 
 
@@ -239,10 +245,10 @@ void TritonClient::removeShmRegion(const std::string& shm_key, const size_t byte
             LOG_WARN("Unable to unmap shared memory region " + shm_key + " from client address space.");
         }
     }
-    tritonErr = triton::client::UnlinkSharedMemoryRegion(shm_key);
-    if (!tritonErr.IsOk()) {
-        LOG_WARN("Unable to remove shared memory region " + shm_key + " on host.");
-    }
+    // tritonErr = triton::client::UnlinkSharedMemoryRegion(shm_key);
+    // if (!tritonErr.IsOk()) {
+    //     LOG_WARN("Unable to remove shared memory region " + shm_key + " on host.");
+    // }
 }
 
 
