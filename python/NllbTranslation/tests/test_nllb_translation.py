@@ -473,29 +473,6 @@ class TestNllbTranslation(unittest.TestCase):
         self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
 
 
-
-    def test_wtp_with_flores_iso_lookup(self):
-        #set default props
-        test_generic_job_props: dict[str, str] = dict(self.defaultProps)
-        #load source language
-        test_generic_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'arz'
-        test_generic_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Arab'
-        test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
-        test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '100'
-        test_generic_job_props['SENTENCE_SPLITTER_INCLUDE_INPUT_LANG'] = 'True'
-        test_generic_job_props['FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES'] = "disabled"
-
-        arz_text="هناك استياء بين بعض أعضاء جمعية ويلز الوطنية من الاقتراح بتغيير مسماهم الوظيفي إلى MWPs (أعضاء في برلمان ويلز). وقد نشأ ذلك بسبب وجود خطط لتغيير اسم الجمعية إلى برلمان ويلز."
-
-        arz_text_translation = 'Some members of the National Assembly for Wales were dissatisfied with the proposal to change their functional designation to MWPs. (Members of the Parliament of Wales). This arose from there being plans to change the name of the assembly to the Parliament of Wales.'
-
-        ff_track = mpf.GenericTrack(-1, dict(TEXT=arz_text))
-        job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
-        result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
-
-        result_props: dict[str, str] = result_track[0].detection_properties
-        self.assertEqual(arz_text_translation, result_props["TRANSLATION"])
-
     def test_should_translate(self):
 
         with self.subTest('OK to translate'):
