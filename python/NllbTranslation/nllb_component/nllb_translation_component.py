@@ -202,7 +202,7 @@ class NllbTranslationComponent:
         for prop_to_translate, text in text_to_translate.items():
             if config.use_token_length:
                 hard_limit = config.nllb_token_limit
-                preferred_limit = getattr(config, "nllb_token_soft_limit", -1)
+                preferred_limit = self.nllb_token_soft_limit
             else:
                 hard_limit = config.nllb_character_limit
                 preferred_limit = -1
@@ -461,7 +461,7 @@ class JobConfig:
             x.strip().lower() for x in difficult_lang_list.split(',') if x.strip()
         }
 
-        self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "wtp-bert-mini")
+        self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "sat-3l-sm")
 
         nlp_model_cpu_only = mpf_util.get_property(props, "SENTENCE_MODEL_CPU_ONLY", True)
         if not nlp_model_cpu_only:

@@ -461,7 +461,7 @@ class SentenceSplitter:
         self._num_boundary_chars =  mpf_util.get_property(job_properties,
                                                           "SENTENCE_SPLITTER_CHAR_COUNT",
                                                           500)
-        nlp_model_name = mpf_util.get_property(job_properties, "SENTENCE_MODEL", "wtp-bert-mini")
+        nlp_model_name = mpf_util.get_property(job_properties, "SENTENCE_MODEL", "sat-3l-sm")
         self._incl_input_lang = mpf_util.get_property(job_properties,
                                                       "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
                                                       True)
