@@ -198,64 +198,125 @@ class NllbTranslationComponent:
         get_size_fn = self._get_text_size_function(config)
 
         logger.info(f'Translating from {config.translate_from_language} to {config.translate_to_language}')
+
         for prop_to_translate, text in text_to_translate.items():
             if config.use_token_length:
-                text_limit = config.nllb_token_limit
+                hard_limit = config.nllb_token_limit
+                preferred_limit = getattr(config, "nllb_token_soft_limit", -1)
             else:
-                text_limit = config.nllb_character_limit
+                hard_limit = config.nllb_character_limit
+                preferred_limit = -1
+
+            split_mode = self._sentence_split_mode.upper()
+            difficult_set = self.force_sentence_splits_for_difficult_languages
+
+            # Difficult-language override (Arabic languages only)
+            if _is_difficult_language(config.translate_from_language, difficult_set):
+                # Force sentence-by-sentence splitting for Arabic languages
+                split_mode = "SENTENCE"
+
+                # If using token length, reduce hard limit to <= 50
+                if config.use_token_length:
+                    old = hard_limit
+                    hard_limit = min(hard_limit, 50)
+
+                    logger.warning(
+                        "Arabic is very difficult to translate reliably. "
+                        f"Forcing SENTENCE splitting and reducing token limit from {old} to {hard_limit}. "
+                        "Translations are not guaranteed to be accurate."
+                    )
+                else:
+                    logger.warning(
+                        "Arabic is very difficult to translate reliably. "
+                        "Forcing SENTENCE splitting. Translations are not guaranteed to be accurate."
+                    )
+
+            if preferred_limit is None or preferred_limit <= 0:
+                preferred_limit = -1
+            else:
+                preferred_limit = min(int(preferred_limit), int(hard_limit))
+
             current_text_size = get_size_fn(text)
-            logger.info(f'Translation size limit set to: {text_limit} ({"tokens" if config.use_token_length else "characters"})')
-            if current_text_size <= text_limit:
+            effective_split_threshold = hard_limit if preferred_limit <= 0 else preferred_limit
+
+            logger.info(
+                f"Translation chunking limits: hard={hard_limit}"
+                + (f", preferred={preferred_limit}" if preferred_limit > 0 else "")
+                + f" ({'tokens' if config.use_token_length else 'characters'}); "
+                f"split_mode={split_mode}"
+            )
+
+            if current_text_size <= effective_split_threshold:
                 text_list = [text]
             else:
-                wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(
-                    NllbLanguageMapper.get_normalized_iso(config.translate_from_language))
+                # Determine WtP language for sentence splitting.
+                wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
                 if wtp_lang is None:
-                    wtp_lang = WtpLanguageSettings.convert_to_iso(config.nlp_model_default_language)
+                    # fallback default adaptor language (may be None if include_input_lang is disabled)
+                    wtp_lang = WtpLanguageSettings.convert_to_iso(getattr(config, "nlp_model_default_language", None))
+                if wtp_lang is None:
+                    wtp_lang = "en"
 
-                text_splitter_model = TextSplitterModel(config.nlp_model_name, config.nlp_model_setting, wtp_lang)
+                text_splitter_model = TextSplitterModel(
+                    config.nlp_model_name,
+                    config.nlp_model_setting,
+                    wtp_lang
+                )
 
                 if config.use_token_length:
-                    logger.info(f'Text size ({current_text_size}) exceeds configured limit of ({config.nllb_token_limit}) tokens, splitting into smaller sentences.')
+                    logger.info(
+                        f"Text size ({current_text_size}) exceeds split threshold ({effective_split_threshold}) tokens. "
+                        f"Splitting with hard_limit={hard_limit}, preferred_limit={preferred_limit}."
+                    )
                 else:
-                    logger.info(f'Text size ({current_text_size}) exceeds configured limit of ({config.nllb_character_limit}) characters, splitting into smaller sentences.')
+                    logger.info(
+                        f"Text size ({current_text_size}) exceeds split threshold ({effective_split_threshold}) characters. "
+                        f"Splitting with hard_limit={hard_limit}."
+                    )
 
                 if config._incl_input_lang:
                     input_text_sentences = TextSplitter.split(
                         text,
-                        text_limit,
+                        hard_limit,
                         0,
                         get_size_fn,
                         text_splitter_model,
                         wtp_lang,
-                        split_mode=config._sentence_split_mode,
-                        newline_behavior=config._newline_behavior)
+                        split_mode=split_mode,
+                        newline_behavior=config._newline_behavior,
+                        preferred_limit=preferred_limit
+                    )
                 else:
                     input_text_sentences = TextSplitter.split(
                         text,
-                        text_limit,
+                        hard_limit,
                         0,
                         get_size_fn,
                         text_splitter_model,
-                        split_mode=config._sentence_split_mode,
-                        newline_behavior=config._newline_behavior)
+                        split_mode=split_mode,
+                        newline_behavior=config._newline_behavior,
+                        preferred_limit=preferred_limit
+                    )
 
                 text_list = list(input_text_sentences)
-                logger.info(f'Input text split into {len(text_list)} sentences.')
+                logger.info(f'Input text split into {len(text_list)} chunks.')
 
-            translations = []
+            translations: list[str] = []
 
-            logger.info(f'Translating sentences...')
+            logger.info('Translating chunks...')
             for sentence in text_list:
                 if should_translate(sentence):
                     inputs = self._tokenizer(sentence, return_tensors="pt").to(self._model.device)
+
                     translated_tokens = self._model.generate(
                         **inputs,
                         forced_bos_token_id=self._tokenizer.encode(config.translate_to_language)[1],
-                        max_length=text_limit)
+                        max_length=hard_limit
+                    )
 
                     sentence_translation: str = self._tokenizer.batch_decode(
-                        translated_tokens, skip_special_tokens=True)[0]
+                        translated_tokens, skip_special_tokens=True
+                    )[0]
 
                     translations.append(sentence_translation)
                     logger.debug(f'Translated:\n{sentence.strip()}\nto:\n{sentence_translation.strip()}')
@@ -263,11 +324,10 @@ class NllbTranslationComponent:
                     translations.append(sentence)
                     logger.debug(f'Skipping translation for:\n{sentence.strip()}')
 
-            # spaces between sentences are added
+            # Keep existing behavior: add spaces between translated chunks
             translation = " ".join(translations)
 
             logger.debug(f'Translated {prop_to_translate} property to:\n{translation.strip()}')
-
             return translation
 
     def _get_ff_prop_name(self, prop_to_translate: str, config: Dict[str, str]) -> str:
@@ -390,6 +450,17 @@ class JobConfig:
         # set translation limit. default to 360 if no value set
         self.nllb_character_limit = mpf_util.get_property(props, 'SENTENCE_SPLITTER_CHAR_COUNT', 360)
 
+
+        self.nllb_token_soft_limit = mpf_util.get_property(
+            props, 'NLLB_TRANSLATION_TOKEN_SOFT_LIMIT', 130
+        )
+        difficult_lang_list = mpf_util.get_property(
+            props, 'FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES', 'arabic'
+        )
+        self.force_sentence_splits_for_difficult_languages = {
+            x.strip().lower() for x in difficult_lang_list.split(',') if x.strip()
+        }
+
         self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "wtp-bert-mini")
 
         nlp_model_cpu_only = mpf_util.get_property(props, "SENTENCE_MODEL_CPU_ONLY", True)
@@ -412,3 +483,39 @@ def should_translate(sentence: any) -> bool:
         return True
     else:
         return False
+
+
+# Arabic languages are marked as difficult for translation.
+# These are NLLB/Flores language IDs
+_ARABIC_FLORES_LANGS = {
+    "arb",  # Modern Standard Arabic
+    "acm",  # Mesopotamian Arabic
+    "acq",  # Ta’izzi-Adeni Arabic
+    "aeb",  # Tunisian Arabic
+    "ajp",  # South Levantine Arabic
+    "apc",  # North Levantine Arabic
+    "ars",  # Najdi Arabic
+    "ary",  # Moroccan Arabic
+    "arz",  # Egyptian Arabic
+}
+
+def _is_difficult_language(source_flores_code: str, configured: set[str]) -> bool:
+    """
+    Return True if source language should trigger difficult-language logic.
+    - configured is a set of normalized strings, e.g. {"arabic"} or {"arb"}.
+    - apply this to arabic languages over arabic script.
+    """
+    if not source_flores_code:
+        return False
+
+    code = source_flores_code.strip().lower()
+    base = code.split("_", 1)[0]
+
+    if code in configured or base in configured:
+        return True
+
+    # Apply to known Arabic languages in NLLB/Flores
+    if "arabic" in configured and base in _ARABIC_FLORES_LANGS:
+        return True
+
+    return False
