@@ -108,6 +108,8 @@ class JobConfig:
         raise mpf.DetectionError.COULD_NOT_READ_DATAFILE.exception(
             f"{path} does not exist.")
 
+logger = logging.getLogger('LLMSpeechSummaryComponent')
+
 class LlmSpeechSummaryComponent:
     def _get_output(self, config: JobConfig, template, classifiers, input):
         if self.client_factory:
@@ -318,7 +320,6 @@ if __name__ == '__main__':
 
     logging.basicConfig()
 
-    logger = logging.getLogger('LLMSpeechSummaryComponent')
     logger.setLevel(log_level_env)
     logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop').setLevel(log_level_env)
 
