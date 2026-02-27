@@ -71,13 +71,21 @@ The below properties can be optionally provided to alter the behavior of the com
   lengths
   [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters)).
 
-  - `USE_NLLB_TOKEN_LENGTH`: When set to `TRUE`, the component measures input size in tokens (as produced by the
+- `USE_NLLB_TOKEN_LENGTH`: When set to `TRUE`, the component measures input size in tokens (as produced by the
   currently-loaded NLLB model tokenizer) instead of characters.
   Set to `FALSE` to switch to the character-count limit specified by `SENTENCE_SPLITTER_CHAR_COUNT`.
 
 - `NLLB_TRANSLATION_TOKEN_LIMIT`: Specifies the maximum number of tokens allowed per chunk before text is split.
   This property is only used when `USE_NLLB_TOKEN_LENGTH` is set to `True` and effectively replaces
   `SENTENCE_SPLITTER_CHAR_COUNT` when active.
+
+- `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT`: Specifies the preferred (soft) token size for translation chunks when `USE_NLLB_TOKEN_LENGTH=TRUE`.
+  - If set to a value greater than 0 and less than or equal to `NLLB_TRANSLATION_TOKEN_LIMIT`, the text splitter will attempt to create chunks near this size.
+  - When enabled, the splitter may split text even if the full text is under the hard token limit.
+  - Slightly exceeding the soft limit is allowed when aligning to sentence boundaries.
+  - Must be less than or equal to `NLLB_TRANSLATION_TOKEN_LIMIT`.
+  - Default: `130` tokens estimated from experiments on text translation chunks.
+
 
   Based on the current models available:
   - https://huggingface.co/facebook/nllb-200-3.3B
@@ -94,6 +102,20 @@ The below properties can be optionally provided to alter the behavior of the com
 - `SENTENCE_SPLITTER_MODE`: Specifies text splitting behavior, options include:
   - `DEFAULT` : Splits text into chunks based on the `SENTENCE_SPLITTER_CHAR_COUNT` limit.
   - `SENTENCE`: Splits text at detected sentence boundaries. This mode creates more sentence breaks than `DEFAULT`, which is more focused on avoiding text splits unless the chunk size is reached.
+  - So far, experimentation suggests that `SENTENCE` splitting creates the risk of translation chunks that contain too few samples of text to properly generate an accurate translation. Thus, we recommend continuing with `DEFAULT` for most translation needs.
+
+- `PROCESS_DIFFICULT_LANGUAGES`: Comma-separated list of languages that should be processed using `DIFFICULT_LANGUAGE_TOKEN_LIMIT` during translation.
+  - Default: `"arabic"`
+  - Matching applies to ISO-639-3 codes (e.g., `arb`, `arz`) or language names such as `"arabic"`.
+  - When active, the  `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` is replaced by a more aggressive `DIFFICULT_LANGUAGE_TOKEN_LIMIT`.
+
+- `DIFFICULT_LANGUAGE_TOKEN_LIMIT`: Token size for translation chunks when processing languages specified in `PROCESS_DIFFICULT_LANGUAGES`.
+  - Only used when `USE_NLLB_TOKEN_LENGTH=TRUE`.
+  - Overrides `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` for difficult languages.
+  - Must be less than or equal to `NLLB_TRANSLATION_TOKEN_LIMIT`.
+  - Default: `50` tokens.
+
+
 
 - `SENTENCE_SPLITTER_NEWLINE_BEHAVIOR`: Specifies how individual newlines between characters should be handled when splitting text. Options include:
   - `GUESS` (default): Automatically replace newlines with either spaces or remove them, depending on the detected script between newlines.
@@ -114,9 +136,9 @@ The below properties can be optionally provided to alter the behavior of the com
   Otherwise, PyTorch will be installed without cuda support and
   component will always default to CPU processing.
 
-- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models will
-  require a target language. This property sets the default language to use for
-  sentence splitting, and is overwritten by setting `FROM_LANGUAGE`.
+- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models require a language code.
+  This property sets the default language to use for sentence splitting if no source language is available from
+  `LANGUAGE_FEED_FORWARD_PROP` or `DEFAULT_SOURCE_LANGUAGE`.
 
 # Language Identifiers
 The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
@@ -327,3 +349,18 @@ The following are the ISO 639-3 and ISO 15924 codes, and their corresponding lan
 |    zho    |    Hant    |   Chinese (Traditional)
 |    zsm    |    Latn    |   Standard Malay
 |    zul    |    Latn    |   Zulu
+
+
+## Analysis of NLLB Results
+From `NLLB Token Length Investigation.xlsx` the team investigated how the NLLB translation capability handles text translations for small to very large chunks of text.
+Overall our findings are:
+
+1. Most languages have a breaking point occuring around 120-140 tokens. Translations after this point start to lose or forget parts of the text being translated.
+2. Likewise, most languages also benefit from addiitonal context clues and sections of text being submitted together. This helps provide sufficient translation context clues.
+   - For instance, the term `Dracula` was actually mistranslated in one test when the word was presented on its own and not with additional newlines or whitespace to indicate it is a title for the story.
+   - Overall, it seems combining a few short sentences together, with a limit around 130 tokens, ensures effective translation accuracy rates.
+3. Arabic, out of the languages tested, performed more poorly than other languages. This may be due to the submission text being a mismatch (could be a different variant of Arabic) so more testing is warranted.
+   - In the meantime it was observed that Arabic transations improved greatly with smaller chunks of text. Thus we added a separate translation soft limit for difficult languages (Arabic).
+4. As a precauition, we alsto tested Hebrew, which did not seem to display the same number of issues as Arabic.
+   - We also examine the text inputs for Hebrew and Arabic for potential reversed character directions that may confuse the translator. Instead what we found was they were instead simply rendered differently
+   in most text displays (and no special directional characters were present).

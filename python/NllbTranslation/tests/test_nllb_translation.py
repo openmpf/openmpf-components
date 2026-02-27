@@ -44,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Certain tests are rather expensive, especially the Spanish dracula section.
 # Disabling unless we are making specific changes to the component in future tests.
-RUN_DEEP_TESTS = True
+RUN_DEEP_TESTS = False
 
 class TestNllbTranslation(unittest.TestCase):
 
@@ -541,7 +541,7 @@ satisfeitos de si.
         test_generic_job_props['USE_NLLB_TOKEN_LENGTH']='FALSE'
         test_generic_job_props['SENTENCE_SPLITTER_CHAR_COUNT'] = '100'
         test_generic_job_props['SENTENCE_SPLITTER_INCLUDE_INPUT_LANG'] = 'True'
-        test_generic_job_props['FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES'] = "disabled"
+        test_generic_job_props['PROCESS_DIFFICULT_LANGUAGES'] = "disabled"
 
         arz_text="هناك استياء بين بعض أعضاء جمعية ويلز الوطنية من الاقتراح بتغيير مسماهم الوظيفي إلى MWPs (أعضاء في برلمان ويلز). وقد نشأ ذلك بسبب وجود خطط لتغيير اسم الجمعية إلى برلمان ويلز."
 

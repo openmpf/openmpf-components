@@ -456,13 +456,9 @@ class JobConfig:
             props, 'NLLB_TRANSLATION_TOKEN_SOFT_LIMIT', 130
         )
 
-        # --- Difficult language configuration ---
-        # Backwards compatible: prefer new key if present, else fall back to old one.
-        difficult_lang_list = mpf_util.get_property(props, 'DIFFICULT_LANGUAGES', '')
-        if not difficult_lang_list:
-            difficult_lang_list = mpf_util.get_property(
-                props, 'FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES', 'arabic'
-            )
+        difficult_lang_list = mpf_util.get_property(
+            props, 'PROCESS_DIFFICULT_LANGUAGES', 'arabic'
+        )
 
         self.difficult_languages = {
             x.strip().lower() for x in difficult_lang_list.split(',') if x.strip()
