@@ -208,27 +208,25 @@ class NllbTranslationComponent:
                 preferred_limit = -1
 
             split_mode = config._sentence_split_mode.upper()
-            difficult_set = config.force_sentence_splits_for_difficult_languages
+            difficult_set = config.difficult_languages
 
-            # Difficult-language override (Arabic languages only)
-            if _is_difficult_language(config.translate_from_language, difficult_set):
-                # Force sentence-by-sentence splitting for Arabic languages
-                split_mode = "SENTENCE"
+            # Difficult-language override (optional): clamp token hard limit if configured.
+            if config.use_token_length and _is_difficult_language(config.translate_from_language, difficult_set):
+                diff_limit = config.difficult_language_token_limit
+                if diff_limit > 0:
+                    old = int(hard_limit)
+                    hard_limit = min(old, diff_limit)
 
-                # If using token length, reduce hard limit to <= 50
-                if config.use_token_length:
-                    old = hard_limit
-                    hard_limit = min(hard_limit, 50)
-
-                    logger.warning(
-                        "Arabic is very difficult to translate reliably. "
-                        f"Forcing SENTENCE splitting and reducing token limit from {old} to {hard_limit}. "
-                        "Translations are not guaranteed to be accurate."
-                    )
+                    if hard_limit != old:
+                        logger.warning(
+                            "Difficult language detected (%s). Applying DIFFICULT_LANGUAGE_TOKEN_LIMIT override: %d -> %d. "
+                            "Translations may be less reliable for this language.",
+                            config.translate_from_language, old, hard_limit
+                        )
                 else:
                     logger.warning(
-                        "Arabic is very difficult to translate reliably. "
-                        "Forcing SENTENCE splitting. Translations are not guaranteed to be accurate."
+                        "Difficult language detected (%s). No DIFFICULT_LANGUAGE_TOKEN_LIMIT override is configured.",
+                        config.translate_from_language
                     )
 
             if preferred_limit is None or preferred_limit <= 0:
@@ -251,10 +249,13 @@ class NllbTranslationComponent:
             else:
                 # Determine WtP language for sentence splitting.
                 wtp_lang: Optional[str] = WtpLanguageSettings.convert_to_iso(config.translate_from_language)
+
                 if wtp_lang is None:
-                    # fallback default adaptor language (may be None if include_input_lang is disabled)
-                    wtp_lang = WtpLanguageSettings.convert_to_iso(getattr(config, "nlp_model_default_language", None))
-                if wtp_lang is None:
+                    default_adaptor = config.nlp_model_default_language
+                    # Allow default_adaptor to already be ISO ("en", "fr", ...) or an NLLB tag.
+                    wtp_lang = WtpLanguageSettings.convert_to_iso(default_adaptor) or default_adaptor
+
+                if not wtp_lang:
                     wtp_lang = "en"
 
                 text_splitter_model = TextSplitterModel(
@@ -454,12 +455,23 @@ class JobConfig:
         self.nllb_token_soft_limit = mpf_util.get_property(
             props, 'NLLB_TRANSLATION_TOKEN_SOFT_LIMIT', 130
         )
-        difficult_lang_list = mpf_util.get_property(
-            props, 'FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES', 'arabic'
-        )
-        self.force_sentence_splits_for_difficult_languages = {
+
+        # --- Difficult language configuration ---
+        # Backwards compatible: prefer new key if present, else fall back to old one.
+        difficult_lang_list = mpf_util.get_property(props, 'DIFFICULT_LANGUAGES', '')
+        if not difficult_lang_list:
+            difficult_lang_list = mpf_util.get_property(
+                props, 'FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES', 'arabic'
+            )
+
+        self.difficult_languages = {
             x.strip().lower() for x in difficult_lang_list.split(',') if x.strip()
         }
+
+        # Opt-in token limit override for difficult languages (0 disables)
+        self.difficult_language_token_limit = mpf_util.get_property(
+            props, 'DIFFICULT_LANGUAGE_TOKEN_LIMIT', 50
+        )
 
         self.nlp_model_name = mpf_util.get_property(props, "SENTENCE_MODEL", "sat-3l-sm")
 

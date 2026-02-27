@@ -139,6 +139,12 @@
           "description": "Comma-separated list of languages that should force sentence-by-sentence splitting and reduce the hard token limit. Default includes 'arabic'.",
           "type": "STRING",
           "defaultValue": "arabic"
+        },
+        {
+          "name": "DIFFICULT_LANGUAGE_TOKEN_LIMIT",
+          "description": "Token size for translation chunks of difficult languages when USE_NLLB_TOKEN_LENGTH=TRUE. Overrides NLLB_TRANSLATION_TOKEN_SOFT_LIMIT when a difficult language specified by FORCE_SENTENCE_SPLITS_FOR_DIFFICULT_LANGUAGES is in use. ",
+          "type": "INT",
+          "defaultValue": "50"
         }
       ]
     }
