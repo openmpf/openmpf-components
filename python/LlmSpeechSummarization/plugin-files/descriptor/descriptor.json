@@ -96,7 +96,7 @@
           "name": "VLLM_URI",
           "description": "The base_url of the openai-api-compatible API providing access to your model.",
           "type": "STRING",
-          "defaultValue": "http://qwen-speech-summarization-server:11434/v1"
+          "defaultValue": "http://llm-speech-summarization-server:11434/v1"
         },
         {
           "name": "VLLM_HEALTH_URI",
