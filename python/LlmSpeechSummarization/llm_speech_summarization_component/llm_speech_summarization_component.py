@@ -212,7 +212,7 @@ class LlmSpeechSummaryComponent:
                 except Exception as e:
                     failed_ever = True
                     logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
-                    last_error = e.format_exc()
+                    last_error = str(e)
                 time.sleep(retry_delay_seconds)
 
             if not success:
