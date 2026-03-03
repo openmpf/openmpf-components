@@ -82,7 +82,9 @@ class JobConfig:
 
         self.vllm_health_uri = \
             mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
-        if '://' not in self.vllm_health_uri:
+        if len(self.vllm_health_uri) == 0:
+            self.vllm_health_uri = None
+        elif '://' not in self.vllm_health_uri:
             from urllib.parse import urljoin
             self.vllm_health_uri = urljoin(self.vllm_uri, self.vllm_health_uri)
 
