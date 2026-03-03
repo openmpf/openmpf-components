@@ -37,7 +37,7 @@ import re
 from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
 
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "1"
 from transformers import AutoTokenizer
@@ -68,6 +68,7 @@ class JobConfig:
         self.allow_refusal_response = mpf_util.get_property(props, 'ALLOW_REFUSAL_RESPONSE', False)
 
         self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+        self.tokenizer_model = mpf_util.get_property(props, 'TOKENIZER_MODEL', self.vllm_model)
 
         self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
         self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 2000))
@@ -82,7 +83,9 @@ class JobConfig:
 
         self.vllm_health_uri = \
             mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
-        if '://' not in self.vllm_health_uri:
+        if len(self.vllm_health_uri) == 0:
+            self.vllm_health_uri = None
+        elif '://' not in self.vllm_health_uri:
             from urllib.parse import urljoin
             self.vllm_health_uri = urljoin(self.vllm_uri, self.vllm_health_uri)
 
@@ -95,6 +98,8 @@ class JobConfig:
 
         self.classifiers_path = \
             self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
+
+        self.azure_client = mpf_util.get_property(props, 'AZURE_CLIENT', False)
 
     @staticmethod
     def _get_file_path(path: str) -> str:
@@ -220,7 +225,7 @@ class LlmSpeechSummaryComponent:
                     raise _log_exception(mpf.DetectionError.NETWORK_ERROR, last_error)
                 raise _log_exception(mpf.DetectionError.NETWORK_ERROR, "Timed out waiting for VLLM to be healthy")
 
-        return OpenAI(**kwargs)
+        return (AzureOpenAI if config.azure_client else OpenAI)(**kwargs)
 
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
@@ -238,7 +243,7 @@ class LlmSpeechSummaryComponent:
 
         config = JobConfig(video_job.job_properties)
 
-        tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
         env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
