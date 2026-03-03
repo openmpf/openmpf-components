@@ -68,6 +68,7 @@ class JobConfig:
         self.allow_refusal_response = mpf_util.get_property(props, 'ALLOW_REFUSAL_RESPONSE', False)
 
         self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+        self.tokenizer_model = mpf_util.get_property(props, 'TOKENIZER_MODEL', self.vllm_model)
 
         self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
         self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 2000))
@@ -232,7 +233,7 @@ class LlmSpeechSummaryComponent:
 
         config = JobConfig(video_job.job_properties)
 
-        tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
         env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))

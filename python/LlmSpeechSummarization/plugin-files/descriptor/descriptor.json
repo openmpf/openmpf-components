@@ -27,6 +27,12 @@
           "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
         },
         {
+          "name": "TOKENIZER_MODEL",
+          "description": "The HuggingFaceHub-available name of a pretrained tokenizer that's used by VLLM_MODEL",
+          "type": "STRING",
+          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        },
+        {
           "name": "API_TOKEN",
           "description": "The API Token that can access the openai api",
           "type": "STRING",
