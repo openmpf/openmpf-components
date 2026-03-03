@@ -37,7 +37,7 @@ import re
 from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
 
-from openai import OpenAI
+from openai import OpenAI, AzureOpenAI
 
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "1"
 from transformers import AutoTokenizer
@@ -98,6 +98,8 @@ class JobConfig:
 
         self.classifiers_path = \
             self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
+
+        self.azure_client = mpf_util.get_property(props, 'AZURE_CLIENT', False)
 
     @staticmethod
     def _get_file_path(path: str) -> str:
@@ -215,7 +217,7 @@ class LlmSpeechSummaryComponent:
                     raise _log_exception(mpf.DetectionError.NETWORK_ERROR, last_error)
                 raise _log_exception(mpf.DetectionError.NETWORK_ERROR, "Timed out waiting for VLLM to be healthy")
 
-        return OpenAI(**kwargs)
+        return (AzureOpenAI if config.azure_client else OpenAI)(**kwargs)
 
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory

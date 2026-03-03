@@ -39,6 +39,12 @@
           "defaultValue": "Must be set for anonymous VLLM, but can be anything"
         },
         {
+          "name": "AZURE_CLIENT",
+          "description": "Set to true if the AzureOpenAI class should be use instead of OpenAI from the openai module",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
           "name": "MAX_MODEL_LEN",
           "description": "The largest model length that can fit on the GPU",
           "type": "INT",
