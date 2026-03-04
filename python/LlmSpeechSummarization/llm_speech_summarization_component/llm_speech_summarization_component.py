@@ -47,13 +47,13 @@ import mpf_component_util as mpf_util
 
 # If import fails with ., assume we are running in pydebug and the CWD is proper
 try:
-    from .schema import response_format_json_schema, StructuredResponse
+    from .schema import StructuredResponseClassFactory
 
     from .llm_util.classifiers import get_classifier_lines
     from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from .llm_util.input_cleanup import convert_speech_tracks_to_csv
 except:
-    from schema import response_format_json_schema, StructuredResponse
+    from schema import StructuredResponseClassFactory
 
     from llm_util.classifiers import get_classifier_lines
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
@@ -126,6 +126,8 @@ class LlmSpeechSummaryComponent:
             client_factory = self.client_factory
         else:
             client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
+        StructuredResponse = StructuredResponseClassFactory(len(classifiers))
+        response_format_json_schema = StructuredResponse.model_json_schema()
         prompt = template.render(input=input, classifiers=classifiers, response_format_json_schema=response_format_json_schema)
         with client_factory() as client:
             stream = client.chat.completions.create(
@@ -245,6 +247,7 @@ class LlmSpeechSummaryComponent:
 
         if video_job.feed_forward_tracks is not None:
             classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
+            StructuredResponse = StructuredResponseClassFactory(len(classifiers))
 
             input = convert_speech_tracks_to_csv(video_job.feed_forward_tracks)
 
