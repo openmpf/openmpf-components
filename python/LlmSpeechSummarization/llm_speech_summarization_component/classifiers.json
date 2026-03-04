@@ -1,7 +1,257 @@
 [
-    {
-        "Classifier": "Major League Baseball",
-        "Definition": "discussions regarding major league baseball teams, professional baseball players, and baseball stadiums",
-        "Items of Interest": "Baseball fields, baseball teams, baseball players, baseballs, baseball bats, baseball hats"
-    }
+  {
+    "Classifier": "Weather and Climate",
+    "Definition": "discussions about current weather conditions, forecasts, climate patterns, and extreme weather events",
+    "Items of Interest": "Forecasts, temperature, humidity, precipitation, storms, hurricanes, tornadoes, drought, climate change"
+  },
+  {
+    "Classifier": "Road Travel and Navigation",
+    "Definition": "conversations about driving routes, traffic, directions, road conditions, and navigation tools",
+    "Items of Interest": "Maps, GPS, highways, exits, traffic jams, tolls, road closures, detours, fuel stops"
+  },
+  {
+    "Classifier": "Air Travel",
+    "Definition": "topics involving airports, flights, airlines, travel planning, and flight disruptions",
+    "Items of Interest": "Boarding passes, gates, terminals, baggage, TSA, delays, cancellations, layovers, seat assignments"
+  },
+  {
+    "Classifier": "Public Transportation",
+    "Definition": "discussions related to buses, trains, subways, schedules, fares, and commuting",
+    "Items of Interest": "Bus routes, train lines, subway stations, tickets, passes, timetables, platforms, transfers"
+  },
+  {
+    "Classifier": "Personal Finance and Budgeting",
+    "Definition": "conversations about managing money, budgeting, saving, debt, and financial planning",
+    "Items of Interest": "Budgets, bank accounts, credit cards, loans, interest rates, savings, expenses, bills, credit scores"
+  },
+  {
+    "Classifier": "Investing and Markets",
+    "Definition": "discussions about stocks, bonds, funds, market news, and investment strategies",
+    "Items of Interest": "Stocks, ETFs, mutual funds, bonds, dividends, portfolios, market volatility, indices, earnings"
+  },
+  {
+    "Classifier": "Real Estate and Housing",
+    "Definition": "topics about buying, selling, renting homes, mortgages, and property maintenance",
+    "Items of Interest": "Rent, leases, landlords, tenants, mortgages, inspections, appraisals, listings, repairs, renovations"
+  },
+  {
+    "Classifier": "Job Search and Careers",
+    "Definition": "conversations about employment opportunities, career development, and workplace transitions",
+    "Items of Interest": "Resumes, interviews, job postings, recruiters, networking, promotions, salary negotiation, career changes"
+  },
+  {
+    "Classifier": "Workplace Collaboration",
+    "Definition": "discussions about teamwork, meetings, project coordination, and communication at work",
+    "Items of Interest": "Meetings, agendas, action items, stakeholders, deadlines, collaboration tools, status updates, deliverables"
+  },
+  {
+    "Classifier": "Education and Learning",
+    "Definition": "topics involving schooling, courses, studying, teaching, and academic programs",
+    "Items of Interest": "Classes, homework, exams, grades, teachers, students, textbooks, tutoring, degrees, certifications"
+  },
+  {
+    "Classifier": "Parenting and Childcare",
+    "Definition": "conversations about raising children, childcare arrangements, school issues, and family routines",
+    "Items of Interest": "Daycare, babysitters, schedules, discipline, school meetings, pediatric visits, activities, milestones"
+  },
+  {
+    "Classifier": "Relationships and Dating",
+    "Definition": "discussions about romantic relationships, dating experiences, communication, and compatibility",
+    "Items of Interest": "Dates, partners, boundaries, communication, commitment, breakups, marriage, counseling, family dynamics"
+  },
+  {
+    "Classifier": "Health and Wellness (General)",
+    "Definition": "topics about overall health habits, wellness routines, and general health concerns",
+    "Items of Interest": "Sleep, nutrition, hydration, stress, exercise, checkups, symptoms, wellness plans, preventive care"
+  },
+  {
+    "Classifier": "Medical Appointments and Care",
+    "Definition": "conversations about visiting healthcare providers, treatments, diagnoses, and medical logistics",
+    "Items of Interest": "Doctors, clinics, prescriptions, labs, referrals, insurance, copays, diagnoses, follow-up visits"
+  },
+  {
+    "Classifier": "Mental Health",
+    "Definition": "discussions related to emotional well-being, therapy, anxiety, depression, and coping strategies",
+    "Items of Interest": "Therapy, counseling, stress management, anxiety, depression, burnout, coping skills, support groups"
+  },
+  {
+    "Classifier": "Fitness and Exercise",
+    "Definition": "topics about workouts, training goals, sports conditioning, and gym routines",
+    "Items of Interest": "Gym memberships, cardio, strength training, running, yoga, stretching, personal trainers, fitness tracking"
+  },
+  {
+    "Classifier": "Food and Cooking",
+    "Definition": "conversations about recipes, cooking methods, ingredients, and meal planning",
+    "Items of Interest": "Recipes, ingredients, spices, ovens, stovetops, meal prep, cooking techniques, grocery lists, leftovers"
+  },
+  {
+    "Classifier": "Restaurants and Dining Out",
+    "Definition": "discussions involving restaurants, dining experiences, reservations, and customer service",
+    "Items of Interest": "Menus, reservations, wait times, servers, tips, reviews, takeout, delivery, dietary restrictions"
+  },
+  {
+    "Classifier": "Coffee, Tea, and Beverages",
+    "Definition": "topics about beverage preferences, cafes, brewing, and drink preparation",
+    "Items of Interest": "Espresso, lattes, tea blends, brewing methods, cafes, mugs, beans, syrups, sparkling water, cocktails"
+  },
+  {
+    "Classifier": "Alcohol and Nightlife",
+    "Definition": "discussions about bars, clubs, drinks, nightlife plans, and social outings",
+    "Items of Interest": "Bars, cocktails, beer, wine, ID checks, happy hour, live music venues, cover charges, designated drivers"
+  },
+  {
+    "Classifier": "Home Improvement and DIY",
+    "Definition": "conversations about fixing, building, or upgrading things at home using tools and materials",
+    "Items of Interest": "Tools, paint, drywall, plumbing, electrical, hardware stores, renovations, furniture assembly, permits"
+  },
+  {
+    "Classifier": "Home Cleaning and Organization",
+    "Definition": "topics about cleaning routines, decluttering, household chores, and organization systems",
+    "Items of Interest": "Cleaning supplies, laundry, vacuuming, disinfecting, storage bins, closets, schedules, decluttering"
+  },
+  {
+    "Classifier": "Gardening and Plants",
+    "Definition": "discussions about indoor plants, gardens, landscaping, and plant care",
+    "Items of Interest": "Soil, fertilizer, watering, pruning, pots, seeds, compost, pests, houseplants, lawn care"
+  },
+  {
+    "Classifier": "Pets and Animal Care",
+    "Definition": "conversations about pets, their health, training, and daily care",
+    "Items of Interest": "Dogs, cats, veterinarians, food, grooming, training, vaccinations, pet insurance, litter boxes, leashes"
+  },
+  {
+    "Classifier": "Consumer Electronics",
+    "Definition": "topics about buying or using gadgets and electronics for personal use",
+    "Items of Interest": "Smartphones, laptops, tablets, headphones, chargers, warranties, specs, troubleshooting, accessories"
+  },
+  {
+    "Classifier": "Software and Apps",
+    "Definition": "discussions about software tools, mobile apps, features, and usability",
+    "Items of Interest": "App updates, subscriptions, user accounts, settings, bugs, features, integrations, user interfaces"
+  },
+  {
+    "Classifier": "Cybersecurity and Privacy",
+    "Definition": "conversations about protecting accounts, data privacy, scams, and security best practices",
+    "Items of Interest": "Passwords, MFA, phishing, malware, VPNs, encryption, privacy settings, breaches, identity theft"
+  },
+  {
+    "Classifier": "Social Media and Online Communities",
+    "Definition": "topics involving social platforms, content sharing, online interactions, and moderation",
+    "Items of Interest": "Posts, comments, followers, likes, DMs, hashtags, influencers, algorithms, community guidelines"
+  },
+  {
+    "Classifier": "Gaming (Video Games)",
+    "Definition": "discussions about video games, consoles, PC gaming, and gaming culture",
+    "Items of Interest": "Consoles, controllers, PC specs, online matchmaking, patches, DLC, achievements, esports, game reviews"
+  },
+  {
+    "Classifier": "Movies and Television",
+    "Definition": "topics about films, TV shows, streaming services, and entertainment news",
+    "Items of Interest": "Episodes, seasons, actors, directors, plots, spoilers, streaming subscriptions, theaters, trailers"
+  },
+  {
+    "Classifier": "Music",
+    "Definition": "conversations about listening habits, artists, concerts, and music production",
+    "Items of Interest": "Albums, playlists, genres, concerts, tickets, instruments, lyrics, streaming platforms, vinyl, audio gear"
+  },
+  {
+    "Classifier": "Books and Reading",
+    "Definition": "topics about books, authors, reading habits, and literary discussions",
+    "Items of Interest": "Novels, nonfiction, authors, bookstores, libraries, audiobooks, e-readers, book clubs, recommendations"
+  },
+  {
+    "Classifier": "Sports (General)",
+    "Definition": "discussions about sports teams, games, rules, and athletic events outside a single league",
+    "Items of Interest": "Teams, coaches, scores, playoffs, tournaments, players, statistics, injuries, sportsmanship"
+  },
+  {
+    "Classifier": "Soccer",
+    "Definition": "topics related to soccer leagues, clubs, players, and match analysis",
+    "Items of Interest": "Clubs, leagues, goals, formations, transfers, referees, stadiums, match schedules, World Cup"
+  },
+  {
+    "Classifier": "Basketball",
+    "Definition": "discussions about basketball games, leagues, players, and strategies",
+    "Items of Interest": "NBA, college basketball, points, rebounds, assists, playoffs, trades, coaches, arenas, draft picks"
+  },
+  {
+    "Classifier": "American Football",
+    "Definition": "topics about American football teams, games, and league news",
+    "Items of Interest": "NFL, quarterbacks, touchdowns, playbooks, drafts, injuries, tailgating, stadiums, playoffs"
+  },
+  {
+    "Classifier": "Travel Planning and Tourism",
+    "Definition": "conversations about destinations, itineraries, sightseeing, and travel logistics",
+    "Items of Interest": "Itineraries, hotels, attractions, tours, visas, local transportation, travel insurance, packing lists"
+  },
+  {
+    "Classifier": "Hotels and Accommodations",
+    "Definition": "topics about lodging choices, bookings, amenities, and guest experiences",
+    "Items of Interest": "Reservations, check-in, room types, amenities, cancellations, loyalty programs, reviews, housekeeping"
+  },
+  {
+    "Classifier": "Customer Service and Complaints",
+    "Definition": "discussions involving service issues, refunds, support tickets, and dispute resolution",
+    "Items of Interest": "Refunds, chargebacks, return policies, support agents, escalation, warranties, service outages, complaints"
+  },
+  {
+    "Classifier": "Shopping and Retail",
+    "Definition": "topics about purchasing goods, comparing products, and retail experiences",
+    "Items of Interest": "Prices, discounts, coupons, product reviews, brands, delivery, returns, sizing, shopping carts"
+  },
+  {
+    "Classifier": "Fashion and Apparel",
+    "Definition": "conversations about clothing, style, trends, and personal wardrobe choices",
+    "Items of Interest": "Outfits, shoes, accessories, sizes, fabrics, seasonal trends, boutiques, tailoring, dress codes"
+  },
+  {
+    "Classifier": "Beauty and Personal Care",
+    "Definition": "topics involving skincare, haircare, cosmetics, and grooming routines",
+    "Items of Interest": "Skincare routines, makeup, shampoo, conditioner, salons, razors, fragrances, product ingredients"
+  },
+  {
+    "Classifier": "Automotive (Ownership and Maintenance)",
+    "Definition": "discussions about cars, maintenance schedules, repairs, and vehicle performance",
+    "Items of Interest": "Oil changes, tires, brakes, dealerships, diagnostics, recalls, warranties, mileage, inspections"
+  },
+  {
+    "Classifier": "Bicycles and Micromobility",
+    "Definition": "topics about cycling, e-bikes, scooters, commuting, and maintenance",
+    "Items of Interest": "Bike lanes, helmets, chains, tires, e-bikes, scooters, locks, route planning, repairs"
+  },
+  {
+    "Classifier": "Legal and Compliance (General)",
+    "Definition": "conversations about legal issues, contracts, regulations, and rights",
+    "Items of Interest": "Contracts, attorneys, court dates, disputes, compliance, regulations, liabilities, documentation"
+  },
+  {
+    "Classifier": "Politics and Government",
+    "Definition": "topics about elections, public policy, government services, and political events",
+    "Items of Interest": "Elections, candidates, legislation, taxes, public services, debates, civic issues, polling, governance"
+  },
+  {
+    "Classifier": "News and Current Events",
+    "Definition": "discussions about recent events, headlines, and breaking news across domains",
+    "Items of Interest": "Headlines, reports, sources, timelines, public statements, local news, global events, analysis"
+  },
+  {
+    "Classifier": "Technology and Innovation",
+    "Definition": "conversations about emerging technologies, industry trends, and innovation",
+    "Items of Interest": "AI, robotics, cloud computing, startups, product launches, patents, research, tech conferences"
+  },
+  {
+    "Classifier": "Science (General)",
+    "Definition": "topics about scientific concepts, discoveries, and research methods",
+    "Items of Interest": "Experiments, hypotheses, peer review, physics, chemistry, biology, data, scientific journals"
+  },
+  {
+    "Classifier": "Environment and Sustainability",
+    "Definition": "discussions about conservation, sustainability practices, and environmental impacts",
+    "Items of Interest": "Recycling, emissions, renewable energy, conservation, pollution, sustainability goals, carbon footprint"
+  },
+  {
+    "Classifier": "Religion and Spirituality",
+    "Definition": "topics involving faith traditions, spiritual practices, and religious community life",
+    "Items of Interest": "Worship services, prayer, holidays, scriptures, rituals, congregations, beliefs, meditation"
+  }
 ]
