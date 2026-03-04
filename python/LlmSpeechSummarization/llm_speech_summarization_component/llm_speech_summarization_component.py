@@ -49,13 +49,13 @@ import mpf_component_util as mpf_util
 try:
     from .schema import StructuredResponseClassFactory
 
-    from .llm_util.classifiers import get_classifier_lines
+    from .llm_util.classifiers import get_classifier_lines, get_classifier_dict
     from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from .llm_util.input_cleanup import convert_speech_tracks_to_csv
 except:
     from schema import StructuredResponseClassFactory
 
-    from llm_util.classifiers import get_classifier_lines
+    from llm_util.classifiers import get_classifier_lines, get_classifier_dict
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
     from llm_util.input_cleanup import convert_speech_tracks_to_csv
 
@@ -71,8 +71,8 @@ class JobConfig:
         self.tokenizer_model = mpf_util.get_property(props, 'TOKENIZER_MODEL', self.vllm_model)
 
         self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
-        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 2000))
-        self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 500))
+        self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 1500))
+        self.overlap = int(mpf_util.get_property(props, 'INPUT_CHUNK_TOKEN_OVERLAP', 300))
 
         self.api_token = mpf_util.get_property(props, 'API_TOKEN', "Must be set for anonymous VLLM, but can be anything")
 
@@ -126,9 +126,9 @@ class LlmSpeechSummaryComponent:
             client_factory = self.client_factory
         else:
             client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
-        StructuredResponse = StructuredResponseClassFactory(len(classifiers))
+        StructuredResponse = StructuredResponseClassFactory(classifiers)
         response_format_json_schema = StructuredResponse.model_json_schema()
-        prompt = template.render(input=input, classifiers=classifiers, response_format_json_schema=response_format_json_schema)
+        prompt = template.render(input=input, classifiers=get_classifier_lines(classifiers), response_format_json_schema=response_format_json_schema)
         with client_factory() as client:
             stream = client.chat.completions.create(
                 model=config.vllm_model, #model_name ## for ollama
@@ -182,14 +182,14 @@ class LlmSpeechSummaryComponent:
         return content
 
     @staticmethod
-    def _get_video_track_for_classifier(video_job: mpf.VideoJob, classifier):
-        detection_properties = {'CLASSIFIER': classifier.classifier, 'REASONING': classifier.reasoning}
+    def _get_video_track_for_classifier(video_job: mpf.VideoJob, classifier_name, classifier):
+        detection_properties = {'CLASSIFIER': classifier, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
         return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier.confidence, {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}, detection_properties)
 
     @staticmethod
     def _get_classifier_track(video_job):
-        func = lambda classifier: LlmSpeechSummaryComponent._get_video_track_for_classifier(video_job, classifier)
+        func = lambda classifier: LlmSpeechSummaryComponent._get_video_track_for_classifier(video_job, *classifier)
         return func
 
     @staticmethod
@@ -246,8 +246,8 @@ class LlmSpeechSummaryComponent:
         template = env.get_template(os.path.basename(config.prompt_template))
 
         if video_job.feed_forward_tracks is not None:
-            classifiers = get_classifier_lines(config.classifiers_path, config.enabled_classifiers)
-            StructuredResponse = StructuredResponseClassFactory(len(classifiers))
+            classifiers = get_classifier_dict(config.classifiers_path, config.enabled_classifiers)
+            StructuredResponse = StructuredResponseClassFactory(classifiers)
 
             input = convert_speech_tracks_to_csv(video_job.feed_forward_tracks)
 
@@ -289,7 +289,7 @@ class LlmSpeechSummaryComponent:
                     map(
                         self._get_classifier_track(video_job),
                         filter(
-                            lambda classifier: classifier.confidence >= classifier_confidence_minimum,
+                            lambda classifier: classifier[0].confidence >= classifier_confidence_minimum,
                             final_summary.classifiers)
                     )
                 )
