@@ -289,7 +289,7 @@ class LlmSpeechSummaryComponent:
                     map(
                         self._get_classifier_track(video_job),
                         filter(
-                            lambda classifier: classifier[0].confidence >= classifier_confidence_minimum,
+                            lambda classifier: classifier[1].confidence >= classifier_confidence_minimum,
                             final_summary.classifiers)
                     )
                 )

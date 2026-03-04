@@ -51,7 +51,7 @@ class Classifier(BaseModel):
     COMBINATION_INSTRUCTION: Combine confidences and reasonings, with higher confidence inputs (and the corresponding reasonings) receiving precedence.
     """
     model_config = ConfigDict(extra='forbid')
-    confidence: float = Field(title='confidence', description='How confident you are that there is a TRUE POSITIVE for this classifier in the input you are summarizing', ge=0, le=1)
+    confidence: float = Field(title='confidence', description='How confident you are that there is a TRUE POSITIVE for this classifier in the input you are summarizing. 0 indicates a confident TRUE NEGATIVE.', ge=0, le=1)
     reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category. COMBINATION INSTRUCTION: include the union of your inputs' items of interest in your output's reasoning.")
 
 def StructuredResponseClassFactory(classifiers):
@@ -62,7 +62,7 @@ def StructuredResponseClassFactory(classifiers):
         'summary': (str, Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation. COMBINATION_INSTRUCTION: only combine the summaries of your input. Do not cross-contaminate your summary with any other pieces of your input objects.")),
         'primary_topic': (str, Field(title='The primary topic of conversation')),
         'other_topics': (List[str], Field(title='Other topics of conversation', description="INSTRUCTION: do not include the primary_topic in this list")),
-        'classifiers': (Classifiers, None),
+        'classifiers': (Classifiers, Field(title='Classifier results', description="INSTRUCTION: produce based on the Classifiers between <classifiers></classifiers>.")),
         'entities': (EntitiesObject, None)
     }
     return create_model('StructuredResponse', __config__=config, **fields)
