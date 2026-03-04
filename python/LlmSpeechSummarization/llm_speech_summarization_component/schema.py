@@ -55,14 +55,14 @@ class Classifier(BaseModel):
     reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category. COMBINATION INSTRUCTION: include the union of your inputs' items of interest in your output's reasoning.")
 
 def StructuredResponseClassFactory(classifiers):
-    classifier_fields = {x: (Classifier, Classifier(confidence=0, reasoning='')) for x in classifiers.keys()}
+    classifier_fields = {x: (Classifier, Field()) for x in classifiers.keys()}
     config = ConfigDict(extra='forbid', strict=True)
     Classifiers = create_model('Classifiers', __config__=config, **classifier_fields) # type: ignore
     fields = {
         'summary': (str, Field(title='summary of conversation', description="INSTRUCTION: summarize the conversation with one or more precise, declarative statements about the gestalt of the conversation. COMBINATION_INSTRUCTION: only combine the summaries of your input. Do not cross-contaminate your summary with any other pieces of your input objects.")),
         'primary_topic': (str, Field(title='The primary topic of conversation')),
         'other_topics': (List[str], Field(title='Other topics of conversation', description="INSTRUCTION: do not include the primary_topic in this list")),
-        'classifiers': (Classifiers, Field(title='Classifier results', description="INSTRUCTION: produce based on the Classifiers between <classifiers></classifiers>.")),
-        'entities': (EntitiesObject, None)
+        'classifiers': (Classifiers, Field()),
+        'entities': (EntitiesObject, Field())
     }
     return create_model('StructuredResponse', __config__=config, **fields)
