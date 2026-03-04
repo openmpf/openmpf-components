@@ -52,7 +52,7 @@ class Classifier(BaseModel):
     """
     model_config = ConfigDict(extra='forbid')
     classifier: str = Field(title='name', description="the name of this classifier")
-    confidence: float = Field(title='confidence', description='How confident you are in the presence or absence of this classifier in the input you are summarizing', ge=0, le=1)
+    confidence: float = Field(title='confidence', description='How confident you are that there is a TRUE POSITIVE for this classifier in the input you are summarizing', ge=0, le=1)
     reasoning: str = Field(title='reasoning', description="INSTRUCTION: If the definition of this classifier included a 'Specific Items of Interest' appendage, please make sure to note the presence of any of those specific items of interest in this field, independent of their inclusion or exclusion in any entities category. COMBINATION INSTRUCTION: include the union of your inputs' items of interest in your output's reasoning.")
 
 class StructuredResponse(BaseModel):
