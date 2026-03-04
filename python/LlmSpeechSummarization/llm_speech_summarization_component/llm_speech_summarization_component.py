@@ -151,6 +151,8 @@ class LlmSpeechSummaryComponent:
             debug_buf = ""
             success = False
             for event in stream:
+                if len(event.choices) == 0:
+                    continue
                 if event.choices[0].finish_reason == "stop":
                     success = True
                     break
