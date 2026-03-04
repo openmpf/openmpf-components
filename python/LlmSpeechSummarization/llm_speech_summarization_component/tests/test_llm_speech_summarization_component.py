@@ -167,13 +167,12 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
     "Professional or political affiliation",
     "Location and address details"
   ],
-  "classifiers": [
-    {
-      "classifier": "Major League Baseball",
+  "classifiers": {
+    "Major League Baseball": {
       "confidence": 0.95,
       "reasoning": "The conversation prominently features references to Major League Baseball, including specific teams (American League Baseball Club of New York, Boston, New York, New York Metropolitans, Columbus and St. Louis Clubs), players (John (Dasher) Troy, W. A. Sunday, Jacob Ruppert, T. L. Huston, Amos Rusie, Hugh Duffy, Dad Clarke, Johnny Ward, Mike Tiernan, Jerry Denny, Billy Nash, Jimmy Collins, Gabby, Kling, Street, Jim Mutrie, John B. Day, Ralph Moore, Tom Bolen, Daniel Brothers, H. Schwabeland, TOM Butter, M. J. Leonard, Mr. Lane), baseball fields (Polo Grounds, Brotherhood Baseball Park, home plate, the diamond, the grandstand, the player’s bench, the bar and lunch privilege at the grounds, 125th Street, Eighth Avenue, Harlem River, 156th Street, 142d Street, 136 Liberty Street, 414-416-418 W. 14th Street, 419 West 13th Street S. W. Cor. 53rd St., 8th Ave., 125th Street and Eighth Ave., 317 West 136th Street, 226-228 West 125th Street, 216 West 46th St., 145th Street, 13th Ave. and 30th St. Bet. B’way & 8th Ave., 61 W. 36th St., 538 W. 38th Street, East 132d St., Brown PI., 133d St. Station, 1402 Broadway, Room 632, New York, 2774 Eighth Avenue, New York City, 103 Park Avenue, New York, 220 West 42nd Street, New York, 253 Broadway, New York, 283 West 132d Street, 239 & 241 West 125th St., 2490 Eighth Avenue, Manhattan Borough, New York, New York, Jersey, Old Broadway, 5 Main Office, Room 209, 136 Liberty Street, 129th Street, 132nd Street, 125th Street, 8th Avenue, Lenox Avenue, Audubon, Morningside, Lodge Rooms, Hotel for Gentlemen, CAFE 464 West 4Ist, N. W. Cor. 42d Street and 9th Avenue, 411 West 14th St., Church, W. 35th St., Dutch Room, 126th Street, CAFE CAFE, Old English Chop House, Golden Buck, East 132d St., Brown PI., 133d St. Station, New York), and equipment (baseball bats, baseballs, baseball hats, sliding pads, oil silk). The discussion covers professional baseball strategies such as pitching mechanics, batting stance, base running, fielding, player positioning, double plays, foul ball enforcement, and player health. The book 'Reminiscences of an Old Timer' is explicitly framed as a guide based on decades of experience in professional baseball, reinforcing the theme. The consistent use of terminology, context, and specific items of interest confirms the central focus on Major League Baseball. Additional references to business operations, real estate, and promotional content in New York City appear to be incidental or transcribed artifacts and do not detract from the dominant theme."
     }
-  ],
+  },
   "entities": {
     "names_of_people": [
       "John (Dasher) Troy",

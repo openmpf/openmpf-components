@@ -183,7 +183,7 @@ class LlmSpeechSummaryComponent:
 
     @staticmethod
     def _get_video_track_for_classifier(video_job: mpf.VideoJob, classifier_name, classifier):
-        detection_properties = {'CLASSIFIER': classifier, 'REASONING': classifier.reasoning}
+        detection_properties = {'CLASSIFIER': classifier_name, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
         return mpf.VideoTrack(video_job.start_frame, video_job.stop_frame, classifier.confidence, {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}, detection_properties)
 
