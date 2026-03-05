@@ -34,9 +34,9 @@ def convert_speech_tracks_to_csv(input: List[mpf.VideoTrack]|List[mpf.AudioTrack
     writer = DictWriter(buffer, ['speaker_id', 'gender', 'start_timestamp', 'end_timestamp', 'english_text', 'original_language'], delimiter='|')
     writer.writeheader()
     for track in input:
-        text = track.detection_properties['TRANSLATION'] if 'TRANSLATION' in track.detection_properties else track.detection_properties['TRANSCRIPT']
+        text = str(track.detection_properties['TRANSLATION'] if 'TRANSLATION' in track.detection_properties else track.detection_properties['TRANSCRIPT'])
         # this is a slight compromise BUT spoken newlines don't exist. If it's one utterance, treat as one line.
-        text.replace('\n', ' ')
+        text = text.replace('\n', ' ')
         writer.writerow({
             "speaker_id": track.detection_properties['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in track.detection_properties else (track.detection_properties['SPEAKER_ID'] if 'SPEAKER_ID' in track.detection_properties else None),
             "gender": track.detection_properties['GENDER'] if 'GENDER' in track.detection_properties else None,
