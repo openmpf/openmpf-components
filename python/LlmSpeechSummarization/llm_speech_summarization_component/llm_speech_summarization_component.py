@@ -33,6 +33,7 @@ import requests
 import sys
 import time
 import re
+import json
 
 from jinja2 import Environment, FileSystemLoader
 from typing import Sequence, Mapping
@@ -158,6 +159,12 @@ class LlmSpeechSummaryComponent:
                 if event.choices[0].finish_reason == "stop":
                     success = True
                     break
+                if event.choices[0].finish_reason == 'content_filter':
+                    if event.choices[0].model_extra != None and type(event.choices[0].model_extra) is dict:
+                        if 'content_filter_results' in event.choices[0].model_extra.keys():
+                            raise _log_exception(mpf.DetectionError.DETECTION_FAILED, f"Received LLM content_filter error - reason: {json.dumps(event.choices[0].model_extra['content_filter_results'])}")
+                        raise _log_exception(mpf.DetectionError.DETECTION_FAILED, f"Received LLM content_filter error - model_extra: {json.dumps(event.choices[0].model_extra)}")
+                    raise _log_exception(mpf.DetectionError.DETECTION_FAILED, "Received LLM content_filter error - unspecified")
                 if event.object == "chat.completion.chunk":
                     if event.choices[0].delta.refusal and len(event.choices[0].delta.refusal) > 0:
                         if not config.allow_refusal_response:
