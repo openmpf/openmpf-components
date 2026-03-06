@@ -88,13 +88,13 @@
         },
         {
           "name": "ALLOW_PARTIAL_RESPONSE",
-          "description": "If false, incomplete responses from the LLM will throw immediately.",
+          "description": "If true, the component will attempt to continue after an incomplete response is received from the LLM",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
         },
         {
           "name": "ALLOW_REFUSAL_RESPONSE",
-          "description": "If false, any refused delta in the completion stream throws.",
+          "description": "If true, the component will attempt to continue after the LLM refuses to respond",
           "type": "BOOLEAN",
           "defaultValue": "FALSE"
         },
