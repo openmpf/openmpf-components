@@ -21,7 +21,7 @@
       ],
       "properties": [
         {
-          "name": "VLLM_MODEL",
+          "name": "LLM_MODEL",
           "description": "The model being served by the openai-api running at VLLM_URI",
           "type": "STRING",
           "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
@@ -105,13 +105,13 @@
           "defaultValue": "templates/prompt.jinja"
         },
         {
-          "name": "VLLM_URI",
+          "name": "API_URI",
           "description": "The base_url of the openai-api-compatible API providing access to your model.",
           "type": "STRING",
           "defaultValue": "http://llm-speech-summarization-server:11434/v1"
         },
         {
-          "name": "VLLM_HEALTH_URI",
+          "name": "API_HEALTH_URI",
           "description": "An absolute OR relative URI of a healthcheck for the openai-api backend",
           "type": "STRING",
           "defaultValue": "../health"

@@ -68,8 +68,8 @@ class JobConfig:
         self.allow_partial_response = mpf_util.get_property(props, 'ALLOW_PARTIAL_RESPONSE', False)
         self.allow_refusal_response = mpf_util.get_property(props, 'ALLOW_REFUSAL_RESPONSE', False)
 
-        self.vllm_model = mpf_util.get_property(props, 'VLLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
-        self.tokenizer_model = mpf_util.get_property(props, 'TOKENIZER_MODEL', self.vllm_model)
+        self.llm_model = mpf_util.get_property(props, 'LLM_MODEL', "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8")
+        self.tokenizer_model = mpf_util.get_property(props, 'TOKENIZER_MODEL', self.llm_model)
 
         self.max_model_len = int(mpf_util.get_property(props, 'MAX_MODEL_LEN', 45000))
         self.chunk_size = int(mpf_util.get_property(props, 'INPUT_TOKEN_CHUNK_SIZE', 1500))
@@ -79,16 +79,16 @@ class JobConfig:
 
         self.prompt_template = self._get_file_path(mpf_util.get_property(props, 'PROMPT_TEMPLATE', 'templates/prompt.jinja'))
 
-        self.vllm_uri = \
-            mpf_util.get_property(props, 'VLLM_URI', "http://llm-speech-summarization-server:11434/v1")
+        self.api_uri = \
+            mpf_util.get_property(props, 'API_URI', "http://llm-speech-summarization-server:11434/v1")
 
-        self.vllm_health_uri = \
-            mpf_util.get_property(props, 'VLLM_HEALTH_URI', "../health")
-        if len(self.vllm_health_uri) == 0:
-            self.vllm_health_uri = None
-        elif '://' not in self.vllm_health_uri:
+        self.api_health_uri = \
+            mpf_util.get_property(props, 'API_HEALTH_URI', "../health")
+        if len(self.api_health_uri) == 0:
+            self.api_health_uri = None
+        elif '://' not in self.api_health_uri:
             from urllib.parse import urljoin
-            self.vllm_health_uri = urljoin(self.vllm_uri, self.vllm_health_uri)
+            self.api_health_uri = urljoin(self.api_uri, self.api_health_uri)
 
         self.enabled_classifiers = \
             mpf_util.get_property(props, 'CLASSIFIERS_LIST', "ALL")
@@ -126,13 +126,13 @@ class LlmSpeechSummaryComponent:
         if self.client_factory:
             client_factory = self.client_factory
         else:
-            client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.vllm_uri, api_key=config.api_token)
+            client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.api_uri, api_key=config.api_token)
         StructuredResponse = StructuredResponseClassFactory(classifiers)
         response_format_json_schema = StructuredResponse.model_json_schema()
         prompt = template.render(input=input, classifiers=get_classifier_lines(classifiers), response_format_json_schema=response_format_json_schema)
         with client_factory() as client:
             stream = client.chat.completions.create(
-                model=config.vllm_model, #model_name ## for ollama
+                model=config.llm_model, #model_name ## for ollama
                 # reasoning_effort='none',
                 messages=[
                     {"role": "user", "content": prompt}
@@ -209,32 +209,32 @@ class LlmSpeechSummaryComponent:
 
     @staticmethod
     def _get_openai_api_client_when_server_is_ready(config, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
-        if config.vllm_health_uri:
+        if config.api_health_uri:
             start_time = time.time()
             success = False
             failed_ever = False
             last_error: str|None = None
             while time.time() - start_time < timeout_seconds:
                 try:
-                    response = requests.get(config.vllm_health_uri, timeout=retry_delay_seconds)
+                    response = requests.get(config.api_health_uri, timeout=retry_delay_seconds)
                     if response.status_code == 200:
                         if failed_ever:
-                            logger.info("VLLM is now available")
+                            logger.info("OpenAI API is now available")
                         success = True
                         break
                     else:
                         failed_ever = True
-                        logger.warning(f"Received HTTP{response.status_code} from {config.vllm_health_uri}")
+                        logger.warning(f"Received HTTP{response.status_code} from {config.api_health_uri}")
                 except Exception as e:
                     failed_ever = True
-                    logger.info(f"Waiting up to {timeout_seconds}s for VLLM at {config.vllm_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
+                    logger.info(f"Waiting up to {timeout_seconds}s for OpenAI API at {config.api_health_uri} to be healthy. {int(math.floor(time.time() - start_time))}s passed so far")
                     last_error = str(e)
                 time.sleep(retry_delay_seconds)
 
             if not success:
                 if last_error:
                     raise _log_exception(mpf.DetectionError.NETWORK_ERROR, last_error)
-                raise _log_exception(mpf.DetectionError.NETWORK_ERROR, "Timed out waiting for VLLM to be healthy")
+                raise _log_exception(mpf.DetectionError.NETWORK_ERROR, "Timed out waiting for OpenAI API to be healthy")
 
         return (AzureOpenAI if config.azure_client else OpenAI)(**kwargs)
 
@@ -327,7 +327,7 @@ class LlmSpeechSummaryComponent:
 
         config = JobConfig(audio_job.job_properties)
 
-        tokenizer = AutoTokenizer.from_pretrained(config.vllm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer = AutoTokenizer.from_pretrained(config.llm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
         env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
