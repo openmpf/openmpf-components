@@ -30,6 +30,7 @@ import os
 import json
 import unittest
 import threading
+import urllib.parse
 from typing import ClassVar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from unittest.mock import patch
@@ -43,22 +44,25 @@ import mpf_component_util as mpf_util
 
 local_path = os.path.realpath(os.path.dirname(__file__))
 base_local_path = os.path.join(local_path, 'test_data')
-base_url_path = '/speechtotext/v3.0/'
+base_url_path = '/speechtotext/'
+valid_api_versions = {'2024-11-15', '2025-10-15'}
 
 test_port = 10669
-origin = 'http://localhost:{}'.format(test_port)
-url_prefix = origin + base_url_path
-transcription_url = url_prefix + 'transcriptions'
-blobs_url = url_prefix + 'recordings'
-outputs_url = url_prefix + 'outputs'
-models_url = url_prefix + 'models'
+origin = f'http://localhost:{test_port}'
+speech_base_url = origin + base_url_path.rstrip('/')
+transcriptions_url = speech_base_url + '/transcriptions'
+submit_url = speech_base_url + '/transcriptions:submit'
+blobs_url = speech_base_url + '/recordings'
+outputs_url = speech_base_url + '/outputs'
+models_url = speech_base_url + '/models'
 container_url = 'https://account_name.blob.core.endpoint.suffix/container_name'
 account_sas = '[sas_url]'
 
 
 def get_test_properties(**extra_properties):
     return dict(
-        ACS_URL=transcription_url,
+        ACS_URL=speech_base_url,
+        ACS_API_VERSION='2025-10-15',
         ACS_SUBSCRIPTION_KEY='acs_subscription_key',
         ACS_BLOB_CONTAINER_URL=container_url,
         ACS_BLOB_SERVICE_KEY='acs_blob_service_key',
@@ -66,6 +70,7 @@ def get_test_properties(**extra_properties):
     )
 
 logging.basicConfig(level=logging.DEBUG)
+
 
 class TestAcsSpeech(unittest.TestCase):
     mock_server: ClassVar['MockServer']
@@ -95,9 +100,7 @@ class TestAcsSpeech(unittest.TestCase):
         else:
             raise Exception('Mode must be "audio" or "video".')
 
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
-                patch.object(
+        with patch.object(comp.processor.acs, 'delete_blob'),                 patch.object(comp.processor.acs, 'get_blob_client'),                 patch.object(
                     comp.processor.acs,
                     'generate_account_sas',
                     return_value=account_sas):
@@ -185,7 +188,6 @@ class TestAcsSpeech(unittest.TestCase):
         comp = AcsSpeechComponent()
         results = self.run_patched_jobs(comp, 'audio', job_raw, job_dia)
 
-        # There should be two speakers with diarization, one without
         len_raw, len_dia = [
             len(set([
                 track.detection_properties['SPEAKER_ID']
@@ -228,9 +230,6 @@ class TestAcsSpeech(unittest.TestCase):
         self.assertEqual(23, len(res_en))
         self.assertEqual(23, len(res_sp))
 
-        # Audio switches from Spanish to English at about 0:58.
-        #  Speaker 1 says one sentence in English at about 0:58-1:00.
-        #  Speaker 2 begins at 1:04 and speaks only English.
         lang_switch = 58000
 
         mean = lambda lst: sum(lst) / len(lst)
@@ -280,7 +279,7 @@ class MockServer(HTTPServer):
         self.jobs = set()
         self._sas_enabled = False
         self.sas_lock = threading.Lock()
-        threading.Thread(target=self.serve_forever).start()
+        threading.Thread(target=self.serve_forever, daemon=True).start()
 
     @property
     def sas_enabled(self):
@@ -296,20 +295,26 @@ class MockServer(HTTPServer):
 class MockRequestHandler(SimpleHTTPRequestHandler):
     server: MockServer
 
+    def _parsed_tail(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        query = urllib.parse.parse_qs(parsed.query)
+        if not path.startswith(self.server.base_url_path):
+            return parsed, None, query
+        tail = path[len(self.server.base_url_path):]
+        return parsed, tail, query
+
     def translate_path(self, path):
-        """Translate a /-separated PATH to the local filename syntax.
-        Components that mean special things to the local file system
-        (e.g. drive or directory names) are ignored.  (XXX They should
-        probably be diagnosed.)
-        """
-        if path.startswith(self.server.base_url_path):
-            path = path[len(self.server.base_url_path):]
-            if path == '':
-                path = '/'
+        parsed = urllib.parse.urlparse(path)
+        path_only = parsed.path
+        if path_only.startswith(self.server.base_url_path):
+            path_only = path_only[len(self.server.base_url_path):]
+            if path_only == '':
+                path_only = '/'
         else:
             return None
-        path = super().translate_path(path)
-        rel_path = os.path.relpath(path, os.getcwd())
+        translated = super().translate_path(path_only)
+        rel_path = os.path.relpath(translated, os.getcwd())
         full_path = os.path.join(self.server.base_local_path, rel_path)
         return full_path
 
@@ -317,91 +322,84 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         if not self.headers.get('Ocp-Apim-Subscription-Key'):
             self.send_error(403, 'Forbidden')
             self.wfile.write('No permission to access this resource.'.encode())
-            return
+            return False
 
         if self.headers.get('Content-Type') != 'application/json':
             self.send_error(400, 'BadRequest')
             self.wfile.write('The request has been incorrect.'.encode())
-            return
+            return False
+        return True
+
+    def _validate_api_version(self, query):
+        api_version = query.get('api-version', [''])[0]
+        return api_version in valid_api_versions
 
     def do_GET(self):
-        if not isinstance(self.path, str):
-            self.send_response(442)
-            self.send_headers()
-            self.wfile.close()
-            return
-
-        if not self.path.startswith(self.server.base_url_path):
+        parsed, tail, query = self._parsed_tail()
+        if tail is None:
             self.send_error(404, 'NotFound')
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
             return
-        tail = self.path[len(self.server.base_url_path):]
 
         if tail == 'transcriptions/locales':
-            self.path += '.json'
-        elif tail.startswith('transcriptions'):
+            if not self._validate_api_version(query):
+                self.send_error(400, 'InvalidApiVersion')
+                return
+            self.path = parsed.path + '.json'
+            return super(MockRequestHandler, self).do_GET()
+
+        if tail.startswith('transcriptions'):
+            if not self._validate_api_version(query):
+                self.send_error(400, 'InvalidApiVersion')
+                return
+            if not self._validate_headers():
+                return
+
             jobname = tail[len('transcriptions/'):]
             if jobname.endswith('.json'):
                 jobname = jobname[:-len('.json')]
             if jobname.endswith('/files'):
                 jobname = jobname[:-len('/files')]
 
-            self._validate_headers()
             if jobname not in self.server.jobs:
-                print('\n\n\n', jobname, self.server.jobs, '\n\n\n')
                 self.send_error(404, 'NotFound')
-                self.wfile.write(
-                    'The specified entity cannot be found.'.encode()
-                )
+                self.wfile.write('The specified entity cannot be found.'.encode())
                 return
-        elif tail.startswith('outputs'):
-            pass
-        else:
-            self.send_error(404, 'NotFound')
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
-            return
 
-        if self.path.startswith(self.server.base_url_path):
-            super(MockRequestHandler, self).do_GET()
+            return super(MockRequestHandler, self).do_GET()
+
+        if tail.startswith('outputs'):
+            return super(MockRequestHandler, self).do_GET()
+
+        self.send_error(404, 'NotFound')
 
     def do_DELETE(self):
-        if not isinstance(self.path, str):
-            self.send_response(442)
-            self.send_headers()
-            self.wfile.close()
-            return
-
-        if not self.path.startswith(self.server.base_url_path):
+        parsed, tail, query = self._parsed_tail()
+        if tail is None:
             self.send_error(404, 'NotFound')
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
             return
-        tail = self.path[len(self.server.base_url_path):]
 
         if tail.startswith('transcriptions'):
-            self._validate_headers()
+            if not self._validate_api_version(query):
+                self.send_error(400, 'InvalidApiVersion')
+                return
+            if not self._validate_headers():
+                return
             self.send_response(204)
-            if self.path in self.server.jobs:
-                self.server.jobs.remove(self.path)
             self.end_headers()
-        else:
-            self.send_error(404)
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
+            return
 
+        self.send_error(404, 'NotFound')
 
     def do_POST(self):
-        self._validate_headers()
+        parsed, tail, query = self._parsed_tail()
+        if tail != 'transcriptions:submit':
+            self.send_error(404, 'NotFound')
+            return
+        if not self._validate_api_version(query):
+            self.send_error(400, 'InvalidApiVersion')
+            return
+        if not self._validate_headers():
+            return
 
         content_len = int(self.headers['Content-Length'])
         post_body = self.rfile.read(content_len)
@@ -418,26 +416,26 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         if not data.get('displayName'):
             self.send_error(400, 'InvalidPayload')
             self.wfile.write(
-                'A non empty string is required for '
-                'transcription.name.'.encode()
+                'A non empty string is required for transcription.name.'.encode()
             )
             return
 
         if not data.get('locale'):
             self.send_error(400, 'InvalidPayload')
             self.wfile.write(
-                'A non empty string is required for '
-                'transcription.locale.'.encode()
+                'A non empty string is required for transcription.locale.'.encode()
             )
             return
 
         properties = data.get('properties')
-        if not properties or not mpf_util.get_property(
-                    properties,
-                    'wordLevelTimestampsEnabled',
-                    False
-                ):
-            raise Exception('Expected wordLevelTimestampsEnabled')
+        if not properties or properties.get('wordLevelTimestampsEnabled') is not True:
+            raise Exception('Expected wordLevelTimestampsEnabled=True')
+        if 'timeToLiveHours' not in properties:
+            raise Exception('Expected timeToLiveHours')
+        if not isinstance(properties.get('diarization'), dict):
+            raise Exception('Expected diarization object')
+        if 'enabled' not in properties['diarization']:
+            raise Exception('Expected diarization.enabled')
 
         recording_url = data.get('contentUrls')[0]
         if self.server.sas_enabled:
@@ -446,16 +444,18 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         elif '?' in recording_url:
             raise Exception('SAS disabled, but sas found in recording URL.')
 
-        self.send_response(202)
+        job_name = data.get('displayName')
+        self.server.jobs.add(job_name)
 
-        location = os.path.join(
-            self.server.base_url_path,
-            'transcriptions',
-            data.get('displayName') + '.json'
-        )
-        self.server.jobs.add(data.get('displayName'))
-        self.send_header('Location', origin + location)
+        api_version = query['api-version'][0]
+        self_link = f"{origin}/speechtotext/transcriptions/{job_name}.json?api-version={api_version}"
+        bad_location = f"{origin}/speechtotext/transcriptions:submit/{job_name}?api-version={api_version}"
+
+        self.send_response(201)
+        self.send_header('Location', bad_location)
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
+        self.wfile.write(json.dumps({'self': self_link}).encode())
 
 
 if __name__ == '__main__':

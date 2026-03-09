@@ -71,17 +71,36 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection()
 
     @staticmethod
-    def _convert_case_bcp(bcp:str)->str:
+    def _convert_case_bcp(bcp: str) -> str:
         if not bcp:
             return bcp
-        sep = '-'
-        if '_' in bcp:
-            sep = '_'
-        elif '-' not in bcp:
+
+        # Prefer '-' but support '_' as well
+        sep = '-' if '-' in bcp else ('_' if '_' in bcp else None)
+        if sep is None:
+            # Simple language tag like 'en'
             return bcp
 
-        lang, script = bcp.split(sep)
-        return f'{lang.lower()}{sep}{script.upper()}'
+        parts = bcp.split(sep)
+        if not parts:
+            return bcp
+
+        lang = parts[0].lower()
+        rest = []
+
+        for p in parts[1:]:
+            # Processing patterns for lang vs script (BCP codes).
+            #   - length 2 → region (UPPER)
+            #   - length 4 → script (Title)
+            #   - otherwise leave as-is (variants, etc.)
+            if len(p) == 2:
+                rest.append(p.upper())
+            elif len(p) == 4:
+                rest.append(p.title())
+            else:
+                rest.append(p)
+
+        return sep.join([lang] + rest)
 
     @staticmethod
     def convert_word_timing(

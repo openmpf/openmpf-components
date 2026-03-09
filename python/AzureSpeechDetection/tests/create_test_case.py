@@ -32,7 +32,8 @@ import mimetypes
 from urllib import request
 
 from test_acs_speech import (
-    transcription_url, blobs_url, outputs_url, models_url
+    speech_base_url, transcriptions_url, blobs_url, outputs_url, models_url,
+    get_test_properties
 )
 import mpf_component_util as util
 import mpf_component_api as mpf
@@ -50,9 +51,7 @@ def guess_type(filename):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description=(
-            'Sample Azure Speech component on audio or video files.'
-        )
+        description='Sample Azure Speech component on audio or video files.'
     )
 
     parser.add_argument('--frame-count', type=int)
@@ -65,19 +64,22 @@ if __name__ == '__main__':
     parser.add_argument('--stop-frame', type=int, default=-1)
 
     parser.add_argument('--diarize', action='store_true')
-    parser.add_argument('--language', type=str, default="en-US")
+    parser.add_argument('--language', type=str, default='en-US')
     parser.add_argument('--blob-access-time', type=int, default=120)
     parser.add_argument('--transcription-expiration', type=int, default=120)
+    parser.add_argument('--api-version', type=str, default='2025-10-15')
     parser.add_argument('--job-name', type=str, required=True)
     parser.add_argument('filepath')
     args = parser.parse_args()
 
-    properties = dict(
+    properties = get_test_properties(
         DIARIZE=str(args.diarize).upper(),
         LANGUAGE=str(args.language),
-        CLEANUP="TRUE",
+        CLEANUP='TRUE',
+        USE_SAS_AUTH='TRUE',
         BLOB_ACCESS_TIME=str(args.blob_access_time),
-        TRANSCRIPTION_EXPIRATION=str(args.transcription_expiration)
+        TRANSCRIPTION_EXPIRATION=str(args.transcription_expiration),
+        ACS_API_VERSION=args.api_version,
     )
 
     media_properties = dict()
@@ -87,25 +89,19 @@ if __name__ == '__main__':
     filetype = guess_type(args.filepath)[0].split('/')[0]
     if filetype == 'audio':
         if args.fps is not None:
-            parser.error("FPS not used when processing audio files.")
+            parser.error('FPS not used when processing audio files.')
     elif filetype == 'video':
         if args.fps is None:
-            parser.error("FPS must be provided when passing video files.")
+            parser.error('FPS must be provided when passing video files.')
         media_properties['FPS'] = str(args.fps)
         if args.frame_count is not None:
             media_properties['FRAME_COUNT'] = str(args.frame_count)
     else:
-        parser.error(f"Filetype must be video or audio (got {filetype})")
+        parser.error(f'Filetype must be video or audio (got {filetype})')
 
     job_name = args.job_name
-    gen_job_name = (job_name is None)
+    recording_id = args.filepath.split('/')[-1]
 
-    recording_id = args.filepath.split("/")[-1]
-    if gen_job_name:
-        filename = os.path.splitext(recording_id)[0]
-        job_name = f"{filename}_{'diar_' * args.diarize}{args.language}"
-
-    job = None
     if filetype == 'audio':
         job = mpf.AudioJob(
             job_name=job_name,
@@ -116,7 +112,7 @@ if __name__ == '__main__':
             media_properties=media_properties,
             feed_forward_track=None
         )
-    elif filetype == 'video':
+    else:
         job = mpf.VideoJob(
             job_name=job_name,
             data_uri=args.filepath,
@@ -131,18 +127,16 @@ if __name__ == '__main__':
     job_config = AzureJobConfig(job)
     comp.processor.acs.update_acs(job_config.server_info)
 
-    if gen_job_name:
-        job_name += f"_{job_config.speaker_id_prefix}"
-
-    job_url = f"{transcription_url}/{job_name}"
+    api_version = job_config.server_info.api_version
+    job_url = f"{transcriptions_url}/{job_name}"
     base_local_path = os.path.join(
         os.path.realpath(os.path.dirname(__file__)),
         'test_data'
     )
 
-    # Write locales response
+    # Write locales response using the component-computed locales URL
     req = request.Request(
-        url=comp.processor.acs.url + '/locales',
+        url=comp.processor.acs._locales_url,
         headers=comp.processor.acs.acs_headers,
         method='GET'
     )
@@ -195,38 +189,31 @@ if __name__ == '__main__':
         comp.processor.acs.delete_blob(recording_id)
         comp.processor.acs.delete_transcription(output_loc)
 
-    # Update result object to point to files path
-    result['self'] = f"{job_url}.json"
+    result['self'] = f"{job_url}.json?api-version={api_version}"
     result['model']['self'] = f"{models_url}/base/modelhash"
-    result['links']['files'] = f"{job_url}/files.json"
+    result['links']['files'] = f"{job_url}/files.json?api-version={api_version}"
     path = os.path.join(base_local_path, 'transcriptions', job_name) + '.json'
     with open(path, 'w') as fout:
         json.dump(result, fout, indent=4)
 
-    # If job was successful, save the output files
     if transcription is not None:
-        # Ensure directories exist
         jobdir = os.path.join(base_local_path, 'transcriptions', job_name)
         outdir = os.path.join(base_local_path, 'outputs')
         os.makedirs(jobdir, exist_ok=True)
         os.makedirs(outdir, exist_ok=True)
 
-        # Update files object to point to transcription path
         for i, value in enumerate(files['values']):
-            value['self'] = f"{job_url}/files/hash{i}.json"
-            value['links']['contentUrl'] = "dummy_file.json"
+            value['self'] = f"{job_url}/files/hash{i}.json?api-version={api_version}"
+            value['links']['contentUrl'] = 'dummy_file.json'
             if value['kind'] == 'Transcription':
                 value['links']['contentUrl'] = f"{outputs_url}/{job_name}.json"
 
-        # Update transcription object to point to recording
         transcription['source'] = f"{blobs_url}/{recording_id}"
 
-        # Save files object to job directory
         files_path = os.path.join(jobdir, 'files.json')
         with open(files_path, 'w') as fout:
             json.dump(files, fout, indent=4)
 
-        # Save the transcription object to outputs directory
         transcription_path = os.path.join(outdir, job_name) + '.json'
         with open(transcription_path, 'w') as fout:
             json.dump(transcription, fout, indent=4)
