@@ -353,14 +353,18 @@ The following are the ISO 639-3 and ISO 15924 codes, and their corresponding lan
 
 ## Analysis of NLLB Results
 From `NLLB Token Length Investigation.xlsx` the team investigated how the NLLB translation capability handles text translations for small to very large chunks of text.
+
 Overall our findings are:
 
-1. Most languages have a breaking point occuring around 120-140 tokens. Translations after this point start to lose or forget parts of the text being translated.
-2. Likewise, most languages also benefit from addiitonal context clues and sections of text being submitted together. This helps provide sufficient translation context clues.
+1. Most languages have a breaking point occurring around 120-140 tokens. Translations after this point start to lose or forget parts of the text being translated.
+
+2. Likewise, most languages also benefit from additional context clues and sections of text being submitted together. This helps provide sufficient translation context clues.
+
    - For instance, the term `Dracula` was actually mistranslated in one test when the word was presented on its own and not with additional newlines or whitespace to indicate it is a title for the story.
    - Overall, it seems combining a few short sentences together, with a limit around 130 tokens, ensures effective translation accuracy rates.
+
 3. Arabic, out of the languages tested, performed more poorly than other languages. This may be due to the submission text being a mismatch (could be a different variant of Arabic) so more testing is warranted.
-   - In the meantime it was observed that Arabic transations improved greatly with smaller chunks of text. Thus we added a separate translation soft limit for difficult languages (Arabic).
-4. As a precauition, we alsto tested Hebrew, which did not seem to display the same number of issues as Arabic.
-   - We also examine the text inputs for Hebrew and Arabic for potential reversed character directions that may confuse the translator. Instead what we found was they were instead simply rendered differently
+   - In the meantime it was observed that Arabic translations improved greatly with smaller chunks of text. Thus we added a separate translation soft limit for difficult languages (Arabic).
+4. As a precaution, we also tested Hebrew, which did not seem to display the same number of issues as Arabic.
+   - We also examined the text inputs for Hebrew and Arabic for potential reversed character directions that may confuse the translator. Instead what we found was they were instead simply rendered differently
    in most text displays (and no special directional characters were present).
