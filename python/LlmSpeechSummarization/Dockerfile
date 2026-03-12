@@ -36,11 +36,12 @@ RUN set -x; DEPS="transformers>=4.51.0 accelerate==1.12.0 pydantic==2.12.5 opena
     pip3 install --no-cache-dir $DEPS
 
 ARG VLLM_MODEL="Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+ARG TOKENIZER_MODELS="${VLLM_MODEL} openai/gpt-oss-120b"
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
-    # make sure the tokenizer is available offline
-    /opt/mpf/plugin-venv/bin/python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\"${VLLM_MODEL}\")"; \
+    # make sure the tokenizers are available offline
+    for tokenizer_model in ${TOKENIZER_MODELS}; do /opt/mpf/plugin-venv/bin/python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\"${tokenizer_model}\")"; done; \
     if [ "${RUN_TESTS,,}" == true ]; then pytest llm_speech_summarization_component; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
