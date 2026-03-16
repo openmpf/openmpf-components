@@ -1,0 +1,21 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type" : "object",
+    "properties" : {
+        "video_summary" : {"type" : "string"},
+        "video_event_timeline" : {
+            "type" : "array",
+            "items": {
+                "type" : "object",
+                "properties" : {
+                    "timestamp_start": {"type" : ["number", "string"]},
+                    "timestamp_end": {"type" : ["number", "string"]},
+                    "description" : {"type" : "string"}
+                },
+                "required": ["timestamp_start", "timestamp_end", "description"]
+            },
+            "minItems": 1
+        }
+    },
+    "required": ["video_summary", "video_event_timeline"]
+}

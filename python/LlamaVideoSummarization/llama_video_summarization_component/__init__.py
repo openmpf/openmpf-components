@@ -225,7 +225,7 @@ class LlamaVideoSummarizationComponent:
         
         if not error and response_json:
             try:
-                event_timeline = response_json['video_event_timeline']
+                event_timeline = response_json.get('video_event_timeline', [])
                 for event in event_timeline:
                     # update values for later use
                     event["timestamp_start"] = _get_timestamp_value(event["timestamp_start"])
@@ -245,7 +245,7 @@ class LlamaVideoSummarizationComponent:
                         segment_start_time: float, segment_stop_time: float, response_json: dict
                         ) -> Tuple[bool, Union[str, None]]:
 
-        event_timeline = response_json['video_event_timeline'] # type: ignore
+        event_timeline = response_json.get('video_event_timeline', []) # type: ignore
 
         acceptable_checks = dict(
             near_seg_start = False,
@@ -271,7 +271,7 @@ class LlamaVideoSummarizationComponent:
                 break
 
         minmax_errors = []
-        if not hard_error:
+        if event_timeline and not hard_error:
             min_event_start = min(list(map(lambda d: _get_timestamp_value(d.get('timestamp_start')),
                                            filter(lambda d: 'timestamp_start' in d, event_timeline))))
             
@@ -355,14 +355,14 @@ class LlamaVideoSummarizationComponent:
         if 'FRAME_HEIGHT' in job.media_properties:
             frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
-        if response_json['video_event_timeline']:
+        if response_json.get('video_event_timeline', []):
             summary_track = self._create_segment_summary_track(job, response_json)
             tracks.append(summary_track)
             
             segment_id = summary_track.detection_properties['SEGMENT ID']
             video_fps = float(job.media_properties['FPS'])
 
-            for event in response_json['video_event_timeline']:
+            for event in response_json.get('video_event_timeline', []):
                 # get offset start/stop times in milliseconds
                 event_start_time = int(event['timestamp_start'] * 1000)
                 event_stop_time = int(event['timestamp_end'] * 1000)
@@ -452,10 +452,13 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
     max_new_tokens = mpf_util.get_property(
         props, 'MAX_NEW_TOKENS', 1024)
 
+    timeline_enabled = mpf_util.get_property(
+        props, 'ENABLE_TIMELINE_FUNCTIONALITY', 1
+    ) == 1
     generation_prompt_path = mpf_util.get_property(
-        props, 'GENERATION_PROMPT_PATH', 'default_prompt.txt')
+        props, 'GENERATION_PROMPT_PATH', 'default_prompt_with_timeline.txt' if timeline_enabled else 'default_prompt.txt')
     generation_json_schema_path = mpf_util.get_property(
-        props, 'GENERATION_JSON_SCHEMA_PATH', 'default_schema.json')
+        props, 'GENERATION_JSON_SCHEMA_PATH', 'default_schema_with_timeline.json' if timeline_enabled else 'default_schema.json')
     system_prompt_path = mpf_util.get_property(
         props, 'SYSTEM_PROMPT_PATH', '')
     generation_max_attempts = mpf_util.get_property(
@@ -482,7 +485,8 @@ def _parse_properties(props: Mapping[str, str], segment_start_time: float) -> di
         system_prompt = system_prompt,
         generation_max_attempts = generation_max_attempts,
         timeline_check_target_threshold = timeline_check_target_threshold,
-        timeline_check_acceptable_threshold = timeline_check_acceptable_threshold
+        timeline_check_acceptable_threshold = timeline_check_acceptable_threshold,
+        timeline_enabled = timeline_enabled,
     )
 
 
