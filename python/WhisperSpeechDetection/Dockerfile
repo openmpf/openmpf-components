@@ -35,7 +35,6 @@ ARG RUN_TESTS=false
 # Installing openai-whisper with pip fails without setuptools installed.
 RUN pip install --no-cache-dir 'setuptools<82'
 
-
 RUN pip install --no-cache-dir --no-build-isolation openai-whisper==20240930
 
 RUN python -c 'import whisper; whisper.load_model("base")'
