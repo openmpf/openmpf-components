@@ -42,6 +42,9 @@ RUN --mount=type=tmpfs,target=/var/cache/apt \
 
 RUN pip3 install --upgrade pip
 
+# Installing CLIP with pip fails without setuptools installed.
+RUN pip3 install 'setuptools<82'
+
 RUN --mount=type=tmpfs,target=/tmp \
         mkdir /tmp/CLIP; \
         wget -O- 'https://github.com/openai/CLIP/tarball/master' \

@@ -32,7 +32,9 @@ FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
 ARG RUN_TESTS=false
 
+# Installing openai-whisper with pip fails without setuptools installed.
 RUN pip install --no-cache-dir 'setuptools<82'
+
 
 RUN pip install --no-cache-dir --no-build-isolation openai-whisper==20240930
 
