@@ -1,7 +1,7 @@
 {
   "componentName": "AzureTranslation",
-  "componentVersion": "9.0",
-  "middlewareVersion": "9.0",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
   "sourceLanguage": "python",
   "batchLibrary": "AzureTranslation",
   "environmentVariables": [],
@@ -30,6 +30,12 @@
         {
           "name": "ACS_SUBSCRIPTION_KEY",
           "description": "Azure Cognitive Services subscription key. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "ACS_SUBSCRIPTION_REGION",
+          "description": "Azure region for the Cognitive Services resource, such as 'eastus'. Required for some Azure deployments. If provided, will be set in the 'Ocp-Apim-Subscription-Region' request header.",
           "type": "STRING",
           "defaultValue": ""
         },
@@ -125,7 +131,7 @@
           "value": "REGION"
         },
         {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "name": "IS_ANNOTATOR",
           "value": "TRUE"
         }
       ]

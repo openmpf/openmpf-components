@@ -1,0 +1,167 @@
+{
+  "componentName": "NllbTranslation",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "NllbTranslation",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "NLLBTRANSLATION",
+    "description": "Uses No Language Left Behind to perform translations.",
+    "actionType": "DETECTION",
+    "trackType": "TRANSLATION",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TRANSLATION",
+        "DETECTION_TRANSLATION_NLLB"
+      ],
+      "properties": [
+        {
+          "name": "FEED_FORWARD_PROP_TO_PROCESS",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection to consider translating. If the first property listed is present, then that property will be translated. If it's not, then the next property in the list is considered. At most, one property will be translated.",
+          "type": "STRING",
+          "defaultValue": "TEXT,TRANSCRIPT"
+        },
+        {
+          "name": "TRANSLATE_ALL_FF_PROPERTIES",
+          "description": "When set to true, translate all properties in the FEED_FORWARD_PROPS_TO_PROCESS list. When set to false, only translate the first available property in the FEED_FORWARD_PROPS_TO_PROCESS list and don't use the prefix in front of TRANSLATION in the output property.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "NLLB_MODEL",
+          "description": "Name of NLLB model to use (e.g. facebook/nllb-200-3.3B).",
+          "type": "STRING",
+          "defaultValue": "facebook/nllb-200-3.3B"
+        },
+        {
+          "name": "LANGUAGE_FEED_FORWARD_PROP",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the language from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to DEFAULT_SOURCE_LANGUAGE.",
+          "type": "STRING",
+          "defaultValue": "ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE"
+        },
+        {
+          "name": "SCRIPT_FEED_FORWARD_PROP",
+          "description": "Comma-separated list of property names indicating which properties in the feed-forward track or detection determine the script from which to translate. If the first property listed is present, then that property will be used. If it's not, then the next property in the list is considered. If none are present, fall back to DEFAULT_SOURCE_SCRIPT.",
+          "type": "STRING",
+          "defaultValue": "ISO_SCRIPT,DECODED_SCRIPT,SCRIPT"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_CHAR_COUNT",
+          "description": "Integer value specifying maximum number of characters to process through sentence splitter.",
+          "type": "INT",
+          "defaultValue": "360"
+        },
+        {
+          "name": "SENTENCE_MODEL",
+          "description": "Name of sentence segmentation model. Supported options are spaCy's multilingual `xx_sent_ud_sm` model and the Where's the Point (WtP) `wtp-bert-mini` model.",
+          "type": "STRING",
+          "defaultValue": "wtp-bert-mini"
+        },
+        {
+          "name": "SENTENCE_MODEL_CPU_ONLY",
+          "description": "If set to true, only use CPU resources for the sentence detection model. If set to False, allow sentence model to also use GPU resources (for Docker deployments, please consult README for more info).",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
+          "description": "More advanced WTP models will require a target language. This property sets the default language to use for sentence splitting, unless `SOURCE_LANGUAGE` or `DEFAULT_SOURCE_LANGUAGE` are set to a different, WtP-supported language option.",
+          "type": "STRING",
+          "defaultValue": "en"
+        },
+        {
+          "name": "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
+          "description": "Specifies whether to pass input language to sentence splitter algorithm. Currently, only WtP supports model adjustments by input language.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
+        {
+          "name": "TARGET_LANGUAGE",
+          "description": "The ISO-639-3 language code for language and script that the input text should be translated to.",
+          "type": "STRING",
+          "defaultValue": "eng"
+        },
+        {
+          "name": "TARGET_SCRIPT",
+          "description": "The ISO-15924 language code for language and script that the input text should be translated to.",
+          "type": "STRING",
+          "defaultValue": "Latn"
+        },
+        {
+          "name": "DEFAULT_SOURCE_LANGUAGE",
+          "description": "The ISO-639-3 language code for language and script that the input text should be translated from.",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "DEFAULT_SOURCE_SCRIPT",
+          "description": "The ISO-15924 language code for language and script that the input text should be translated from.",
+          "type": "STRING",
+          "defaultValue": ""
+        }
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "NLLB TRANSLATION TEXT FILE ACTION",
+      "description": "Performs NLLB translation on a plain text file.",
+      "algorithm": "NLLBTRANSLATION",
+      "properties": []
+    },
+    {
+      "name": "NLLB TRANSLATION (WITH FF REGION) ACTION",
+      "description": "Performs NLLB translation on feed-forward tracks and detections.",
+      "algorithm": "NLLBTRANSLATION",
+      "properties": [
+        {
+          "name": "FEED_FORWARD_TYPE",
+          "value": "REGION"
+        },
+        {
+          "name": "IS_ANNOTATOR",
+          "value": "TRUE"
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "NLLB TRANSLATION TEXT FILE TASK",
+      "description": "Uses NLLB to perform translation on a plain text file.",
+      "actions": [
+        "NLLB TRANSLATION TEXT FILE ACTION"
+      ]
+    },
+    {
+      "name": "NLLB TRANSLATION (WITH FF REGION) TASK",
+      "description": "Uses NLLB to perform translation on feed-forward tracks and detections.",
+      "actions": [
+        "NLLB TRANSLATION (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+    {
+      "name": "NLLB TRANSLATION TEXT FILE PIPELINE",
+      "description": "Performs NLLB translation on a plain text file.",
+      "tasks": [
+        "NLLB TRANSLATION TEXT FILE TASK"
+      ]
+    },
+    {
+      "name": "FASTTEXT LANGUAGE ID WITH NLLB TRANSLATION AND KEYWORD TAGGING TEXT FILE PIPELINE",
+      "description": "Uses FastText to perform language identification on a plain text file, then performs NLLB translation and keyword tagging.",
+      "tasks": [
+        "FASTTEXT LANGUAGE ID TEXT FILE TASK",
+        "NLLB TRANSLATION (WITH FF REGION) TASK",
+        "KEYWORD TAGGING (WITH FF REGION) TASK"
+      ]
+    }
+  ]
+}
