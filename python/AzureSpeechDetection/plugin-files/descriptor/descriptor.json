@@ -91,7 +91,7 @@
           "name": "USE_SAS_AUTH",
           "description": "When true, the component appends a shared access signature (SAS) token to the uploaded recording URL before submitting the transcription job. When false, the storage account must still be accessible to Azure Speech, for example through the trusted Azure services / managed identity mechanism.",
           "type": "BOOLEAN",
-          "defaultValue": "FALSE"
+          "defaultValue": "TRUE"
         }
       ]
     }
