@@ -65,6 +65,7 @@ def get_test_properties(**extra_properties):
         ACS_SUBSCRIPTION_KEY='acs_subscription_key',
         ACS_BLOB_CONTAINER_URL=container_url,
         ACS_BLOB_SERVICE_KEY='acs_blob_service_key',
+        USE_SAS_AUTH='FALSE',
         **extra_properties
     )
 
@@ -109,16 +110,18 @@ class TestAcsSpeech(unittest.TestCase):
 
     def test_audio_file(self):
         self.mock_server.sas_enabled = True
+
+        job_properties = get_test_properties(
+                DIARIZE='FALSE',
+                LANGUAGE='EN-us',
+            )
+        job_properties['USE_SAS_AUTH'] = 'TRUE'
         job = mpf.AudioJob(
             job_name='test_audio',
             data_uri=self._get_test_file('left.wav'),
             start_time=0,
             stop_time=-1,
-            job_properties=get_test_properties(
-                DIARIZE='FALSE',
-                LANGUAGE='EN-us',
-                USE_SAS_AUTH='TRUE'
-            ),
+            job_properties=job_properties,
             media_properties={},
             feed_forward_track=None
         )

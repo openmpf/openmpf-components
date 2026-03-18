@@ -73,7 +73,7 @@ class AzureConnection(object):
         self.container_client = None
         self.http_retry = None
         self.http_max_attempts = None
-        self.use_sas_auth = False
+        self.use_sas_auth = True
 
         self.supported_locales = set()
         self.submit_locales = set()
