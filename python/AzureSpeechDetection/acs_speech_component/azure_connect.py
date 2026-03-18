@@ -85,23 +85,32 @@ class AzureConnection(object):
 
 
     @staticmethod
-    def _normalize_locale_for_lookup(locale: str) -> str:
-        if not locale:
-            return locale
+    def _convert_case_bcp(bcp: str) -> str:
+        if not bcp:
+            return bcp
 
-        sep = '-' if '-' in locale else ('_' if '_' in locale else None)
+        # Prefer '-' but support '_' as well
+        sep = '-' if '-' in bcp else ('_' if '_' in bcp else None)
         if sep is None:
-            return locale
+            # Simple language tag like 'en'
+            return bcp
 
-        parts = locale.split(sep)
-        out = [parts[0].lower()]
+        parts = bcp.split(sep)
+        if not parts:
+            return bcp
+
+        lang = parts[0].lower()
+        out = [lang]
+
         for p in parts[1:]:
+            # Processing patterns for lang vs script (BCP codes).
+            #   - length 2 → region (UPPER)
+            #   - otherwise -> lowercase
+            # This accounts for edge cases like zh-CN-shandong
             if len(p) == 2:
-                out.append(p.upper())      # region
-            elif len(p) == 4:
-                out.append(p.title())      # script
+                out.append(p.upper())
             else:
-                out.append(p.lower())      # variant / dialect
+                out.append(p.lower())
         return sep.join(out)
 
     @classmethod
@@ -109,7 +118,7 @@ class AzureConnection(object):
         expanded = set()
         for loc in locales:
             expanded.add(loc)
-            expanded.add(cls._normalize_locale_for_lookup(loc))
+            expanded.add(cls._convert_case_bcp(loc))
         return expanded
 
     def update_acs(self, server_info: AcsServerInfo):
@@ -172,6 +181,9 @@ class AzureConnection(object):
             raw_submit = set(raw_locales.get('Submit', []))
             raw_transcribe = set(raw_locales.get('Transcribe', []))
 
+            # Currently it appears that 'Submit' locales indicate which locales are supported for batch transcription.
+            # The other list is for synchronous transcription, and doesn't seem to return any locales yet.
+            # Adding support in case we need to use it in the future.
             self.submit_locales = self._expand_locale_set(raw_submit)
             self.transcribe_locales = self._expand_locale_set(raw_transcribe)
             self.supported_locales = self.submit_locales

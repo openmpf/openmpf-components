@@ -71,38 +71,6 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection()
 
     @staticmethod
-    def _convert_case_bcp(bcp: str) -> str:
-        if not bcp:
-            return bcp
-
-        # Prefer '-' but support '_' as well
-        sep = '-' if '-' in bcp else ('_' if '_' in bcp else None)
-        if sep is None:
-            # Simple language tag like 'en'
-            return bcp
-
-        parts = bcp.split(sep)
-        if not parts:
-            return bcp
-
-        lang = parts[0].lower()
-        rest = []
-
-        for p in parts[1:]:
-            # Processing patterns for lang vs script (BCP codes).
-            #   - length 2 → region (UPPER)
-            #   - length 4 → script (Title)
-            #   - otherwise leave as-is (variants, etc.)
-            if len(p) == 2:
-                rest.append(p.upper())
-            elif len(p) == 4:
-                rest.append(p.title())
-            else:
-                rest.append(p)
-
-        return sep.join([lang] + rest)
-
-    @staticmethod
     def convert_word_timing(
                 recognized_phrases: Iterable[Mapping[str, Any]],
                 job_config: AzureJobConfig,
@@ -241,7 +209,7 @@ class AcsSpeechDetectionProcessor(object):
             )
 
         missing_models = set()
-        default_locale = self._convert_case_bcp(job_config.language)
+        default_locale = AzureConnection._convert_case_bcp(job_config.language)
         if (lang := job_config.override_default_language) is not None:
             if lang.lower() in ISO6393_TO_BCP47:
                 for locale in ISO6393_TO_BCP47[lang.lower()]:
@@ -316,7 +284,7 @@ class AcsSpeechDetectionProcessor(object):
                     )
                     locale = default_locale
 
-        locale = self._convert_case_bcp(locale)
+        locale = AzureConnection._convert_case_bcp(locale)
         if locale not in self.acs.supported_locales:
             raise mpf.DetectionException(
                 f"Selected locale ('{locale}') is not supported by Azure "
