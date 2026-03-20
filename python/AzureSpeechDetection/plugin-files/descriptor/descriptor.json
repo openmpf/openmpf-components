@@ -37,7 +37,7 @@
           "name": "ACS_URL",
           "description": "Base URL for the Azure Speech-to-text REST endpoint, for example `https://eastus.api.cognitive.microsoft.com/speechtotext`. Do not include `/transcriptions`, `/v3.x`, or `?api-version=...`; the component appends the correct path and API version internally. Can also be provided by an environment variable with the same name. If both are provided, the job property is used.",
           "type": "STRING",
-          "defaultValue": "https://eastus.api.cognitive.microsoft.com/speechtotext"
+          "defaultValue": ""
         },
         {
           "name": "ACS_SUBSCRIPTION_KEY",
@@ -75,6 +75,12 @@
           "type": "BOOLEAN",
           "defaultValue": "TRUE"
         },
+                {
+          "name": "CLEANUP",
+          "description": "Whether to delete recording blobs after processing.",
+          "type": "BOOLEAN",
+          "defaultValue": "TRUE"
+        },
         {
           "name": "BLOB_ACCESS_TIME",
           "description": "Time, in minutes, for which the uploaded blob URL should remain accessible to Azure Speech.",
@@ -86,6 +92,12 @@
           "description": "Desired transcription retention period, in minutes. The component converts this to Azure's `timeToLiveHours` request field. Azure currently requires a minimum of 6 hours, so values below 360 minutes are effectively rounded up.",
           "type": "INT",
           "defaultValue": "360"
+        },
+                {
+          "name": "TRIGGER",
+          "description": "Trigger condition for this component when used as a downstream action, of the form `TRACK_PROPERTY=VALUE`. Example: 'SPEECH_DETECTOR=AZURESPEECH' will result in this action only being run if the feed-forward track has the property SPEECH_DETECTOR with the value AZURESPEECH.",
+          "type": "STRING",
+          "defaultValue": ""
         },
         {
           "name": "USE_SAS_AUTH",

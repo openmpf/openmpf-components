@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import io
 import sys
 import logging
 import os
@@ -33,10 +34,14 @@ import threading
 import urllib.parse
 from typing import ClassVar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
+from acs_speech_component.azure_connect import (
+    AzureConnection,
+    AcsServerInfo,
+)
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -71,6 +76,14 @@ def get_test_properties(**extra_properties):
 
 logging.basicConfig(level=logging.DEBUG)
 
+
+class JsonResponse(io.StringIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
 
 class TestAcsSpeech(unittest.TestCase):
     mock_server: ClassVar['MockServer']
@@ -107,6 +120,99 @@ class TestAcsSpeech(unittest.TestCase):
                     'generate_account_sas',
                     return_value=account_sas):
             return list(map(detection_func, jobs))
+
+    def test_normalize_speech_base_url_trims_extra_path(self):
+        normalize = AzureConnection._normalize_speech_base_url
+
+        self.assertEqual(
+            'https://example.com/speechtotext',
+            normalize('https://example.com/speechtotext')
+        )
+
+        self.assertEqual(
+            'https://example.com/speechtotext',
+            normalize('https://example.com/speechtotext/transcriptions')
+        )
+
+        self.assertEqual(
+            'https://example.com/custom/speechtotext',
+            normalize('https://example.com/custom/speechtotext/transcriptions')
+        )
+
+    def test_normalize_speech_base_url_appends_and_warns_when_missing(self):
+        normalize = AzureConnection._normalize_speech_base_url
+
+        with self.assertLogs('AcsSpeechComponent', level='WARNING') as cm:
+            result = normalize('https://example.com/custom/path')
+
+        self.assertEqual(
+            'https://example.com/custom/path/speechtotext',
+            result
+        )
+        self.assertTrue(any('/speechtotext' in msg for msg in cm.output))
+
+
+    @patch('acs_speech_component.azure_connect.ContainerClient.from_container_url')
+    def test_update_acs_rejects_invalid_format(self, _mock_container):
+        conn = AzureConnection()
+
+        fake_retry = Mock()
+        fake_retry.urlopen.return_value = JsonResponse(json.dumps([
+            'wrong-format!'
+        ]))
+
+        server_info = AcsServerInfo(
+            url='https://example.com/speechtotext',
+            api_version='2025-10-15',
+            subscription_key='test-key',
+            blob_container_url='https://blob.example.com/container',
+            blob_service_key='blob-key',
+            http_retry=fake_retry,
+            http_max_attempts=1,
+            use_sas_auth=False
+        )
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            conn.update_acs(server_info)
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+
+    @patch('acs_speech_component.azure_connect.ContainerClient.from_container_url')
+    def test_update_acs_accepts_new_locales_format(self, _mock_container):
+        conn = AzureConnection()
+
+        fake_retry = Mock()
+        fake_retry.urlopen.return_value = JsonResponse(json.dumps({
+            'Submit': ['en-US', 'zh-CN-SHANDONG'],
+            'Transcribe': ['en-US']
+        }))
+
+        server_info = AcsServerInfo(
+            url='https://example.com/custom/path',
+            api_version='2025-10-15',
+            subscription_key='test-key',
+            blob_container_url='https://blob.example.com/container',
+            blob_service_key='blob-key',
+            http_retry=fake_retry,
+            http_max_attempts=1,
+            use_sas_auth=False
+        )
+
+        with self.assertLogs('AcsSpeechComponent', level='WARNING') as cm:
+            conn.update_acs(server_info)
+
+        # Missing /speechtotext should be appended.
+        self.assertEqual(
+            'https://example.com/custom/path/speechtotext',
+            conn._base_url
+        )
+
+        # Both raw and normalized locale variants should be usable.
+        self.assertIn('en-US', conn.supported_locales)
+        self.assertIn('zh-CN-SHANDONG', conn.supported_locales)
+        self.assertIn('zh-CN-shandong', conn.supported_locales)
+
+        self.assertTrue(any('/speechtotext' in msg for msg in cm.output))
 
     def test_audio_file(self):
         self.mock_server.sas_enabled = True

@@ -106,7 +106,7 @@ class AzureConnection(object):
             # Processing patterns for lang vs script (BCP codes).
             #   - length 2 → region (UPPER)
             #   - otherwise -> lowercase
-            # This accounts for edge cases like zh-CN-shandong
+            # This accounts for edge cases like zh-CN-shandong.
             if len(p) == 2:
                 out.append(p.upper())
             else:
@@ -121,30 +121,51 @@ class AzureConnection(object):
             expanded.add(cls._convert_case_bcp(loc))
         return expanded
 
+    @staticmethod
+    def _normalize_speech_base_url(raw_url: str) -> str:
+        """
+        Normalize user-provided ACS_URL into Azure's transcription endpoint.
+        Examples:
+          https://host/speechtotext
+            -> https://host/speechtotext
+
+          https://host/speechtotext/transcriptions
+            -> https://host/speechtotext
+
+          https://host/custom/path
+            -> https://host/custom/path/speechtotext
+               (will produce a warning, because '/speechtotext' was missing)
+        """
+        parsed = parse.urlparse(raw_url.strip())
+        if not parsed.scheme or not parsed.netloc:
+            raise mpf.DetectionError.INVALID_PROPERTY.exception(
+                f'ACS_URL "{raw_url}" is not a valid absolute URL.'
+            )
+
+        path_parts = [p for p in parsed.path.rstrip('/').split('/') if p]
+
+        if 'speechtotext' in path_parts:
+            idx = path_parts.index('speechtotext')
+            normalized_parts = path_parts[:idx + 1]
+        else:
+            logger.warning(
+                'ACS_URL "%s" does not contain "/speechtotext". '
+                'Appending "/speechtotext" to the end of the URL path.',
+                raw_url
+            )
+            normalized_parts = path_parts + ['speechtotext']
+
+        normalized_path = '/' + '/'.join(normalized_parts)
+        base = parsed._replace(path=normalized_path, query='', params='', fragment='')
+        return parse.urlunparse(base).rstrip('/')
+
     def update_acs(self, server_info: AcsServerInfo):
         """
         Normalize the Speech-to-text endpoint and construct
         transcriptions / locales URLs using the configured API version.
-
-        Expected ACS_URL formats (examples):
-        - https://<region>.api.cognitive.microsoft.com/speechtotext
-        - https://<region>.api.cognitive.microsoft.com/speechtotext/transcriptions
-
-        Both will be normalized back to the /speechtotext base.
         """
-        raw_url = server_info.url
         self.api_version = server_info.api_version or DEFAULT_ACS_API_VERSION
-
-        parsed = parse.urlparse(raw_url)
-        path = parsed.path.rstrip('/')
-
-        # Find the /speechtotext root in whatever path we were given.
-        idx = path.find('/speechtotext')
-        if idx != -1:
-            path = path[: idx + len('/speechtotext')]
-
-        base = parsed._replace(path=path.rstrip('/'), query='', params='', fragment='')
-        base_url = parse.urlunparse(base).rstrip('/')
+        base_url = self._normalize_speech_base_url(server_info.url)
 
         self._base_url = base_url
         self._transcriptions_submit_url = (
@@ -174,29 +195,32 @@ class AzureConnection(object):
         with self.http_retry.urlopen(req) as response:
             raw_locales = json.load(response)
 
-        # New 2024/2025 locales endpoint returns a dict like:
+        # 2024/2025 Speech locales response is expected to be:
         #   { "Submit": [...], "Transcribe": [...] }
-        # Normalize to sets via either format (V3, 2025).
-        if isinstance(raw_locales, dict):
-            raw_submit = set(raw_locales.get('Submit', []))
-            raw_transcribe = set(raw_locales.get('Transcribe', []))
+        # Currently it appears that 'Submit' locales indicate which locales are supported for batch transcription.
+        # The other list is for synchronous transcription, and doesn't seem to return any locales yet (3/20/2026).
+        # Adding support in case we need to use it in the future.
+        if not isinstance(raw_locales, dict):
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                'Expected transcription locales response to be an object with '
+                '"Submit" and "Transcribe" lists.'
+            )
 
-            # Currently it appears that 'Submit' locales indicate which locales are supported for batch transcription.
-            # The other list is for synchronous transcription, and doesn't seem to return any locales yet.
-            # Adding support in case we need to use it in the future.
-            self.submit_locales = self._expand_locale_set(raw_submit)
-            self.transcribe_locales = self._expand_locale_set(raw_transcribe)
-            self.supported_locales = self.submit_locales
+        raw_submit = raw_locales.get('Submit')
+        raw_transcribe = raw_locales.get('Transcribe', [])
 
-            logger.info('Supported locales (Submit): %s', sorted(raw_submit))
-            logger.info('Supported locales (Transcribe): %s', sorted(raw_transcribe))
-        else:
-            raw_supported = set(raw_locales)
-            self.supported_locales = self._expand_locale_set(raw_supported)
-            self.submit_locales = self.supported_locales
-            self.transcribe_locales = self.supported_locales
+        # If no supported locales are provided, the component would fail in the subsequent locale check.
+        if not isinstance(raw_submit, list):
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                'Transcription locales response is missing a valid "Submit" list. No supported locales found.'
+            )
 
-            logger.info('Supported locales: %s', sorted(raw_supported))
+        self.submit_locales = self._expand_locale_set(set(raw_submit))
+        self.transcribe_locales = self._expand_locale_set(set(raw_transcribe))
+        self.supported_locales = self.submit_locales
+
+        logger.info('Supported locales (Submit): %s', sorted(raw_submit))
+        logger.info('Supported locales (Transcribe): %s', sorted(raw_transcribe))
 
         if (self.blob_container_url != server_info.blob_container_url
                 or self.blob_service_key != server_info.blob_service_key
