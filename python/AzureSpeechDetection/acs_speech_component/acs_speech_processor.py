@@ -71,19 +71,6 @@ class AcsSpeechDetectionProcessor(object):
         self.acs = AzureConnection()
 
     @staticmethod
-    def _convert_case_bcp(bcp:str)->str:
-        if not bcp:
-            return bcp
-        sep = '-'
-        if '_' in bcp:
-            sep = '_'
-        elif '-' not in bcp:
-            return bcp
-
-        lang, script = bcp.split(sep)
-        return f'{lang.lower()}{sep}{script.upper()}'
-
-    @staticmethod
     def convert_word_timing(
                 recognized_phrases: Iterable[Mapping[str, Any]],
                 job_config: AzureJobConfig,
@@ -222,7 +209,7 @@ class AcsSpeechDetectionProcessor(object):
             )
 
         missing_models = set()
-        default_locale = self._convert_case_bcp(job_config.language)
+        default_locale = AzureConnection._convert_case_bcp(job_config.language)
         if (lang := job_config.override_default_language) is not None:
             if lang.lower() in ISO6393_TO_BCP47:
                 for locale in ISO6393_TO_BCP47[lang.lower()]:
@@ -297,7 +284,7 @@ class AcsSpeechDetectionProcessor(object):
                     )
                     locale = default_locale
 
-        locale = self._convert_case_bcp(locale)
+        locale = AzureConnection._convert_case_bcp(locale)
         if locale not in self.acs.supported_locales:
             raise mpf.DetectionException(
                 f"Selected locale ('{locale}') is not supported by Azure "
