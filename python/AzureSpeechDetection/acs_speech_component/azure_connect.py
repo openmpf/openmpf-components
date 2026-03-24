@@ -27,9 +27,9 @@
 import json
 import logging
 import time
-from urllib import request
+from urllib import request, parse
 from datetime import datetime, timedelta
-from dateutil import relativedelta
+from math import ceil
 from typing import NamedTuple
 
 from azure.storage.blob import (
@@ -43,24 +43,17 @@ import mpf_component_util as mpf_util
 
 logger = logging.getLogger('AcsSpeechComponent')
 
+# Target the latest GA Speech-to-text REST API.
+DEFAULT_ACS_API_VERSION = "2025-10-15"
 
-def minutes_to_iso8601(mins):
-    """ Convert minutes to ISO 8601 duration, the format expected by
-        Azure for timeToLive. Use dateutil to construct this string,
-        to avoid issues with daylight savings, leap years, etc.
-    """
-    now = datetime.now()
-    expiration = now + timedelta(minutes=mins)
-
-    delta = relativedelta.relativedelta(expiration, now)
-    date = f"{delta.years}Y{delta.months}M{delta.days}D"
-    time = f"{delta.hours}H{delta.minutes}M{delta.seconds}S"
-
-    return f"P{date}T{time}"
-
+SUPPORTED_ACS_API_VERSIONS = frozenset({
+    "2024-11-15",
+    "2025-10-15",
+})
 
 class AcsServerInfo(NamedTuple):
     url: str
+    api_version: str
     subscription_key: str
     blob_container_url: str
     blob_service_key: str
@@ -72,6 +65,7 @@ class AcsServerInfo(NamedTuple):
 class AzureConnection(object):
     def __init__(self):
         self.url = None
+        self.api_version = DEFAULT_ACS_API_VERSION
         self.subscription_key = None
         self.blob_container_url = None
         self.blob_service_key = None
@@ -79,10 +73,110 @@ class AzureConnection(object):
         self.container_client = None
         self.http_retry = None
         self.http_max_attempts = None
-        self.use_sas_auth = False
+        self.use_sas_auth = True
+
+        self.supported_locales = set()
+        self.submit_locales = set()
+        self.transcribe_locales = set()
+
+        self._base_url = None
+        self._transcriptions_submit_url = None
+        self._locales_url = None
+
+
+    @staticmethod
+    def _convert_case_bcp(bcp: str) -> str:
+        if not bcp:
+            return bcp
+
+        # Prefer '-' but support '_' as well
+        sep = '-' if '-' in bcp else ('_' if '_' in bcp else None)
+        if sep is None:
+            # Simple language tag like 'en'
+            return bcp
+
+        parts = bcp.split(sep)
+        if not parts:
+            return bcp
+
+        lang = parts[0].lower()
+        out = [lang]
+
+        for p in parts[1:]:
+            # Processing patterns for lang vs script (BCP codes).
+            #   - length 2 → region (UPPER)
+            #   - otherwise -> lowercase
+            # This accounts for edge cases like zh-CN-shandong.
+            if len(p) == 2:
+                out.append(p.upper())
+            else:
+                out.append(p.lower())
+        return sep.join(out)
+
+    @classmethod
+    def _expand_locale_set(cls, locales):
+        expanded = set()
+        for loc in locales:
+            expanded.add(loc)
+            expanded.add(cls._convert_case_bcp(loc))
+        return expanded
+
+    @staticmethod
+    def _normalize_speech_base_url(raw_url: str) -> str:
+        """
+        Normalize user-provided ACS_URL into Azure's transcription endpoint.
+        Examples:
+          https://host/speechtotext
+            -> https://host/speechtotext
+
+          https://host/speechtotext/transcriptions
+            -> https://host/speechtotext
+
+          https://host/custom/path
+            -> https://host/custom/path/speechtotext
+               (will produce a warning, because '/speechtotext' was missing)
+        """
+        parsed = parse.urlparse(raw_url.strip())
+        if not parsed.scheme or not parsed.netloc:
+            raise mpf.DetectionError.INVALID_PROPERTY.exception(
+                f'ACS_URL "{raw_url}" is not a valid absolute URL.'
+            )
+
+        path_parts = [p for p in parsed.path.rstrip('/').split('/') if p]
+
+        if 'speechtotext' in path_parts:
+            idx = path_parts.index('speechtotext')
+            normalized_parts = path_parts[:idx + 1]
+        else:
+            logger.warning(
+                'ACS_URL "%s" does not contain "/speechtotext". '
+                'Appending "/speechtotext" to the end of the URL path.',
+                raw_url
+            )
+            normalized_parts = path_parts + ['speechtotext']
+
+        normalized_path = '/' + '/'.join(normalized_parts)
+        base = parsed._replace(path=normalized_path, query='', params='', fragment='')
+        return parse.urlunparse(base).rstrip('/')
 
     def update_acs(self, server_info: AcsServerInfo):
-        self.url = server_info.url
+        """
+        Normalize the Speech-to-text endpoint and construct
+        transcriptions / locales URLs using the configured API version.
+        """
+        self.api_version = server_info.api_version or DEFAULT_ACS_API_VERSION
+        base_url = self._normalize_speech_base_url(server_info.url)
+
+        self._base_url = base_url
+        self._transcriptions_submit_url = (
+            f"{base_url}/transcriptions:submit?api-version={self.api_version}"
+        )
+        self._locales_url = (
+            f"{base_url}/transcriptions/locales?api-version={self.api_version}"
+        )
+
+        # Keep self.url as the base endpoint to avoid accidental query-string concatenation.
+        self.url = self._base_url
         self.subscription_key = server_info.subscription_key
         self.acs_headers = {
             'Ocp-Apim-Subscription-Key': server_info.subscription_key,
@@ -94,12 +188,39 @@ class AzureConnection(object):
 
         logger.info('Retrieving valid transcription locales')
         req = request.Request(
-            url=self.url + '/locales',
+            url=self._locales_url,
             headers=self.acs_headers,
             method='GET'
         )
         with self.http_retry.urlopen(req) as response:
-            self.supported_locales = json.load(response)
+            raw_locales = json.load(response)
+
+        # 2024/2025 Speech locales response is expected to be:
+        #   { "Submit": [...], "Transcribe": [...] }
+        # Currently it appears that 'Submit' locales indicate which locales are supported for batch transcription.
+        # The other list is for synchronous transcription, and doesn't seem to return any locales yet (3/20/2026).
+        # Adding support in case we need to use it in the future.
+        if not isinstance(raw_locales, dict):
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                'Expected transcription locales response to be an object with '
+                '"Submit" and "Transcribe" lists.'
+            )
+
+        raw_submit = raw_locales.get('Submit')
+        raw_transcribe = raw_locales.get('Transcribe', [])
+
+        # If no supported locales are provided, the component would fail in the subsequent locale check.
+        if not isinstance(raw_submit, list):
+            raise mpf.DetectionError.DETECTION_FAILED.exception(
+                'Transcription locales response is missing a valid "Submit" list. No supported locales found.'
+            )
+
+        self.submit_locales = self._expand_locale_set(set(raw_submit))
+        self.transcribe_locales = self._expand_locale_set(set(raw_transcribe))
+        self.supported_locales = self.submit_locales
+
+        logger.info('Supported locales (Submit): %s', sorted(raw_submit))
+        logger.info('Supported locales (Transcribe): %s', sorted(raw_transcribe))
 
         if (self.blob_container_url != server_info.blob_container_url
                 or self.blob_service_key != server_info.blob_service_key
@@ -116,16 +237,15 @@ class AzureConnection(object):
                 retry_read=server_info.http_max_attempts,
                 retry_status=server_info.http_max_attempts
             )
-
         else:
             logger.debug('ACS arguments unchanged')
 
     def get_blob_client(self, recording_id):
         return self.container_client.get_blob_client(recording_id)
 
-    def generate_account_sas(self, time_limit):
+    def generate_account_sas(self, time_limit: timedelta) -> str:
         # Shared access signature (SAS) is required for the ACS Speech
-        #  service to access the container
+        # service to access the container.
         return generate_account_sas(
             self.container_client.account_name,
             account_key=self.container_client.credential.account_key,
@@ -155,40 +275,72 @@ class AzureConnection(object):
     def submit_batch_transcription(self, recording_url, job_name,
                                    diarize, language, expiry):
         if language not in self.supported_locales:
-            raise ValueError(f"Provided language ({language}) not supported."
-                             " Refer to component README for list of supported"
-                             " locales for Azure Speech.")
+            raise ValueError(
+                f"Provided language ({language}) not supported. "
+                "Refer to component README for list of supported "
+                "locales for Azure Speech."
+            )
 
         logger.info('Submitting batch transcription...')
+
+        # API 2025-10-15 expects TTL as integer hours.
+        # Docs specify minimum 6 hours and recommend 48 hours.
+        ttl_hours = max(6, int(ceil(expiry / 60.0)))
+
+        properties = dict(
+            wordLevelTimestampsEnabled=True,
+            profanityFilterMode='None',
+            timeToLiveHours=ttl_hours,
+            diarization=dict(enabled=bool(diarize), maxSpeakers=2),
+        )
+
         data = dict(
             contentUrls=[recording_url],
             displayName=job_name,
             description=job_name,
             locale=language,
-            properties=dict(
-                wordLevelTimestampsEnabled='true',
-                profanityFilterMode='None',
-                diarizationEnabled=str(diarize).lower(),
-                timeToLive=minutes_to_iso8601(expiry)
-            )
+            properties=properties
         )
 
-        data = json.dumps(data).encode()
+        payload = json.dumps(data).encode()
         req = request.Request(
-            url=self.url,
-            data=data,
+            url=self._transcriptions_submit_url,
+            data=payload,
             headers=self.acs_headers,
             method='POST'
         )
         try:
             with self.http_retry.urlopen(req) as response:
-                return response.getheader('Location')
+                body = json.load(response)
+                location_header = response.getheader('Location')
+                self_link = body.get('self')
+
+                logger.info('Submit Location header: %s', location_header)
+                logger.info('Submit self link: %s', self_link)
+
+                # Prefer the canonical transcription resource URL from the body.
+                location = self_link or location_header
+                if not location:
+                    raise mpf.DetectionException(
+                        'Submit transcription succeeded but no polling URL was returned.',
+                        mpf.DetectionError.DETECTION_FAILED
+                    )
+
+                # Check: the poll URL must be a transcription resource,
+                # not the submit action endpoint.
+                if '/transcriptions:submit/' in location:
+                    raise mpf.DetectionException(
+                        f'Invalid polling URL returned from submit: {location}',
+                        mpf.DetectionError.DETECTION_FAILED
+                    )
+
+                return location
+
         except Exception as e:
             raise mpf.DetectionException(
                 'Failed to post job. Error message: {:s}'.format(str(e)),
                 mpf.DetectionError.DETECTION_FAILED
             )
-
 
     def poll_for_result(self, location):
         req = request.Request(
@@ -249,11 +401,11 @@ class AzureConnection(object):
             with self.http_retry.urlopen(req):
                 pass
         except mpf.DetectionException:
-            # If the transcription task doesn't exist, ignore
-            #  This is a temporary solution, to be fixed with v3.0
+            # If the transcription task doesn't exist, ignore.
             logger.warning(
                 f'Transcription task deletion failed. This transcription '
-                f'should be deleted manually: {location}')
+                f'should be deleted manually: {location}'
+            )
 
     def delete_blob(self, recording_id):
         logger.info('Deleting blob...')
