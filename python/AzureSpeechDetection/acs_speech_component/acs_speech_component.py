@@ -70,7 +70,7 @@ class AcsSpeechComponent(object):
         return audio_tracks
 
     def get_detections_from_audio(self, job: mpf.AudioJob) -> List[mpf.AudioTrack]:
-        logger.info('Received audio job')
+        logger.debug('Received audio job: {job}')
         return self.get_detections_from_job(job)
 
 
@@ -78,7 +78,7 @@ class AcsSpeechComponent(object):
                 self,
                 job: mpf.VideoJob
             ) -> List[mpf.VideoTrack]:
-        logger.info('Received video job')
+        logger.debug('Received video job: {job}')
 
         if 'FPS' not in job.media_properties:
             error_str = 'FPS must be included in video job media properties.'

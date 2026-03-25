@@ -57,7 +57,7 @@ class AcsTranslationComponent:
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         try:
-            log.info(f'Received video job: {job}')
+            log.debug(f'Received video job: {job}')
             ff_track = job.feed_forward_track
             if ff_track is None:
                 fail_when_missing_feed_forward()
@@ -114,7 +114,7 @@ def get_detections_from_non_composite(
         sentence_model: TextSplitterModel,
         ff_track: Optional[T_FF_OBJ]) -> Sequence[T_FF_OBJ]:
     try:
-        log.info(f'Received job: {job}')
+        log.debug(f'Received job: {job}')
         if ff_track is None:
             fail_when_missing_feed_forward()
 
