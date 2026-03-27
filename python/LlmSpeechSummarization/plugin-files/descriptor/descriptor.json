@@ -24,25 +24,25 @@
           "name": "LLM_MODEL",
           "description": "The model being served by the openai-api running at VLLM_URI",
           "type": "STRING",
-          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+          "defaultValue": ""
         },
         {
           "name": "TOKENIZER_MODEL",
           "description": "The HuggingFaceHub-available name of a pretrained tokenizer that's used by VLLM_MODEL",
           "type": "STRING",
-          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+          "defaultValue": ""
         },
         {
           "name": "API_TOKEN",
           "description": "The API Token that can access the openai api",
           "type": "STRING",
-          "defaultValue": "Must be set for anonymous VLLM, but can be anything"
+          "defaultValue": ""
         },
         {
           "name": "AZURE_CLIENT",
           "description": "Set to true if the AzureOpenAI class should be use instead of OpenAI from the openai module",
           "type": "BOOLEAN",
-          "defaultValue": "FALSE"
+          "defaultValue": ""
         },
         {
           "name": "MAX_MODEL_LEN",
@@ -108,13 +108,13 @@
           "name": "API_URI",
           "description": "The base_url of the openai-api-compatible API providing access to your model.",
           "type": "STRING",
-          "defaultValue": "http://llm-speech-summarization-server:11434/v1"
+          "defaultValue": ""
         },
         {
           "name": "API_HEALTH_URI",
           "description": "An absolute OR relative URI of a healthcheck for the openai-api backend",
           "type": "STRING",
-          "defaultValue": "../health"
+          "defaultValue": ""
         },
         {
           "name": "TARGET_SEGMENT_LENGTH",
@@ -134,8 +134,17 @@
   },
   "actions": [
     {
-      "name": "LLM SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
-      "description": "Performs LLM summarization Video|Audio tracks.",
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "algorithm": "LLMSPEECHSUMMARIZATION",
+      "properties": [
+        {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
+        {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
+      ]
+    },
+    {
+      "name": "AZURE SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs Azure summarization Video|Audio tracks.",
       "algorithm": "LLMSPEECHSUMMARIZATION",
       "properties": [
         {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
@@ -145,20 +154,35 @@
   ],
   "tasks": [
     {
-      "name": "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK",
-      "description": "Performs LLM summarization Video|Audio tracks.",
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
       "actions": [
-        "LLM SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs Azure summarization Video|Audio tracks.",
+      "actions": [
+        "AZURE SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
       ]
     }
   ],
   "pipelines": [
      {
-      "name": "WHISPER SPEECH DETECTION WITH LLM SUMMARIZATION PIPELINE",
-      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using an LLM.",
+      "name": "WHISPER SPEECH DETECTION WITH QWEN SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using Qwen.",
       "tasks": [
         "WHISPER SPEECH DETECTION TASK",
         "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION WITH AZURE SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using Azure.",
+      "tasks": [
+        "WHISPER SPEECH DETECTION TASK",
+        "AZURE SPEECH SUMMARIZATION (WITH FF REGION) TASK"
       ]
     }
   ]
