@@ -89,3 +89,5 @@ A list of mpf.VideoTracks or mpf.AudioTracks (once supported).
 Track[0] will always contain the overall summary of the input, including primary/other topics and entities.
 
 Track[1-n] will be the confidences, reasoning, and name for each of the intersection of enabled classifiers AND classifiers defined in classifiers.json.
+
+If you want to control which entities are included in the output, you would need to modify the `EntitiesObject` in [schema.py](./llm_speech_summarization_component/schema.py).
