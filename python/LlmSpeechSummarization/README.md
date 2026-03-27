@@ -76,7 +76,7 @@ Example build command:
 docker build \
   --build-arg VLLM_MODEL=Qwen/Qwen3-30B-A3B-Instruct-2507-FP8 \
   -f Dockerfile.vllm \
-  -t llm-speech-summarization-vllm:latest \
+  -t openmpf_llm_speech_summarization_server:latest \
   .
 ```
 
