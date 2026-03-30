@@ -24,14 +24,20 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import os
+import os, logging
 from typing import Union, Mapping
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
-from .azure_connect import AcsServerInfo
+from .azure_connect import (
+    AcsServerInfo,
+    DEFAULT_ACS_API_VERSION,
+    SUPPORTED_ACS_API_VERSIONS,
+)
 
+logger = logging.getLogger('AcsSpeechComponent')
+logging.getLogger('azure').setLevel('WARN')
 
 class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
     """
@@ -82,7 +88,23 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         acs_blob_container_url = self._get_job_property_or_env_value('ACS_BLOB_CONTAINER_URL', job_properties)
         acs_blob_service_key = self._get_job_property_or_env_value('ACS_BLOB_SERVICE_KEY', job_properties)
         http_retry = mpf_util.HttpRetry.from_properties(job_properties)
-        use_sas_auth = mpf_util.get_property(job_properties, 'USE_SAS_AUTH', False)
+        use_sas_auth = mpf_util.get_property(job_properties, 'USE_SAS_AUTH', True)
+
+        acs_api_version = mpf_util.get_property(
+            properties=job_properties,
+            key='ACS_API_VERSION',
+            default_value=DEFAULT_ACS_API_VERSION,
+            prop_type=str
+        ).strip()
+
+        if not acs_api_version:
+            acs_api_version = DEFAULT_ACS_API_VERSION
+
+        if acs_api_version not in SUPPORTED_ACS_API_VERSIONS:
+            logger.warning(
+                f'"{acs_api_version}" is not a known supported ACS_API_VERSION. '
+                f'Currently supported values are: {sorted(SUPPORTED_ACS_API_VERSIONS)}.'
+            )
 
         http_max_attempts = mpf_util.get_property(
             properties=job_properties,
@@ -93,6 +115,7 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
 
         self.server_info = AcsServerInfo(
             url=acs_url,
+            api_version=acs_api_version,
             subscription_key=acs_subscription_key,
             blob_container_url=acs_blob_container_url,
             blob_service_key=acs_blob_service_key,
@@ -111,7 +134,7 @@ class AzureJobConfig(mpf_util.DynamicSpeechJobConfig):
         self.expiry = mpf_util.get_property(
             properties=job_properties,
             key='TRANSCRIPTION_EXPIRATION',
-            default_value=120,
+            default_value=360, # Updated as Azure now has a lower limit of 6 hours.
             prop_type=int
         )
 
