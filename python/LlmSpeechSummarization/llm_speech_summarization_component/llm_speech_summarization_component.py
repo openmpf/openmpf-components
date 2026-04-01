@@ -101,6 +101,7 @@ class JobConfig:
             self._get_file_path(mpf_util.get_property(props, 'CLASSIFIERS_FILE', "classifiers.json"))
 
         self.azure_client = mpf_util.get_property(props, 'AZURE_CLIENT', False)
+        self.azure_api_version = mpf_util.get_property(props, 'AZURE_API_VERSION', "")
 
     @staticmethod
     def _get_file_path(path: str) -> str:
@@ -126,7 +127,11 @@ class LlmSpeechSummaryComponent:
         if self.client_factory:
             client_factory = self.client_factory
         else:
-            client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.api_uri, api_key=config.api_token)
+            # Determine args based on azure or non-azure client
+            if config.azure_client:
+                client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.api_uri, api_key=config.api_token, api_version=config.azure_api_version)
+            else:
+                client_factory = lambda: LlmSpeechSummaryComponent._get_openai_api_client_when_server_is_ready(config, base_url=config.api_uri, api_key=config.api_token)
         StructuredResponse = StructuredResponseClassFactory(classifiers)
         response_format_json_schema = StructuredResponse.model_json_schema()
         prompt = template.render(input=input, classifiers=get_classifier_lines(classifiers), response_format_json_schema=response_format_json_schema)

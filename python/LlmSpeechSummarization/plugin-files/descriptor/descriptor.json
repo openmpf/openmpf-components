@@ -45,6 +45,12 @@
           "defaultValue": "FALSE"
         },
         {
+          "name": "AZURE_API_VERSION",
+          "description": "Azure OpenAI API version to use. The component is tested with `2025-01-01-preview`",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
           "name": "MAX_MODEL_LEN",
           "description": "The largest model length that can fit on the GPU",
           "type": "INT",
@@ -152,6 +158,7 @@
         {"name": "LLM_MODEL", "value": ""},
         {"name": "TOKENIZER_MODEL", "value": ""},
         {"name": "API_TOKEN", "value": ""},
+        {"name": "AZURE_API_VERSION", "value": "2025-01-01-preview"},
         {"name": "AZURE_CLIENT", "value": "TRUE"},
         {"name": "MAX_MODEL_LEN", "value": ""},
         {"name": "API_URI", "value": ""},

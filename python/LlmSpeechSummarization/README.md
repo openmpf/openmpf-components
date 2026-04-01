@@ -48,6 +48,7 @@ In either case, the component assumes anonymous access to the openai-api-compati
 | Property | Example Value | Notes |
 |---|---|---|
 | `AZURE_CLIENT` | `true` | Must be set to use the Azure OpenAI client |
+| `AZURE_API_VERSION` | `2025-01-01-preview` | Must be set to use the Azure OpenAI client |
 | `API_URI` | `https://my-resource.openai.azure.com/openai/deployments/my-gpt-41-mini` | Your Azure OpenAI endpoint URL |
 | `API_HEALTH_URI` | *(leave blank)* | Azure is a managed service; health checking is not applicable |
 | `API_TOKEN` | `abc123...` | Your Azure API key |
