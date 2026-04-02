@@ -188,7 +188,7 @@
       "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using Qwen.",
       "tasks": [
         "WHISPER SPEECH DETECTION TASK",
-        "LLM SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
       ]
     },
     {
