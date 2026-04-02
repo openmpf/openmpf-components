@@ -160,7 +160,7 @@
         {"name": "API_TOKEN", "value": ""},
         {"name": "AZURE_API_VERSION", "value": "2025-01-01-preview"},
         {"name": "AZURE_CLIENT", "value": "TRUE"},
-        {"name": "MAX_MODEL_LEN", "value": ""},
+        {"name": "MAX_MODEL_LEN", "value": "-1"},
         {"name": "API_URI", "value": ""},
         {"name": "API_HEALTH_URI", "value": ""}
       ]
