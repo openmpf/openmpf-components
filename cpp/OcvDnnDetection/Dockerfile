@@ -39,12 +39,12 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvDnnDetectio
 FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} AS ocv_dnn_component
 
 COPY --from=build_component \
-    /usr/lib/x86_64-linux-gnu/libcudnn_ops.so.9.19.0 \
-    /usr/lib/x86_64-linux-gnu/libcudnn_cnn.so.9.19.0 \
-    /usr/lib/x86_64-linux-gnu/libcudnn_graph.so.9.19.0 \
-    /usr/lib/x86_64-linux-gnu/libcudnn_engines_runtime_compiled.so.9.19.0 \
-    /usr/lib/x86_64-linux-gnu/libcudnn_engines_precompiled.so.9.19.0 \
-    /usr/lib/x86_64-linux-gnu/libcudnn_heuristic.so.9.19.0 \
+    /usr/lib/x86_64-linux-gnu/libcudnn_ops.so.9.*.* \
+    /usr/lib/x86_64-linux-gnu/libcudnn_cnn.so.9.*.* \
+    /usr/lib/x86_64-linux-gnu/libcudnn_graph.so.9.*.* \
+    /usr/lib/x86_64-linux-gnu/libcudnn_engines_runtime_compiled.so.9.*.* \
+    /usr/lib/x86_64-linux-gnu/libcudnn_engines_precompiled.so.9.*.* \
+    /usr/lib/x86_64-linux-gnu/libcudnn_heuristic.so.9.*.* \
     /usr/lib/x86_64-linux-gnu/
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvDnnDetection $PLUGINS_DIR/OcvDnnDetection
