@@ -332,7 +332,7 @@ class LlmSpeechSummaryComponent:
 
         config = JobConfig(audio_job.job_properties)
 
-        tokenizer = AutoTokenizer.from_pretrained(config.llm_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
         tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
         env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
