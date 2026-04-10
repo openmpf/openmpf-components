@@ -246,146 +246,97 @@ class LlmSpeechSummaryComponent:
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
 
-    def get_detections_from_all_video_tracks(self, video_job: mpf.AllVideoTracksJob) -> Sequence[mpf.VideoTrack]:
-        """
-        Process:
-        1. Convert all input tracks to a CSV format
-        2. Split CSV into chunks to fit in context window, retaining header row on each chunk
-        3. Run each chunk through the LLM, templating classifiers and each chunk into the prompt, receiving its summary
-        4. Recursively summarize summaries until only 1 remains
-        5. Convert to final summary VideoTracks for output
-        """
-        logger.info(f'Received feed forward video job.')
-
+    def get_detections_from_all_video_tracks(self, video_job):
+        logger.info('Received feed forward video job.')
         config = JobConfig(video_job.job_properties)
 
-        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
-        tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
+        results = self._process_feed_forward_job(
+            video_job, config,
+            make_track=self._get_classifier_track(
+                mpf.VideoTrack, video_job,
+                lambda classifier, dp: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, dp)}
+            ),
+            make_main_track=lambda props: mpf.VideoTrack(
+                video_job.start_frame, video_job.stop_frame, -1,
+                {0: mpf.ImageLocation(0, 0, 0, 0, -1, props)}, props
+            ),
+        )
+        logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
+        return results
 
-        env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
-        template = env.get_template(os.path.basename(config.prompt_template))
-
-        if video_job.feed_forward_tracks is not None:
-            classifiers = get_classifier_dict(config.classifiers_path, config.enabled_classifiers)
-            StructuredResponse = StructuredResponseClassFactory(classifiers)
-
-            input = convert_speech_tracks_to_csv(video_job.feed_forward_tracks)
-
-            summaries = []
-            chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
-            nchunks = len(chunks)
-            for idx,chunk in enumerate(chunks):
-                logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
-                content = self._get_output(config, template, classifiers, chunk)
-                summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
-            if nchunks == 1:
-                final_summary = summaries[0]
-            else:
-                # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
-                final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
-            main_detection_properties = {
-                'TEXT': final_summary.summary
-            }
-            if hasattr(final_summary, 'primary_topic'):
-                main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
-            if hasattr(final_summary, 'other_topics'):
-                main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
-            if hasattr(final_summary, 'entities'):
-                for (k,v) in final_summary.entities.model_dump().items():
-                    main_detection_properties[k.upper()] = ', '.join(v)
-            results = [mpf.VideoTrack(
-                    video_job.start_frame,
-                    video_job.stop_frame,
-                    -1,
-                    {
-                        # TODO: translate utterance start to frame number based on fps
-                        0: mpf.ImageLocation(0, 0, 0, 0, -1, main_detection_properties)
-                    },
-                    main_detection_properties
-                )]
-            if hasattr(final_summary, 'classifiers'):
-                classifier_confidence_minimum = config.classifier_confidence_minimum
-                results += list(
-                    map(
-                        self._get_classifier_track(mpf.VideoTrack, video_job, lambda classifier, detection_properties: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, detection_properties)}),
-                        filter(
-                            lambda classifier: classifier[1].confidence >= classifier_confidence_minimum,
-                            final_summary.classifiers)
-                    )
-                )
-            logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
-            return results
-
-        else:
-            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
-
-    def get_detections_from_all_audio_tracks(self, audio_job: mpf.AllAudioTracksJob) -> Sequence[mpf.AudioTrack]:
-        """
-        Process:
-        1. Convert all input tracks to a CSV format
-        2. Split CSV into chunks to fit in context window, retaining header row on each chunk
-        3. Run each chunk through the LLM, templating classifiers and each chunk into the prompt, receiving its summary
-        4. Recursively summarize summaries until only 1 remains
-        5. Convert to final summary AudioTracks for output
-        """
-        logger.info(f'Received feed forward audio job.')
-
+    def get_detections_from_all_audio_tracks(self, audio_job):
+        logger.info('Received feed forward audio job.')
         config = JobConfig(audio_job.job_properties)
 
-        tokenizer = AutoTokenizer.from_pretrained(config.tokenizer_model, local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1"))
+        results = self._process_feed_forward_job(
+            audio_job, config,
+            make_track=self._get_classifier_track(mpf.AudioTrack, audio_job),
+            make_main_track=lambda props: mpf.AudioTrack(
+                audio_job.start_time, audio_job.stop_time, -1, props
+            ),
+        )
+        logger.info(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
+        return results
+
+    def _process_feed_forward_job(self, job, config, make_track, make_main_track):
+        tokenizer = AutoTokenizer.from_pretrained(
+            config.tokenizer_model,
+            local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1")
+        )
         tokenizer.add_special_tokens({'sep_token': BOUNDARY_TOKEN_FOR_COUNTING})
 
-        env = Environment(loader = FileSystemLoader(os.path.dirname(config.prompt_template)))
+        env = Environment(loader=FileSystemLoader(os.path.dirname(config.prompt_template)))
         template = env.get_template(os.path.basename(config.prompt_template))
 
-        if audio_job.feed_forward_tracks is not None:
-            classifiers = get_classifier_dict(config.classifiers_path, config.enabled_classifiers)
-            StructuredResponse = StructuredResponseClassFactory(classifiers)
+        if job.feed_forward_tracks is None:
+            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
 
-            input = convert_speech_tracks_to_csv(audio_job.feed_forward_tracks)
+        classifiers = get_classifier_dict(config.classifiers_path, config.enabled_classifiers)
+        StructuredResponse = StructuredResponseClassFactory(classifiers)
 
-            summaries = []
-            chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
-            nchunks = len(chunks)
-            for idx,chunk in enumerate(chunks):
-                logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
-                content = self._get_output(config, template, classifiers, chunk)
-                summaries += [StructuredResponse.model_validate_json(content)] # type: ignore
-            if nchunks == 1:
-                final_summary = summaries[0]
-            else:
-                # TODO: rip out the entities from all of the summaries, combine them manually, and glue them onto the final summary
-                final_summary = summarize_summaries(StructuredResponse, tokenizer, lambda input: self._get_output(config, template, classifiers, input), config.chunk_size, config.overlap, summaries)
-            main_detection_properties = {
-                'TEXT': final_summary.summary
-            }
-            if hasattr(final_summary, 'primary_topic'):
-                main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
-            if hasattr(final_summary, 'other_topics'):
-                main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
-            if hasattr(final_summary, 'entities'):
-                for (k,v) in final_summary.entities.__dict__.items():
-                    main_detection_properties[k.upper()] = ', '.join(v)
-            results = [mpf.AudioTrack(
-                    audio_job.start_time,
-                    audio_job.stop_time,
-                    -1,
-                    main_detection_properties
-                )]
+        input = convert_speech_tracks_to_csv(job.feed_forward_tracks)
+
+        summaries = []
+        chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
+        nchunks = len(chunks)
+        for idx, chunk in enumerate(chunks):
+            logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")
+            content = self._get_output(config, template, classifiers, chunk)
+            summaries += [StructuredResponse.model_validate_json(content)]
+
+        if nchunks == 1:
+            final_summary = summaries[0]
+        else:
+            final_summary = summarize_summaries(
+                StructuredResponse, tokenizer,
+                lambda input: self._get_output(config, template, classifiers, input),
+                config.chunk_size, config.overlap, summaries
+            )
+
+        main_detection_properties = {'TEXT': final_summary.summary}
+        if hasattr(final_summary, 'primary_topic'):
+            main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
+        if hasattr(final_summary, 'other_topics'):
+            main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
+        if hasattr(final_summary, 'entities'):
+            for k, v in final_summary.entities.model_dump().items():
+                main_detection_properties[k.upper()] = ', '.join(v)
+
+        results = [make_main_track(main_detection_properties)]
+
+        if hasattr(final_summary, 'classifiers'):
             classifier_confidence_minimum = config.classifier_confidence_minimum
             results += list(
                 map(
-                    self._get_classifier_track(mpf.AudioTrack, audio_job),
+                    make_track,
                     filter(
-                        lambda classifier: classifier[1].confidence >= classifier_confidence_minimum,
-                        final_summary.classifiers)
+                        lambda c: c[1].confidence >= classifier_confidence_minimum,
+                        final_summary.classifiers
+                    )
                 )
             )
-            logger.info(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
-            return results
 
-        else:
-            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
+        return results
 
 def run_component_test(clientFactory = None,
                        detection_func_name = 'get_detections_from_all_video_tracks',
