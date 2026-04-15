@@ -25,9 +25,14 @@
 #############################################################################
 
 import os
+import pathlib
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "0"
 import mpf_component_api as mpf
-from llm_speech_summarization_component.llm_speech_summarization_component import run_component_test, _log_exception
+from llm_speech_summarization_component.llm_speech_summarization_component import LlmSpeechSummaryComponent, _log_exception
+
+TEST_DATA = pathlib.Path(__file__).parent / 'data'
+
+SUMMARY_TEXT = """The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance."""
 
 class FakeClass():
     def __enter__(self):
@@ -46,8 +51,8 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
             FakeClass(choices=[FakeClass(finish_reason=None, \
                                  delta=FakeClass(
                                  refusal=None,
-                                 content="""{
-  "summary": "The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance.",
+                                 content=f"""{{
+  "summary": "{SUMMARY_TEXT}",
   "primary_topic": "Publication of a memoir by a former Major League Baseball player offering advice to aspiring players",
   "other_topics": [
     "Historical context of early professional baseball",
@@ -167,13 +172,13 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
     "Professional or political affiliation",
     "Location and address details"
   ],
-  "classifiers": {
-    "Major League Baseball": {
+  "classifiers": {{
+    "Major League Baseball": {{
       "confidence": 0.95,
       "reasoning": "The conversation prominently features references to Major League Baseball, including specific teams (American League Baseball Club of New York, Boston, New York, New York Metropolitans, Columbus and St. Louis Clubs), players (John (Dasher) Troy, W. A. Sunday, Jacob Ruppert, T. L. Huston, Amos Rusie, Hugh Duffy, Dad Clarke, Johnny Ward, Mike Tiernan, Jerry Denny, Billy Nash, Jimmy Collins, Gabby, Kling, Street, Jim Mutrie, John B. Day, Ralph Moore, Tom Bolen, Daniel Brothers, H. Schwabeland, TOM Butter, M. J. Leonard, Mr. Lane), baseball fields (Polo Grounds, Brotherhood Baseball Park, home plate, the diamond, the grandstand, the player’s bench, the bar and lunch privilege at the grounds, 125th Street, Eighth Avenue, Harlem River, 156th Street, 142d Street, 136 Liberty Street, 414-416-418 W. 14th Street, 419 West 13th Street S. W. Cor. 53rd St., 8th Ave., 125th Street and Eighth Ave., 317 West 136th Street, 226-228 West 125th Street, 216 West 46th St., 145th Street, 13th Ave. and 30th St. Bet. B’way & 8th Ave., 61 W. 36th St., 538 W. 38th Street, East 132d St., Brown PI., 133d St. Station, 1402 Broadway, Room 632, New York, 2774 Eighth Avenue, New York City, 103 Park Avenue, New York, 220 West 42nd Street, New York, 253 Broadway, New York, 283 West 132d Street, 239 & 241 West 125th St., 2490 Eighth Avenue, Manhattan Borough, New York, New York, Jersey, Old Broadway, 5 Main Office, Room 209, 136 Liberty Street, 129th Street, 132nd Street, 125th Street, 8th Avenue, Lenox Avenue, Audubon, Morningside, Lodge Rooms, Hotel for Gentlemen, CAFE 464 West 4Ist, N. W. Cor. 42d Street and 9th Avenue, 411 West 14th St., Church, W. 35th St., Dutch Room, 126th Street, CAFE CAFE, Old English Chop House, Golden Buck, East 132d St., Brown PI., 133d St. Station, New York), and equipment (baseball bats, baseballs, baseball hats, sliding pads, oil silk). The discussion covers professional baseball strategies such as pitching mechanics, batting stance, base running, fielding, player positioning, double plays, foul ball enforcement, and player health. The book 'Reminiscences of an Old Timer' is explicitly framed as a guide based on decades of experience in professional baseball, reinforcing the theme. The consistent use of terminology, context, and specific items of interest confirms the central focus on Major League Baseball. Additional references to business operations, real estate, and promotional content in New York City appear to be incidental or transcribed artifacts and do not detract from the dominant theme."
-    }
-  },
-  "entities": {
+    }}
+  }},
+  "entities": {{
     "names_of_people": [
       "John (Dasher) Troy",
       "Freddie Engel",
@@ -503,26 +508,64 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
       "camaraderie",
       "pride"
     ]
-  }
-}"""))], object="chat.completion.chunk"), \
+  }}
+}}"""))], object="chat.completion.chunk"), \
             FakeClass(choices=[FakeClass(finish_reason="stop", delta=FakeClass(
                                  refusal=None,
                                  content=""))], object="chat.completion.chunk"), \
         ])))
 
-def test_invocation_with_fake_client():
+def run_component_test(clientFactory = None,
+                       detection_func_name = 'get_detections_from_all_video_tracks',
+                       jobType=mpf.AllVideoTracksJob,
+                       trackFactory=lambda transcript: mpf.VideoTrack(0, 1, -100, {}, { # type: ignore
+                            "DEFAULT_LANGUAGE": "eng",
+                            "LANGUAGE": "eng",
+                            "SPEAKER_ID": None,
+                            "GENDER": None,
+                            "TRANSCRIPT": transcript})):
+    component = LlmSpeechSummaryComponent(clientFactory)
+    if not hasattr(component, detection_func_name):
+        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
+    input = None
+    with open(str(TEST_DATA / 'test.txt')) as f:
+        input = f.read()
+    input = input.replace("\r\n", "\n")
+
+    job = jobType('Test Job', '/dev/null', 0, 9000, {
+        **os.environ
+    }, {}, [
+        trackFactory(x) for x in input.split('\n') if len(x) # type: ignore
+    ])
+
+    return getattr(component, detection_func_name)(job)
+
+def test_video_invocation_with_fake_client():
     result = run_component_test(FakeLLM)
     assert len(result) == 2
     main_detection = result[0]
     classifier_detection = result[1]
-    assert main_detection.detection_properties['TEXT'] == "The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance."
+    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
+    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
+    assert classifier_detection.confidence == 0.95
+
+def test_audio_invocation_with_fake_client():
+    result = run_component_test(FakeLLM, 'get_detections_from_all_audio_tracks', mpf.AllAudioTracksJob, lambda transcript: mpf.AudioTrack(0, 1, -100, { # type: ignore
+                            "DEFAULT_LANGUAGE": "eng",
+                            "LANGUAGE": "eng",
+                            "SPEAKER_ID": None,
+                            "GENDER": None,
+                            "TRANSCRIPT": transcript}))
+    assert len(result) == 2
+    main_detection = result[0]
+    classifier_detection = result[1]
+    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
     assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
     assert classifier_detection.confidence == 0.95
 
 def test_exception_throwing():
     try:
         raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'It worked')
-        assert False
     except mpf.DetectionException as e:
         assert True
     except:

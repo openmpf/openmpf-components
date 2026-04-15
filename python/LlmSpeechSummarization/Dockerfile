@@ -42,7 +42,7 @@ RUN --mount=target=.,readwrite \
     install-component.sh; \
     # make sure the tokenizers are available offline
     for tokenizer_model in ${TOKENIZER_MODELS}; do /opt/mpf/plugin-venv/bin/python3 -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained(\"${tokenizer_model}\")"; done; \
-    if [ "${RUN_TESTS,,}" == true ]; then pytest llm_speech_summarization_component; fi
+    if [ "${RUN_TESTS,,}" == true ]; then pytest tests; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF LLM Speech Summarization" \

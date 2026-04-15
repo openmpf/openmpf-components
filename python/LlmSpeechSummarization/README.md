@@ -1,14 +1,12 @@
 # Overview
 
-LlmSpeechSummarization component uses a vllm-served LLM model (Qwen3 by default) to summarize FeedForward video tracks' speech detections.
-
-The OpenMPF LLM Speech Summarization Component summarizes FeedForward video tracks for speech detections.
+The OpenMPF LLM Speech Summarization Component summarizes feed-forward video and audio tracks for speech detections.
 
 # Details
 
 This folder contains source code for the OpenMPF LLM Speech Summarization Component.
 
-This component requires a base image python3.10+ and an mpf_component_api that supports mpf.AllVideoTracksJob.
+This component requires a base image python3.10+ and an mpf_component_api that supports mpf.AllVideoTracksJob and mpf.AllAudioTracksJob.
 
 The component is designed and tested for use with Azure OpenAI or self-hosted Qwen models (via vLLM). It uses the OpenAI-compatible API protocol, so other compatible endpoints may work but are unsupported. The necessary configuration differs by whether you use Azure or a self-hosted LLM, and the differences are described further in [Configuration By Deployment](#configuration-by-deployment).
 
@@ -85,7 +83,7 @@ NOTE: if you have an internet connection at runtime, you may use the image `vllm
 
 # Outputs
 
-A list of mpf.VideoTracks or mpf.AudioTracks (once supported).
+A list of mpf.VideoTracks or mpf.AudioTracks.
 
 Track[0] will always contain the overall summary of the input, including primary/other topics and entities.
 
