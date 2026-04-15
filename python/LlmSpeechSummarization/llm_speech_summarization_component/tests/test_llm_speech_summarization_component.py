@@ -525,7 +525,7 @@ def run_component_test(clientFactory = None,
     if not hasattr(component, detection_func_name):
         raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
     input = None
-    with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
+    with open(os.path.join(os.path.dirname(__file__), 'data', 'test.txt')) as f:
         input = f.read()
     input = input.replace("\r\n", "\n")
 
