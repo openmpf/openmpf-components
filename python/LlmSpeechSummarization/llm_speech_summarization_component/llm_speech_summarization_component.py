@@ -194,7 +194,7 @@ class LlmSpeechSummaryComponent:
         return content
 
     @staticmethod
-    def _get_track_for_classifier(t, job: mpf.VideoJob|mpf.AudioJob, classifier_name, classifier, arg_factory):
+    def _get_track_for_classifier(track_cls, job: mpf.VideoJob|mpf.AudioJob, classifier_name, classifier, arg_factory):
         detection_properties = {'CLASSIFIER': classifier_name, 'REASONING': classifier.reasoning}
         # TODO: translate utterance start to frame number based on fps
         start: int = None
@@ -205,11 +205,11 @@ class LlmSpeechSummaryComponent:
         elif type(job) is mpf.AudioJob:
             start = job.start_time
             end = job.stop_time
-        return t(start, end, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
+        return track_cls(start, end, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
 
     @staticmethod
-    def _get_classifier_track(t, job, arg_factory=lambda _classifier, _detection_properties: []):
-        func = lambda classifier: LlmSpeechSummaryComponent._get_track_for_classifier(t, job, classifier[0], classifier[1], arg_factory)
+    def _get_classifier_track(track_cls, job, arg_factory=lambda _classifier, _detection_properties: []):
+        func = lambda classifier: LlmSpeechSummaryComponent._get_track_for_classifier(track_cls, job, classifier[0], classifier[1], arg_factory)
         return func
 
     @staticmethod
@@ -252,11 +252,11 @@ class LlmSpeechSummaryComponent:
 
         results = self._process_feed_forward_job(
             video_job, config,
-            make_track=self._get_classifier_track(
+            make_classifier_track=self._get_classifier_track(
                 mpf.VideoTrack, video_job,
                 lambda classifier, dp: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, dp)}
             ),
-            make_main_track=lambda props: mpf.VideoTrack(
+            make_summary_track=lambda props: mpf.VideoTrack(
                 video_job.start_frame, video_job.stop_frame, -1,
                 {0: mpf.ImageLocation(0, 0, 0, 0, -1, props)}, props
             ),
@@ -270,15 +270,15 @@ class LlmSpeechSummaryComponent:
 
         results = self._process_feed_forward_job(
             audio_job, config,
-            make_track=self._get_classifier_track(mpf.AudioTrack, audio_job),
-            make_main_track=lambda props: mpf.AudioTrack(
+            make_classifier_track=self._get_classifier_track(mpf.AudioTrack, audio_job),
+            make_summary_track=lambda props: mpf.AudioTrack(
                 audio_job.start_time, audio_job.stop_time, -1, props
             ),
         )
         logger.info(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
         return results
 
-    def _process_feed_forward_job(self, job, config, make_track, make_main_track):
+    def _process_feed_forward_job(self, job, config, make_classifier_track, make_summary_track):
         tokenizer = AutoTokenizer.from_pretrained(
             config.tokenizer_model,
             local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1")
@@ -313,63 +313,27 @@ class LlmSpeechSummaryComponent:
                 config.chunk_size, config.overlap, summaries
             )
 
-        main_detection_properties = {'TEXT': final_summary.summary}
+        summary_detection_properties = {'TEXT': final_summary.summary}
         if hasattr(final_summary, 'primary_topic'):
-            main_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
+            summary_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
         if hasattr(final_summary, 'other_topics'):
-            main_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
+            summary_detection_properties['OTHER_TOPICS'] = ', '.join(final_summary.other_topics)
         if hasattr(final_summary, 'entities'):
             for k, v in final_summary.entities.model_dump().items():
-                main_detection_properties[k.upper()] = ', '.join(v)
+                summary_detection_properties[k.upper()] = ', '.join(v)
 
-        results = [make_main_track(main_detection_properties)]
+        results = [make_summary_track(summary_detection_properties)]
 
         if hasattr(final_summary, 'classifiers'):
             classifier_confidence_minimum = config.classifier_confidence_minimum
             results += list(
                 map(
-                    make_track,
+                    make_classifier_track,
                     filter(
-                        lambda c: c[1].confidence >= classifier_confidence_minimum,
+                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
                         final_summary.classifiers
                     )
                 )
             )
 
         return results
-
-def run_component_test(clientFactory = None,
-                       detection_func_name = 'get_detections_from_all_video_tracks',
-                       jobType=mpf.AllVideoTracksJob,
-                       trackFactory=lambda transcript: mpf.VideoTrack(0, 1, -100, {}, { # type: ignore
-                            "DEFAULT_LANGUAGE": "eng",
-                            "LANGUAGE": "eng",
-                            "SPEAKER_ID": None,
-                            "GENDER": None,
-                            "TRANSCRIPT": transcript})):
-    qsc = LlmSpeechSummaryComponent(clientFactory)
-    if not hasattr(qsc, detection_func_name):
-        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
-    input = None
-    with open(os.path.join(os.path.dirname(__file__), 'test_data', 'test.txt')) as f:
-        input = f.read()
-    input = input.replace("\r\n", "\n")
-
-    job = jobType('Test Job', '/dev/null', 0, 9000, {
-        **os.environ
-    }, {}, [
-        trackFactory(x) for x in input.split('\n') if len(x) # type: ignore
-    ])
-
-    return getattr(qsc, detection_func_name)(job)
-
-
-if __name__ == '__main__':
-    log_level_env = os.environ.get('LOG_LEVEL', 'INFO').upper()
-
-    logging.basicConfig()
-
-    logger.setLevel(log_level_env)
-    logging.getLogger('LLMSpeechSummaryComponent.llm_util.slapchop').setLevel(log_level_env)
-
-    run_component_test()

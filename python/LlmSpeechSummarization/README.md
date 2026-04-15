@@ -1,6 +1,6 @@
 # Overview
 
-The OpenMPF LLM Speech Summarization Component summarizes FeedForward video and audio tracks for speech detections.
+The OpenMPF LLM Speech Summarization Component summarizes feed-forward video and audio tracks for speech detections.
 
 # Details
 
