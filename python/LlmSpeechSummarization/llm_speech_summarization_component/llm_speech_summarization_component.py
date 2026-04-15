@@ -330,7 +330,7 @@ class LlmSpeechSummaryComponent:
                 map(
                     make_classifier_track,
                     filter(
-                        lambda classifier: classifier.confidence >= classifier_confidence_minimum,
+                        lambda classifier: classifier[1].confidence >= classifier_confidence_minimum,
                         final_summary.classifiers
                     )
                 )
