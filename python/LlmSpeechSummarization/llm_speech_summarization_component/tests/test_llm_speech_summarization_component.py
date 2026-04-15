@@ -25,9 +25,12 @@
 #############################################################################
 
 import os
+import pathlib
 if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "0"
 import mpf_component_api as mpf
 from llm_speech_summarization_component.llm_speech_summarization_component import LlmSpeechSummaryComponent, _log_exception
+
+TEST_DATA = pathlib.Path(__file__).parent / 'data'
 
 SUMMARY_TEXT = """The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance."""
 
@@ -525,7 +528,7 @@ def run_component_test(clientFactory = None,
     if not hasattr(component, detection_func_name):
         raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
     input = None
-    with open(os.path.join(os.path.dirname(__file__), 'data', 'test.txt')) as f:
+    with open(str(TEST_DATA / 'test.txt')) as f:
         input = f.read()
     input = input.replace("\r\n", "\n")
 

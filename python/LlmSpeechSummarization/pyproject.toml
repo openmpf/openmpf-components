@@ -48,7 +48,6 @@ component = "llm_speech_summarization_component.llm_speech_summarization_compone
 
 [tool.setuptools.package-data]
 llm_speech_summarization_component = [
-    "test_data/test.txt",
     "classifiers.json",
     "templates/prompt.jinja"
 ]
