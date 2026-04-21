@@ -33,9 +33,12 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from typing import Dict, Optional, Sequence, Mapping, TypeVar
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
+
+# transformers to be imported after nlp_text_splitter, otherwise it will cause an import error for
+# torchvision.
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 logger = logging.getLogger('NllbTranslationComponent')
 
@@ -61,7 +64,7 @@ class NllbTranslationComponent:
     def get_detections_from_audio(self, job: mpf.AudioJob) -> Sequence[mpf.AudioTrack]:
         logger.info(f'Received audio job.')
         return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track, video_job=False)
-    
+
     def get_detections_from_video(self, job: mpf.VideoJob) -> Sequence[mpf.VideoTrack]:
         logger.info(f'Received video job.')
         return self._get_feed_forward_detections(job.job_properties, job.feed_forward_track, video_job=True)
@@ -127,7 +130,7 @@ class NllbTranslationComponent:
                                                 src_lang=config.translate_from_language, device_map=self._model.device)
             elapsed = time.time() - start
             logger.debug(f"Successfully loaded tokenizer in {elapsed} seconds.")
-    
+
     def _load_model(self, model_name: str = None, config: Dict[str, str] = None) -> None:
         try:
             if model_name is None:
@@ -135,10 +138,10 @@ class NllbTranslationComponent:
                     model_name = DEFAULT_NLLB_MODEL
                 else:
                     model_name = config.nllb_model
-            
+
             model_path = '/models/' + model_name
             offload_folder = model_path + '/.weights'
-            
+
             if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
                 # model is stored locally; we do not need to load the tokenizer here
                 logger.info(f"Loading model from local directory: {model_path}")
@@ -154,7 +157,7 @@ class NllbTranslationComponent:
                 logger.debug(f"Saving model in {model_path}")
                 self._model.save_pretrained(model_path)
                 self._tokenizer.save_pretrained(model_path)
-    
+
         except Exception:
             logger.exception(
                 f'Failed to complete job due to the following exception:')
@@ -344,7 +347,7 @@ class JobConfig:
                 f'Failed to complete job due to the following exception:')
             raise
 
-        
+
         if not self.translate_from_language:
             logger.exception('Unsupported or no source language provided')
             raise mpf.DetectionException(
