@@ -210,22 +210,24 @@ class NllbTranslationComponent:
             split_mode = config._sentence_split_mode.upper()
             difficult_set = config.difficult_languages
 
-            # Difficult-language override (optional): clamp token hard limit if configured.
+            # Difficult-language override: replace the preferred token limit with more strict limit.
             if config.use_token_length and _is_difficult_language(config.translate_from_language, difficult_set):
                 diff_limit = config.difficult_language_token_limit
                 if diff_limit > 0:
-                    old = int(hard_limit)
-                    hard_limit = min(old, diff_limit)
-
-                    if hard_limit != old:
-                        logger.warning(
-                            "Difficult language detected (%s). Applying DIFFICULT_LANGUAGE_TOKEN_LIMIT override: %d -> %d. "
-                            "Translations may be less reliable for this language.",
-                            config.translate_from_language, old, hard_limit
-                        )
+                    old_preferred = preferred_limit
+                    preferred_limit = diff_limit
+                    logger.warning(
+                        "Difficult language detected (%s). Applying DIFFICULT_LANGUAGE_TOKEN_LIMIT "
+                        "as the preferred limit: %s -> %d. "
+                        "Translations may be less reliable for this language.",
+                        config.translate_from_language,
+                        old_preferred,
+                        preferred_limit
+                    )
                 else:
                     logger.warning(
-                        "Difficult language detected (%s). No DIFFICULT_LANGUAGE_TOKEN_LIMIT override is configured.",
+                        "Difficult language detected (%s), but no DIFFICULT_LANGUAGE_TOKEN_LIMIT "
+                        "override is configured.",
                         config.translate_from_language
                     )
 

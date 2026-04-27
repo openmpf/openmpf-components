@@ -617,6 +617,48 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
             self.assertEqual(text_translation, result_props["TRANSLATION"])
 
 
+    def test_difficult_language_token_limit_overrides_soft_limit_not_hard_limit(self):
+        base_job_props: dict[str, str] = dict(self.defaultProps)
+        base_job_props['DEFAULT_SOURCE_LANGUAGE'] = 'spa'
+        base_job_props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        base_job_props['TARGET_LANGUAGE'] = 'fra'
+        base_job_props['TARGET_SCRIPT'] = 'Latn'
+        base_job_props['USE_NLLB_TOKEN_LENGTH'] = 'TRUE'
+        base_job_props['NLLB_TRANSLATION_TOKEN_LIMIT'] = '200'
+        base_job_props['NLLB_TRANSLATION_TOKEN_SOFT_LIMIT'] = '130'
+        base_job_props['DIFFICULT_LANGUAGE_TOKEN_LIMIT'] = '50'
+
+        text = (
+            'Para la cena, o más bien para la comida nocturna, tomé pollo preparado '
+            'de algún modo con pimiento rojo, que estaba muy sabroso, pero me dio '
+            'mucha sed.'
+        )
+
+        source_token_count = len(self.component._tokenizer(text)["input_ids"])
+        self.assertLessEqual(source_token_count, 50)
+
+        # Normal path: difficult-language handling disabled
+        normal_ff_track = mpf.GenericTrack(-1, dict(TEXT=text))
+        normal_props = dict(base_job_props)
+        normal_props['PROCESS_DIFFICULT_LANGUAGES'] = 'disabled'
+        normal_job = mpf.GenericJob('Test Generic', 'test.pdf', normal_props, {}, normal_ff_track)
+        normal_result = self.component.get_detections_from_generic(normal_job)[0]
+        normal_translation = normal_result.detection_properties["TRANSLATION"]
+
+        normal_target_token_count = len(self.component._tokenizer(normal_translation)["input_ids"])
+        self.assertGreater(normal_target_token_count, 50)
+
+        # Difficult-language path: Spanish explicitly treated as "difficult"
+        difficult_ff_track = mpf.GenericTrack(-1, dict(TEXT=text))
+        difficult_props = dict(base_job_props)
+        difficult_props['PROCESS_DIFFICULT_LANGUAGES'] = 'spa'
+        difficult_job = mpf.GenericJob('Test Generic', 'test.pdf', difficult_props, {}, difficult_ff_track)
+        difficult_result = self.component.get_detections_from_generic(difficult_job)[0]
+        difficult_translation = difficult_result.detection_properties["TRANSLATION"]
+
+        # If difficult-language handling only overrides the soft limit, the output should match.
+        self.assertEqual(normal_translation, difficult_translation)
+
     def test_should_translate(self):
 
         with self.subTest('OK to translate'):

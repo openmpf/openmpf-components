@@ -104,12 +104,12 @@ The below properties can be optionally provided to alter the behavior of the com
   - `SENTENCE`: Splits text at detected sentence boundaries. This mode creates more sentence breaks than `DEFAULT`, which is more focused on avoiding text splits unless the chunk size is reached.
   - So far, experimentation suggests that `SENTENCE` splitting creates the risk of translation chunks that contain too few samples of text to properly generate an accurate translation. Thus, we recommend continuing with `DEFAULT` for most translation needs.
 
-- `PROCESS_DIFFICULT_LANGUAGES`: Comma-separated list of languages that should be processed using `DIFFICULT_LANGUAGE_TOKEN_LIMIT` during translation.
+- `PROCESS_DIFFICULT_LANGUAGES`: Comma-separated list of languages that should use `DIFFICULT_LANGUAGE_TOKEN_LIMIT` as the preferred token chunk size during translation.
   - Default: `"arabic"`
   - Matching applies to ISO-639-3 codes (e.g., `arb`, `arz`) or language names such as `"arabic"`.
   - When active, the  `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` is replaced by a more aggressive `DIFFICULT_LANGUAGE_TOKEN_LIMIT`.
 
-- `DIFFICULT_LANGUAGE_TOKEN_LIMIT`: Token size for translation chunks when processing languages specified in `PROCESS_DIFFICULT_LANGUAGES`.
+- `DIFFICULT_LANGUAGE_TOKEN_LIMIT`: Preferred token chunk size used for languages named in `PROCESS_DIFFICULT_LANGUAGES`. When active, this overrides `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` but does not alter `NLLB_TRANSLATION_TOKEN_LIMIT`.
   - Only used when `USE_NLLB_TOKEN_LENGTH=TRUE`.
   - Overrides `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` for difficult languages.
   - Must be less than or equal to `NLLB_TRANSLATION_TOKEN_LIMIT`.

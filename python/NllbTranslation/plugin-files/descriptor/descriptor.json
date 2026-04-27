@@ -136,7 +136,7 @@
         },
         {
           "name": "PROCESS_DIFFICULT_LANGUAGES",
-          "description": "Comma-separated list of languages that should force sentence-by-sentence splitting and reduce the hard token limit. Default includes 'arabic'.",
+          "description": "Comma-separated list of languages that should use DIFFICULT_LANGUAGE_TOKEN_LIMIT as a more aggressive preferred chunk size during translation. Default includes 'arabic'.",
           "type": "STRING",
           "defaultValue": "arabic"
         },
