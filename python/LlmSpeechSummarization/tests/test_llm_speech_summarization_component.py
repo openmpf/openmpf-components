@@ -1,0 +1,572 @@
+#############################################################################
+# NOTICE                                                                    #
+#                                                                           #
+# This software (or technical data) was produced for the U.S. Government    #
+# under contract, and is subject to the Rights in Data-General Clause       #
+# 52.227-14, Alt. IV (DEC 2007).                                            #
+#                                                                           #
+# Copyright 2025 The MITRE Corporation. All Rights Reserved.                #
+#############################################################################
+
+#############################################################################
+# Copyright 2025 The MITRE Corporation                                      #
+#                                                                           #
+# Licensed under the Apache License, Version 2.0 (the "License");           #
+# you may not use this file except in compliance with the License.          #
+# You may obtain a copy of the License at                                   #
+#                                                                           #
+#    http://www.apache.org/licenses/LICENSE-2.0                             #
+#                                                                           #
+# Unless required by applicable law or agreed to in writing, software       #
+# distributed under the License is distributed on an "AS IS" BASIS,         #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  #
+# See the License for the specific language governing permissions and       #
+# limitations under the License.                                            #
+#############################################################################
+
+import os
+import pathlib
+if not os.environ.get("HF_HUB_OFFLINE"): os.environ["HF_HUB_OFFLINE"] = "0"
+import mpf_component_api as mpf
+from llm_speech_summarization_component.llm_speech_summarization_component import LlmSpeechSummaryComponent, _log_exception
+
+TEST_DATA = pathlib.Path(__file__).parent / 'data'
+
+SUMMARY_TEXT = """The conversation is a multifaceted discussion centered on Major League Baseball, primarily revolving around the publication and content of a memoir titled 'Reminiscences of an Old Timer' by former player John (Dasher) Troy. The memoir serves as both a historical reflection on early professional baseball and a practical guide for aspiring players, emphasizing foundational skills, strategic decision-making, and the mental and physical demands of the game. Key themes include player positioning, batting and pitching techniques, base running, fielding mechanics, and the importance of experience, observation, and self-awareness. The discussion also highlights the legacy of early baseball players and teams, the evolution of the sport, and the enduring significance of traditional principles such as proper footwork and timing. While several fragments reference real estate, business operations, and promotional content in New York City—including venues in Harlem, Chelsea, and Manhattan—these appear to be incidental or transcribed artifacts and do not form a coherent narrative. The overwhelming focus remains on professional baseball gameplay, rules, player health, team discipline, and historical context, with consistent references to specific teams, players, stadiums, and equipment. The conversation reflects a deep engagement with the sport’s traditions, strategies, and cultural significance."""
+
+class FakeClass():
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type:
+            print(f"An exception occurred: {exc_value}")
+        return None 
+    def __init__(self, **kwargs):
+        for k,v in kwargs.items():
+            self.__dict__[k] = v
+
+# FakeLLM is a factory that returns an instance where .chat.completions.create is a function with kwargs
+# When that function is called, return an array of event-like instances, regardless of arguments
+FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda  *_args, **_kwargs: [ \
+            FakeClass(choices=[FakeClass(finish_reason=None, \
+                                 delta=FakeClass(
+                                 refusal=None,
+                                 content=f"""{{
+  "summary": "{SUMMARY_TEXT}",
+  "primary_topic": "Publication of a memoir by a former Major League Baseball player offering advice to aspiring players",
+  "other_topics": [
+    "Historical context of early professional baseball",
+    "Support and endorsements from prominent baseball figures",
+    "The legacy and contributions of early baseball players",
+    "The evolution of baseball and its cultural significance",
+    "The qualities and training required for success in Major League baseball",
+    "The value and legacy of the old-time baseball game",
+    "The importance of position selection in baseball",
+    "The psychological and physical demands of the catcher position",
+    "The role of observation and experience in developing baseball expertise",
+    "Baseball player skills and strategies, particularly for catchers and pitchers",
+    "The importance of experience and confidence in baseball",
+    "Pitching mechanics and control",
+    "Batter stance analysis and strategic pitching",
+    "Historical Major League Baseball games and players",
+    "Baseball pitching and fielding strategies",
+    "Player positioning and roles",
+    "Pitcher-batter dynamics",
+    "Historical baseball players and techniques",
+    "Baseball strategy and player technique",
+    "Batting stance and mechanics",
+    "Infield and outfield player positioning",
+    "Sacrifice bunts and base running tactics",
+    "Pitching mechanics and curveball effectiveness",
+    "Baseball batting techniques and strategies",
+    "Baseball pitcher-batter dynamics",
+    "Baseball hit-and-run strategy",
+    "Baseball footwork and stance",
+    "Base running strategies in baseball",
+    "Pitcher-batter interactions",
+    "Stealing bases",
+    "Fielding mechanics and throws",
+    "Stealing third base in critical game situations",
+    "Runner positioning and timing relative to pitcher and fielders",
+    "Proper sliding techniques to avoid injury",
+    "Coach and player communication during plays",
+    "Baseball defensive strategy in high-pressure game situations",
+    "Infield positioning and coverage",
+    "Throwing strategies (short vs. long throws)",
+    "Double play opportunities",
+    "Sliding mechanics and equipment",
+    "Fielder positioning and coordination",
+    "Major League Baseball rules and playing philosophy",
+    "Baseball strategies and gameplay",
+    "Real estate and business operations",
+    "Promotional advertising for a multi-purpose venue in New York City",
+    "Location and address information in New York City",
+    "Baseball rules and fairness in foul ball enforcement",
+    "Umpiring decisions in baseball",
+    "Baseball field infrastructure and visibility",
+    "Baseball player health and conditioning",
+    "Athletic recovery and injury prevention",
+    "Daily physical routines for athletes",
+    "Historical New York City establishments",
+    "Retail and food services",
+    "Personal development and responsibility",
+    "Vision health",
+    "Rules in sports",
+    "Player health and performance",
+    "Hydration and diet for athletes",
+    "Player-manager communication",
+    "Rest and recovery in sports",
+    "Restaurant advertisement or menu content",
+    "Historical dining establishments",
+    "Seasonal food offerings",
+    "Wine cellar and side board features",
+    "Locations and addresses in New York City",
+    "Commercial signage or promotional messaging",
+    "Geographic references and landmarks",
+    "Baseball player preparation and team discipline",
+    "Historical baseball teams and their performance",
+    "The role of team managers in player conduct",
+    "The importance of rest and physical conditioning in sports",
+    "Travel and hotel stay in St. Louis",
+    "Hotel amenities and history",
+    "Sports betting and handicapping",
+    "Location and Contact Information for a Café or Bar",
+    "Food and Service",
+    "Staff Names",
+    "Phone Numbers",
+    "Historical baseball games",
+    "Baseball pitchers and pitching techniques",
+    "Team discipline and accountability",
+    "Player behavior and conduct after prior drinking",
+    "Crowd size and game-day atmosphere",
+    "Bars and liquor establishments in New York City",
+    "Baseball culture and team dynamics",
+    "Player performance and morale",
+    "Team management and player motivation",
+    "Address and contact information for a location in New York City",
+    "Dining at a high-end restaurant",
+    "Product promotion for Island Oysters",
+    "Role of newspapers and reporters in sports coverage",
+    "Fan enthusiasm and attendance at baseball games",
+    "Evolution of scoring and player performance standards",
+    "Baseball team rivalries",
+    "Fan behavior and audience conduct in early baseball",
+    "Social habits of professional baseball players",
+    "Baseball team management and club ownership",
+    "Retail promotion of overcoats",
+    "Historical attendance at baseball games",
+    "Recognition of player performance in the past",
+    "Historical storefront advertisement",
+    "Promotional advertising for a bottled product",
+    "Distillery information and location",
+    "Legal or business representation",
+    "General contracting",
+    "Wine and liquor sales",
+    "Cigar advertising",
+    "Champagne and wine branding",
+    "Telephone number references",
+    "Location or business signage in New York City",
+    "Distribution through leading dealers",
+    "Availability at first-class hotels, restaurants, and cafes",
+    "French processing method",
+    "Professional or political affiliation",
+    "Location and address details"
+  ],
+  "classifiers": {{
+    "Major League Baseball": {{
+      "confidence": 0.95,
+      "reasoning": "The conversation prominently features references to Major League Baseball, including specific teams (American League Baseball Club of New York, Boston, New York, New York Metropolitans, Columbus and St. Louis Clubs), players (John (Dasher) Troy, W. A. Sunday, Jacob Ruppert, T. L. Huston, Amos Rusie, Hugh Duffy, Dad Clarke, Johnny Ward, Mike Tiernan, Jerry Denny, Billy Nash, Jimmy Collins, Gabby, Kling, Street, Jim Mutrie, John B. Day, Ralph Moore, Tom Bolen, Daniel Brothers, H. Schwabeland, TOM Butter, M. J. Leonard, Mr. Lane), baseball fields (Polo Grounds, Brotherhood Baseball Park, home plate, the diamond, the grandstand, the player’s bench, the bar and lunch privilege at the grounds, 125th Street, Eighth Avenue, Harlem River, 156th Street, 142d Street, 136 Liberty Street, 414-416-418 W. 14th Street, 419 West 13th Street S. W. Cor. 53rd St., 8th Ave., 125th Street and Eighth Ave., 317 West 136th Street, 226-228 West 125th Street, 216 West 46th St., 145th Street, 13th Ave. and 30th St. Bet. B’way & 8th Ave., 61 W. 36th St., 538 W. 38th Street, East 132d St., Brown PI., 133d St. Station, 1402 Broadway, Room 632, New York, 2774 Eighth Avenue, New York City, 103 Park Avenue, New York, 220 West 42nd Street, New York, 253 Broadway, New York, 283 West 132d Street, 239 & 241 West 125th St., 2490 Eighth Avenue, Manhattan Borough, New York, New York, Jersey, Old Broadway, 5 Main Office, Room 209, 136 Liberty Street, 129th Street, 132nd Street, 125th Street, 8th Avenue, Lenox Avenue, Audubon, Morningside, Lodge Rooms, Hotel for Gentlemen, CAFE 464 West 4Ist, N. W. Cor. 42d Street and 9th Avenue, 411 West 14th St., Church, W. 35th St., Dutch Room, 126th Street, CAFE CAFE, Old English Chop House, Golden Buck, East 132d St., Brown PI., 133d St. Station, New York), and equipment (baseball bats, baseballs, baseball hats, sliding pads, oil silk). The discussion covers professional baseball strategies such as pitching mechanics, batting stance, base running, fielding, player positioning, double plays, foul ball enforcement, and player health. The book 'Reminiscences of an Old Timer' is explicitly framed as a guide based on decades of experience in professional baseball, reinforcing the theme. The consistent use of terminology, context, and specific items of interest confirms the central focus on Major League Baseball. Additional references to business operations, real estate, and promotional content in New York City appear to be incidental or transcribed artifacts and do not detract from the dominant theme."
+    }}
+  }},
+  "entities": {{
+    "names_of_people": [
+      "John (Dasher) Troy",
+      "Freddie Engel",
+      "Harry Stevens",
+      "Colonel Ruppert",
+      "Captain Huston",
+      "W. A. Sunday",
+      "Jacob Ruppert, Jr.",
+      "T. L. Huston",
+      "W. N. Fleischmann",
+      "H. L. Sparrow",
+      "W. E. Donovan",
+      "Harry Sarrow",
+      "Gabby",
+      "Kling",
+      "Street",
+      "Amos Rusie",
+      "Hugh Duffy",
+      "Dad Clarke",
+      "Johnny Ward",
+      "Rusie",
+      "J",
+      "Mike Tiernan",
+      "Jerry Denny",
+      "Billy Nash",
+      "Jimmy Collins",
+      "Daniel Brothers",
+      "H. Schwabeland",
+      "TOM Butter",
+      "M. J. Leonard",
+      "Mr. Lane",
+      "Jim Mutrie",
+      "John B. Day",
+      "Ralph Moore",
+      "Tom Bolen",
+      "James W.",
+      "Albert Mundorf",
+      "Big Chief Roseman",
+      "Mutrie Jim",
+      "the Chief",
+      "Arlie Latham",
+      "McGinnis",
+      "Dave Foutz",
+      "Chas H. Nahmmacher",
+      "Frank Sparling",
+      "E. F. Pierce",
+      "M. L. Waish",
+      "Dave",
+      "Mutrie",
+      "Foutz",
+      "John L. Sullivan",
+      "Billy Newman",
+      "Jim",
+      "Chris Von der Ahe",
+      "Charley Comiskey",
+      "Bill Devery",
+      "H. W. Mcintyre",
+      "Jos. J. oran",
+      "Edward Healey",
+      "Jas. Broderick",
+      "Edward S. McGrath",
+      "Sam Fitzpatrick",
+      "Dick Butler",
+      "James F. McCaffrey",
+      "Howard Crampton",
+      "Stewart Paton",
+      "Ferdinand Strauss",
+      "Louis T. McClenan"
+    ],
+    "places": [
+      "New York",
+      "Polo Grounds",
+      "2774 Eighth Avenue, New York City",
+      "1402 Broadway, Room 632, New York",
+      "30 East 42nd Street, New York",
+      "Pateros, N. J.",
+      "Postal Telegraph Building, 253 Broadway, New York",
+      "103 Park Avenue, New York",
+      "220 West 42nd Street, New York",
+      "Brotherhood Baseball Park",
+      "home plate",
+      "the diamond",
+      "the grandstand",
+      "the player’s bench",
+      "the bar and lunch privilege at the grounds",
+      "Boston",
+      "Harlem",
+      "Eighth Avenue",
+      "132nd Street",
+      "125th Street",
+      "Central Casino",
+      "283 West 132d Street",
+      "239 & 241 West 125th St.",
+      "2490 Eighth Avenue",
+      "Manhattan Borough",
+      "New York, New York",
+      "129th Street",
+      "Harlem River",
+      "156th Street",
+      "Old Broadway",
+      "5 Main Office",
+      "Room 209",
+      "136 Liberty Street",
+      "Jersey",
+      "New York",
+      "414-416-418 W. 14th Street",
+      "419 West 13th Street S. W. Cor. 53rd St.",
+      "8th Ave.",
+      "HILL'S =| Colonial SANITARIUM Hotel",
+      "125th Street and Eighth Ave.",
+      "317 West 136th Street",
+      "NEW YORK",
+      "The West End",
+      "226-228 West 125th Street",
+      "Chelsea",
+      "13th Ave. and 30th St. Bet. B’way & 8th Ave.",
+      "216 West 46th St.",
+      "145th Street",
+      "8th Avenue",
+      "Lenox Avenue",
+      "Audubon",
+      "Columbus",
+      "St. Louis",
+      "Church",
+      "W. 35th St.",
+      "Dutch Room",
+      "126th Street",
+      "Morningside",
+      "Lodge Rooms",
+      "Hotel for Gentlemen",
+      "Cafe and Restaurant",
+      "N. W. Cor. 42d Street and 9th Avenue",
+      "411 West 14th St.",
+      "Old English Chop House",
+      "61 W. 36th St.",
+      "New York City",
+      "Golden Buck",
+      "538 W. 38th Street",
+      "East 132d St.",
+      "Brown PI.",
+      "133d St. Station",
+      "Harlem’s Favorite Hotel",
+      "CAFE CAFE",
+      "50 Main Street, Flushing, N.Y.",
+      "Greeley",
+      "HUSSEY’S CAFE",
+      "34th Street",
+      "Hotel Montrose",
+      "474 Eighth Ave",
+      "123 St. and Eighth Avenue",
+      "2591 Eighth Ave.",
+      "Cor. 138th St. New York",
+      "2268 Third Ave.",
+      "2270 Third Ave.",
+      "123d and 124th Streets",
+      "West Side of Ave.",
+      "Knickerbocker",
+      "Ruppert’s",
+      "Geo. Ehret’s",
+      "2560 Seventh Avenue",
+      "2534 8th Ave.",
+      "the hotel",
+      "527 W. 20th St.",
+      "Morningside",
+      "316 W. 135th St.",
+      "Broadway Cafe",
+      "1634-1636 Broadway",
+      "50th St.",
+      "50th St. Subway Entrance",
+      "Winter Garden Building",
+      "Chatham",
+      "coaching line",
+      "plate",
+      "baseball field",
+      "Fulton Street",
+      "Flushing",
+      "Clinton St",
+      "Third and Fourth Ave’s",
+      "First St",
+      "Washington and Beach Sts",
+      "Morningside",
+      "2525 Eighth Avenue",
+      "2546 Eighth Avenue",
+      "135th Street",
+      "SW corner of 135th Street",
+      "Second Avenue",
+      "12 Bridge St",
+      "Sixth Avenue",
+      "Tenth Street",
+      "Stuyvesant",
+      "622 St. Nicholas Ave",
+      "Seventh Avenue",
+      "50th Street",
+      "Sist Street",
+      "McDERMOTT| Bohan & DAIRY CO. | O’Beirne",
+      "2425 8tu Ave.",
+      "cor [30th",
+      "Spring",
+      "49th St",
+      "8th Ave",
+      "383 W. 125th St",
+      "Morningside Ave",
+      "7th Ave",
+      "47th and 48th Street",
+      "110 West 52nd Street",
+      "6th and 7th Avenues",
+      "West 43nd Street",
+      "128 Broadway",
+      "Library of Congress",
+      "41 Broad Street",
+      "Boston",
+      "Providence",
+      "Chicago",
+      "Toronto",
+      "Detroit",
+      "Springfield",
+      "Philadelphia",
+      "Worcester",
+      "Vandewater Street"
+    ],
+    "companies": [
+      "Troy & Engel",
+      "McDermott & Hanigan",
+      "Lewis P. Fluhner Company",
+      "Candler Bungie",
+      "American League Baseball Club of New York",
+      "DANIEL DEVAN & CO.",
+      "FAY’S",
+      "William J. Howe Co.",
+      "Audubon",
+      "Haight & Todd",
+      "Jersey Real Estate",
+      "A. SILZ BASEBALL Incorporated",
+      "The West End",
+      "Gallagher CAFE and Imported and Domestic RESTAURANT",
+      "Clover Valley Print",
+      "Merchants",
+      "TOM Butter, Eggs & Cheese",
+      "Ruppert’s",
+      "Geo. Ehret’s",
+      "SPARLING’S",
+      "CARTWRIGHT & CO.",
+      "CAFE",
+      "McGRORTY’S",
+      "S. W. Cor. Washington and Beach Sts. N. Y.",
+      "DISTILLERY: Clinton St. Third and Fourth Ave’s and First St, ; BALTISMIORE, MD.",
+      "Seth Wilks",
+      "Wines, Liquors and",
+      "Boiler Worka",
+      "Urbana Wine Co.",
+      "Jac. Philippi",
+      "Sayles, Zahn Company",
+      "CAFE CONTRACTORS",
+      "Business Men’s Lunch",
+      "AAS",
+      "Carstairs Whiskey",
+      "B. &",
+      "Pilsner Beer",
+      "Brokers in All Makes | CA FE",
+      "NEW and USED AUTONOBILES 711 7th Ave.",
+      "Universal Film Co.",
+      "TABLE WATERS",
+      "EQUITABLE LIFE ASSURANCE SOCIETY of the UNITED STATES",
+      "Chas. A. Stoneham & Company",
+      "McDERMOTT PRINTING COMPANY, Inc."
+    ],
+    "body_parts": [
+      "eyesight",
+      "brain",
+      "arm",
+      "throwing arm",
+      "muscular build",
+      "left foot",
+      "right foot",
+      "shoulder",
+      "hand",
+      "glove",
+      "left hand",
+      "right hand",
+      "eyes",
+      "wrists",
+      "base line",
+      "plate",
+      "third base",
+      "second base",
+      "first base",
+      "hip",
+      "feet",
+      "wrist",
+      "hips",
+      "elbow",
+      "knee joints",
+      "ankles",
+      "bowels",
+      "sinews",
+      "blood",
+      "floor",
+      "eye"
+    ],
+    "emotions": [
+      "enthusiasm",
+      "gratitude",
+      "respect",
+      "nostalgia",
+      "discouragement",
+      "encouragement",
+      "rattled",
+      "confidence",
+      "doubt",
+      "smile",
+      "happiness",
+      "anxious",
+      "timid",
+      "pleasure",
+      "collected",
+      "fear",
+      "energetic",
+      "nostalgic",
+      "ready to compete",
+      "revitalized",
+      "lack of energy",
+      "revival",
+      "determination",
+      "uneasy",
+      "lost his head",
+      "delight",
+      "camaraderie",
+      "pride"
+    ]
+  }}
+}}"""))], object="chat.completion.chunk"), \
+            FakeClass(choices=[FakeClass(finish_reason="stop", delta=FakeClass(
+                                 refusal=None,
+                                 content=""))], object="chat.completion.chunk"), \
+        ])))
+
+def run_component_test(clientFactory = None,
+                       detection_func_name = 'get_detections_from_all_video_tracks',
+                       jobType=mpf.AllVideoTracksJob,
+                       trackFactory=lambda transcript: mpf.VideoTrack(0, 1, -100, {}, { # type: ignore
+                            "DEFAULT_LANGUAGE": "eng",
+                            "LANGUAGE": "eng",
+                            "SPEAKER_ID": None,
+                            "GENDER": None,
+                            "TRANSCRIPT": transcript})):
+    component = LlmSpeechSummaryComponent(clientFactory)
+    if not hasattr(component, detection_func_name):
+        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
+    input = None
+    with open(str(TEST_DATA / 'test.txt')) as f:
+        input = f.read()
+    input = input.replace("\r\n", "\n")
+
+    job = jobType('Test Job', '/dev/null', 0, 9000, {
+        **os.environ
+    }, {}, [
+        trackFactory(x) for x in input.split('\n') if len(x) # type: ignore
+    ])
+
+    return getattr(component, detection_func_name)(job)
+
+def test_video_invocation_with_fake_client():
+    result = run_component_test(FakeLLM)
+    assert len(result) == 2
+    main_detection = result[0]
+    classifier_detection = result[1]
+    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
+    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
+    assert classifier_detection.confidence == 0.95
+
+def test_audio_invocation_with_fake_client():
+    result = run_component_test(FakeLLM, 'get_detections_from_all_audio_tracks', mpf.AllAudioTracksJob, lambda transcript: mpf.AudioTrack(0, 1, -100, { # type: ignore
+                            "DEFAULT_LANGUAGE": "eng",
+                            "LANGUAGE": "eng",
+                            "SPEAKER_ID": None,
+                            "GENDER": None,
+                            "TRANSCRIPT": transcript}))
+    assert len(result) == 2
+    main_detection = result[0]
+    classifier_detection = result[1]
+    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
+    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
+    assert classifier_detection.confidence == 0.95
+
+def test_exception_throwing():
+    try:
+        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'It worked')
+    except mpf.DetectionException as e:
+        assert True
+    except:
+        assert False
