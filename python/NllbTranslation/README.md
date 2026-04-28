@@ -79,7 +79,7 @@ The below properties can be optionally provided to alter the behavior of the com
   This property is only used when `USE_NLLB_TOKEN_LENGTH` is set to `True` and effectively replaces
   `SENTENCE_SPLITTER_CHAR_COUNT` when active.
 
-- `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT`: Specifies the preferred (soft) token size for translation chunks when `USE_NLLB_TOKEN_LENGTH=TRUE`.
+- `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT`: Specifies the preferred (soft) token limit for translation chunks when `USE_NLLB_TOKEN_LENGTH=TRUE`.
   - If set to a value greater than 0 and less than or equal to `NLLB_TRANSLATION_TOKEN_LIMIT`, the text splitter will attempt to create chunks near this size.
   - When enabled, the splitter may split text even if the full text is under the hard token limit.
   - Slightly exceeding the soft limit is allowed when aligning to sentence boundaries.
@@ -109,7 +109,7 @@ The below properties can be optionally provided to alter the behavior of the com
   - Matching applies to ISO-639-3 codes (e.g., `arb`, `arz`) or language names such as `"arabic"`.
   - When active, the  `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` is replaced by a more aggressive `DIFFICULT_LANGUAGE_TOKEN_LIMIT`.
 
-- `DIFFICULT_LANGUAGE_TOKEN_LIMIT`: Preferred token chunk size used for languages named in `PROCESS_DIFFICULT_LANGUAGES`. When active, this overrides `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` but does not alter `NLLB_TRANSLATION_TOKEN_LIMIT`.
+- `DIFFICULT_LANGUAGE_TOKEN_LIMIT`: Preferred number of tokens per chunk involving languages named in `PROCESS_DIFFICULT_LANGUAGES`. When active, this overrides `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` but does not alter `NLLB_TRANSLATION_TOKEN_LIMIT`.
   - Only used when `USE_NLLB_TOKEN_LENGTH=TRUE`.
   - Overrides `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` for difficult languages.
   - Must be less than or equal to `NLLB_TRANSLATION_TOKEN_LIMIT`.
@@ -136,12 +136,101 @@ The below properties can be optionally provided to alter the behavior of the com
   Otherwise, PyTorch will be installed without cuda support and
   component will always default to CPU processing.
 
-- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WTP models require a language code.
+- `SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE`: More advanced WtP models require a language code.
   This property sets the default language to use for sentence splitting if no source language is available from
   `LANGUAGE_FEED_FORWARD_PROP` or `DEFAULT_SOURCE_LANGUAGE`.
 
-# Language Identifiers
-The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which Nllb can translate.
+   ## The following BCP language codes can be provided for WtP and SaT Text Splitters:
+| iso | Name            | ISO-639-3 code accepted by conversion | Other accepted aliases   |
+| --- | --------------- | ------------------------------------- | ------------------------ |
+| af  | Afrikaans       | afr                                   |                          |
+| am  | Amharic         | amh                                   |                          |
+| ar  | Arabic          | ara                                   |                          |
+| az  | Azerbaijani     | aze                                   |                          |
+| be  | Belarusian      | bel                                   |                          |
+| bg  | Bulgarian       | bul                                   |                          |
+| bn  | Bengali         | ben                                   |                          |
+| ca  | Catalan         | cat                                   | valencian                |
+| ceb | Cebuano         | ceb                                   |                          |
+| cs  | Czech           | ces                                   | cze                      |
+| cy  | Welsh           | cym                                   | wel                      |
+| da  | Danish          | dan                                   |                          |
+| de  | German          | deu                                   | ger                      |
+| el  | Greek           | ell                                   | gre                      |
+| en  | English         | eng                                   |                          |
+| eo  | Esperanto       | epo                                   |                          |
+| es  | Spanish         | spa                                   | castilian                |
+| et  | Estonian        | est                                   |                          |
+| eu  | Basque          | eus                                   | baq                      |
+| fa  | Persian         | fas                                   | per                      |
+| fi  | Finnish         | fin                                   |                          |
+| fr  | French          | fra                                   | fre                      |
+| fy  | Western Frisian | fry                                   |                          |
+| ga  | Irish           | gle                                   |                          |
+| gd  | Scottish Gaelic | gla                                   | gaelic                   |
+| gl  | Galician        | glg                                   |                          |
+| gu  | Gujarati        | guj                                   |                          |
+| ha  | Hausa           | hau                                   |                          |
+| he  | Hebrew          | heb                                   |                          |
+| hi  | Hindi           | hin                                   |                          |
+| hu  | Hungarian       | hun                                   |                          |
+| hy  | Armenian        | hye                                   | arm                      |
+| id  | Indonesian      | ind                                   |                          |
+| ig  | Igbo            | ibo                                   |                          |
+| is  | Icelandic       | isl                                   | ice                      |
+| it  | Italian         | ita                                   |                          |
+| ja  | Japanese        | jpn                                   |                          |
+| jv  | Javanese        | jav                                   |                          |
+| ka  | Georgian        | kat                                   | geo                      |
+| kk  | Kazakh          | kaz                                   |                          |
+| km  | Central Khmer   | khm                                   |                          |
+| kn  | Kannada         | kan                                   |                          |
+| ko  | Korean          | kor                                   |                          |
+| ku  | Kurdish         | kur                                   |                          |
+| ky  | Kirghiz         | kir                                   | kyrgyz                   |
+| la  | Latin           | lat                                   |                          |
+| lt  | Lithuanian      | lit                                   |                          |
+| lv  | Latvian         | lav                                   |                          |
+| mg  | Malagasy        | mlg                                   |                          |
+| mk  | Macedonian      | mkd                                   | mac                      |
+| ml  | Malayalam       | mal                                   |                          |
+| mn  | Mongolian       | mon                                   |                          |
+| mr  | Marathi         | mar                                   |                          |
+| ms  | Malay           | msa                                   | may                      |
+| mt  | Maltese         | mlt                                   |                          |
+| my  | Burmese         | mya                                   | bur                      |
+| ne  | Nepali          | nep                                   |                          |
+| nl  | Dutch           | nld                                   | dut, flemish             |
+| no  | Norwegian       | nor                                   |                          |
+| pa  | Panjabi         | pan                                   | punjabi                  |
+| pl  | Polish          | pol                                   |                          |
+| ps  | Pushto          | pus                                   | pashto                   |
+| pt  | Portuguese      | por                                   |                          |
+| ro  | Romanian        | ron                                   | rum, moldavian, moldovan |
+| ru  | Russian         | rus                                   |                          |
+| si  | Sinhala         | sin                                   | sinhalese                |
+| sk  | Slovak          | slk                                   | slo                      |
+| sl  | Slovenian       | slv                                   |                          |
+| sq  | Albanian        | sqi                                   | alb                      |
+| sr  | Serbian         | srp                                   |                          |
+| sv  | Swedish         | swe                                   |                          |
+| ta  | Tamil           | tam                                   |                          |
+| te  | Telugu          | tel                                   |                          |
+| tg  | Tajik           | tgk                                   |                          |
+| th  | Thai            | tha                                   |                          |
+| tr  | Turkish         | tur                                   |                          |
+| uk  | Ukrainian       | ukr                                   |                          |
+| ur  | Urdu            | urd                                   |                          |
+| uz  | Uzbek           | uzb                                   |                          |
+| vi  | Vietnamese      | vie                                   |                          |
+| xh  | Xhosa           | xho                                   |                          |
+| yi  | Yiddish         | yid                                   |                          |
+| yo  | Yoruba          | yor                                   |                          |
+| zh  | Chinese         | zho, cmn                              | chi, hans, hant          |
+| zu  | Zulu            | zul                                   |                          |
+
+# Supported NLLB Language Codes
+The following are the ISO 639-3 and ISO 15924 codes, and their corresponding languages which NLLB can translate from.
 
 | ISO-639-3 | ISO-15924  |              Language
 | --------- | ---------- | ----------------------------------
