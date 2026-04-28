@@ -515,9 +515,13 @@ satisfeitos de si.
 
         test_generic_job_props['SENTENCE_SPLITTER_MODE'] = 'SENTENCE'
         test_generic_job_props['SENTENCE_SPLITTER_NEWLINE_BEHAVIOR'] = 'GUESS'
+
+        # In general, translation irregularities are more noticeable in SENTENCE splitting mode.
+        # If the text fragment is too small, this can even include additional hallucinated text.
         pt_text_translation = "They fear, indeed, those in whom the vivid rays of our unblinking sun, or the unclouded face of the moon in the peninsular firmament, where it has not, like that of London--to break at the cost of a plumbeo heaven--are indispensable to pour joy into the soul and send to the countenances the reflection of them; They imagine themselves fatally haunted by spleen, hopelessly gloomy and sullen, as if at every moment they were emerging from the underground galleries of a pit-coal mine, Our British allies. How they deceive themselves or how they intend to deceive us! Is this an illusion or bad faith, against which there is much to be lamented in vain the indelevel and accentuated expression of beatitude, which shines through the illuminated faces of the men from beyond the Channel, who seem to walk among us, wrapped in a dense atmosphere of perennial contentment, satisfied with the world, satisfied with men and, very especially, satisfied with themselves? Yes , please ."
         job = mpf.GenericJob('Test Generic', 'test.pdf', test_generic_job_props, {}, ff_track)
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
+        result_props: dict[str, str] = result_track[0].detection_properties
         self.assertEqual(pt_text_translation, result_props["TRANSLATION"])
 
 
