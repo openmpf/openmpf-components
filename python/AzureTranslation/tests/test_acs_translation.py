@@ -1119,7 +1119,7 @@ def get_test_properties(**extra_properties):
     return {
         'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10670/translator'),
         'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
-        'SENTENCE_MODEL':'wtp-bert-mini',
+        'SENTENCE_MODEL':'sat-3l-sm',
         **extra_properties
     }
 

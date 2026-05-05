@@ -32,7 +32,7 @@ import mpf_component_api as mpf
 import os
 import unittest
 
-from nllb_component import NllbTranslationComponent
+from nllb_component import NllbTranslationComponent, JobConfig
 from pathlib import Path
 from typing import Sequence
 from nlp_text_splitter import WtpLanguageSettings
@@ -638,7 +638,12 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
             'mucha sed.'
         )
 
-        source_token_count = len(self.component._tokenizer(text)["input_ids"])
+        config = JobConfig(base_job_props, ff_props={})
+        component = NllbTranslationComponent()
+        component._check_model(config)
+        component._load_tokenizer(config)
+
+        source_token_count = len(component._tokenizer(text)["input_ids"])
         self.assertLessEqual(source_token_count, 50)
 
         # Normal path: difficult-language handling disabled
@@ -646,10 +651,10 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
         normal_props = dict(base_job_props)
         normal_props['PROCESS_DIFFICULT_LANGUAGES'] = 'disabled'
         normal_job = mpf.GenericJob('Test Generic', 'test.pdf', normal_props, {}, normal_ff_track)
-        normal_result = self.component.get_detections_from_generic(normal_job)[0]
+        normal_result = component.get_detections_from_generic(normal_job)[0]
         normal_translation = normal_result.detection_properties["TRANSLATION"]
 
-        normal_target_token_count = len(self.component._tokenizer(normal_translation)["input_ids"])
+        normal_target_token_count = len(component._tokenizer(normal_translation)["input_ids"])
         self.assertGreater(normal_target_token_count, 50)
 
         # Difficult-language path: Spanish explicitly treated as "difficult"
@@ -657,7 +662,7 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
         difficult_props = dict(base_job_props)
         difficult_props['PROCESS_DIFFICULT_LANGUAGES'] = 'spa'
         difficult_job = mpf.GenericJob('Test Generic', 'test.pdf', difficult_props, {}, difficult_ff_track)
-        difficult_result = self.component.get_detections_from_generic(difficult_job)[0]
+        difficult_result = component.get_detections_from_generic(difficult_job)[0]
         difficult_translation = difficult_result.detection_properties["TRANSLATION"]
 
         # If difficult-language handling only overrides the soft limit, the output should match.
