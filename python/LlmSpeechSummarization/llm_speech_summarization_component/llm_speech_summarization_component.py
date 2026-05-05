@@ -28,15 +28,13 @@ import importlib.resources
 import logging
 import math
 import os
-from openai.types import ResponseFormatJSONSchema
 import requests
-import sys
 import time
 import re
 import json
 
 from jinja2 import Environment, FileSystemLoader
-from typing import Sequence, Mapping
+from typing import Mapping
 
 from openai import OpenAI, AzureOpenAI
 
@@ -194,25 +192,6 @@ class LlmSpeechSummaryComponent:
         return content
 
     @staticmethod
-    def _get_track_for_classifier(track_cls, job: mpf.VideoJob|mpf.AudioJob, classifier_name, classifier, arg_factory):
-        detection_properties = {'CLASSIFIER': classifier_name, 'REASONING': classifier.reasoning}
-        # TODO: translate utterance start to frame number based on fps
-        start: int = None
-        end: int = None
-        if type(job) is mpf.VideoJob:
-            start = job.start_frame
-            end = job.stop_frame
-        elif type(job) is mpf.AudioJob:
-            start = job.start_time
-            end = job.stop_time
-        return track_cls(start, end, classifier.confidence, *arg_factory(classifier, detection_properties), detection_properties)
-
-    @staticmethod
-    def _get_classifier_track(track_cls, job, arg_factory=lambda _classifier, _detection_properties: []):
-        func = lambda classifier: LlmSpeechSummaryComponent._get_track_for_classifier(track_cls, job, classifier[0], classifier[1], arg_factory)
-        return func
-
-    @staticmethod
     def _get_openai_api_client_when_server_is_ready(config, timeout_seconds=300, retry_delay_seconds=5, **kwargs):
         if config.api_health_uri:
             start_time = time.time()
@@ -250,35 +229,69 @@ class LlmSpeechSummaryComponent:
         logger.info('Received feed forward video job.')
         config = JobConfig(video_job.job_properties)
 
-        results = self._process_feed_forward_job(
-            video_job, config,
-            make_classifier_track=self._get_classifier_track(
-                mpf.VideoTrack, video_job,
-                lambda classifier, dp: {0: mpf.ImageLocation(0, 0, 0, 0, classifier.confidence, dp)}
-            ),
-            make_summary_track=lambda props: mpf.VideoTrack(
-                video_job.start_frame, video_job.stop_frame, -1,
-                {0: mpf.ImageLocation(0, 0, 0, 0, -1, props)}, props
-            ),
-        )
-        logger.info(f'get_detections_from_all_video_tracks found: {len(results)} detections')
+        final_summary = self._get_final_summary(video_job, config)
+        summary_detection_properties = LlmSpeechSummaryComponent._get_summary_detection_properties(final_summary)
+
+        results = [
+            mpf.VideoTrack(
+                video_job.start_frame,
+                video_job.stop_frame,
+                -1,
+                {0: mpf.ImageLocation(0, 0, 0, 0, -1, summary_detection_properties)},
+                summary_detection_properties
+            )
+        ]
+
+        if hasattr(final_summary, 'classifiers'):
+            for classifier in final_summary.classifiers:
+                if classifier[1].confidence >= config.classifier_confidence_minimum:
+                    detection_properties = {'CLASSIFIER': classifier[0], 'REASONING': classifier[1].reasoning}
+                    results.append(
+                        mpf.VideoTrack(
+                            video_job.start_frame,
+                            video_job.stop_frame,
+                            classifier[1].confidence,
+                            {0: mpf.ImageLocation(0, 0, 0, 0, classifier[1].confidence, detection_properties)},
+                            detection_properties
+                        )
+                    )
+
+        logger.info(f'get_detections_from_all_video_tracks found {len(results)} detections')
         return results
 
     def get_detections_from_all_audio_tracks(self, audio_job):
         logger.info('Received feed forward audio job.')
         config = JobConfig(audio_job.job_properties)
 
-        results = self._process_feed_forward_job(
-            audio_job, config,
-            make_classifier_track=self._get_classifier_track(mpf.AudioTrack, audio_job),
-            make_summary_track=lambda props: mpf.AudioTrack(
-                audio_job.start_time, audio_job.stop_time, -1, props
-            ),
-        )
-        logger.info(f'get_detections_from_all_audio_tracks found: {len(results)} detections')
+        final_summary = self._get_final_summary(audio_job, config)
+        summary_detection_properties = LlmSpeechSummaryComponent._get_summary_detection_properties(final_summary)
+
+        results = [
+            mpf.AudioTrack(
+                audio_job.start_time,
+                audio_job.stop_time,
+                -1,
+                summary_detection_properties
+            )
+        ]
+
+        if hasattr(final_summary, 'classifiers'):
+            for classifier in final_summary.classifiers:
+                if classifier[1].confidence >= config.classifier_confidence_minimum:
+                    detection_properties = {'CLASSIFIER': classifier[0], 'REASONING': classifier[1].reasoning}
+                    results.append(
+                        mpf.AudioTrack(
+                            audio_job.start_time,
+                            audio_job.stop_time,
+                            classifier[1].confidence,
+                            detection_properties
+                        )
+                    )
+
+        logger.info(f'get_detections_from_all_audio_tracks found {len(results)} detections')
         return results
 
-    def _process_feed_forward_job(self, job, config, make_classifier_track, make_summary_track):
+    def _get_final_summary(self, job, config):
         tokenizer = AutoTokenizer.from_pretrained(
             config.tokenizer_model,
             local_files_only=(os.environ["HF_HUB_OFFLINE"] == "1")
@@ -305,14 +318,16 @@ class LlmSpeechSummaryComponent:
             summaries += [StructuredResponse.model_validate_json(content)]
 
         if nchunks == 1:
-            final_summary = summaries[0]
-        else:
-            final_summary = summarize_summaries(
-                StructuredResponse, tokenizer,
-                lambda input: self._get_output(config, template, classifiers, input),
-                config.chunk_size, config.overlap, summaries
-            )
+            return summaries[0]
 
+        return summarize_summaries(
+            StructuredResponse, tokenizer,
+            lambda input: self._get_output(config, template, classifiers, input),
+            config.chunk_size, config.overlap, summaries
+        )
+
+    @staticmethod
+    def _get_summary_detection_properties(final_summary):
         summary_detection_properties = {'TEXT': final_summary.summary}
         if hasattr(final_summary, 'primary_topic'):
             summary_detection_properties['PRIMARY_TOPIC'] = final_summary.primary_topic
@@ -321,19 +336,4 @@ class LlmSpeechSummaryComponent:
         if hasattr(final_summary, 'entities'):
             for k, v in final_summary.entities.model_dump().items():
                 summary_detection_properties[k.upper()] = ', '.join(v)
-
-        results = [make_summary_track(summary_detection_properties)]
-
-        if hasattr(final_summary, 'classifiers'):
-            classifier_confidence_minimum = config.classifier_confidence_minimum
-            results += list(
-                map(
-                    make_classifier_track,
-                    filter(
-                        lambda classifier: classifier[1].confidence >= classifier_confidence_minimum,
-                        final_summary.classifiers
-                    )
-                )
-            )
-
-        return results
+        return summary_detection_properties

@@ -33,9 +33,12 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from typing import Dict, Optional, Sequence, Mapping, TypeVar, Callable
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
+
+# transformers to be imported after nlp_text_splitter, otherwise it will cause an import error for
+# torchvision.
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
 logger = logging.getLogger('NllbTranslationComponent')
 
