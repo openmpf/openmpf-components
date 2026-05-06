@@ -1,0 +1,20 @@
+{
+    "classPrompts": [
+        {
+            "classes": [
+                "DOG"
+            ],
+            "prompts": [
+                "Describe the dog in JSON. The JSON should have the following keys: breed, color, size."
+            ]
+        },
+        {
+            "classes": [
+                "PERSON"
+            ],
+            "prompts": [
+                "Describe the person in JSON. The JSON should have the following keys: hair_color (if unsure, respond with unsure), clothes, activity."
+            ]
+        }
+    ]
+}

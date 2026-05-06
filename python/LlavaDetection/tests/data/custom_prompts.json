@@ -1,0 +1,25 @@
+{
+    "classPrompts": [
+        {
+            "classes": [
+                "DOG"
+            ],
+            "prompts": [
+                {
+                    "detectionProperty": "DESCRIPTION",
+                    "prompt": "Describe the color and breed of the dog."
+                }
+            ]
+        }
+    ],
+    "framePrompts": [
+        {
+            "detectionProperty": "DESCRIPTION",
+            "prompt": "Describe this image"
+        },
+        {
+            "detectionProperty": "LOCATION",
+            "prompt": "Describe the location in this scene"
+        }
+    ]
+}
