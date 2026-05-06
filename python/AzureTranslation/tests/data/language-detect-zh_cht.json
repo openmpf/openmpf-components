@@ -1,0 +1,17 @@
+{
+  "results": {
+    "documents": [
+      {
+        "id": "1",
+        "detectedLanguage": {
+          "iso6391Name": "zh_cht",
+          "confidenceScore": 0.99,
+          "scriptName": "Traditional",
+          "scriptIso15924Code": "Hant"
+        }
+      }
+    ],
+    "errors": [],
+    "modelVersion": "latest"
+  }
+}

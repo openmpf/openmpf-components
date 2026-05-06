@@ -1,0 +1,17 @@
+{
+  "results": {
+    "documents": [
+      {
+        "id": "1",
+        "detectedLanguage": {
+          "iso6391Name": "zh_chs",
+          "confidenceScore": 0.99,
+          "scriptName": "Simplified",
+          "scriptIso15924Code": "Hans"
+        }
+      }
+    ],
+    "errors": [],
+    "modelVersion": "latest"
+  }
+}

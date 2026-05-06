@@ -45,7 +45,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from nlp_text_splitter import TextSplitterModel
 from acs_translation_component.acs_translation_component import (AcsTranslationComponent,
     get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
-    AcsTranslateUrlBuilder, get_n_azure_chars)
+    AcsTranslateUrlBuilder, AzureLanguageDetectionClient, DetectResult, get_n_azure_chars)
 
 from acs_translation_component.convert_language_code import iso_to_bcp
 
@@ -417,6 +417,254 @@ class TestAcsTranslation(unittest.TestCase):
             self.get_request_body()
 
 
+    def test_chinese_alias_codes_mapped_for_translation(self):
+        with self.subTest('Simplified Chinese via updated detection/translation endpoint'):
+            self.set_results_file('language-detect-zh_chs.json')
+            self.set_results_file('preview-translate-single.json')
+
+            props = get_test_properties(
+                LANGUAGE_DETECTION_ENDPOINT='http://localhost:10670',
+                TRANSLATION_API_VERSION='LATEST',  # use preview translate
+            )
+            client = TranslationClient(props, self.wtp_model)
+
+            detection_props = dict(TEXT=CHINESE_SAMPLE_TEXT)
+            client.add_translations(detection_props)
+
+            # The component should preserve what detection returns as metadata
+            self.assertEqual('zh_chs', detection_props['TRANSLATION SOURCE LANGUAGE'])
+
+            # 1) Language detection request (new endpoint)
+            detect_url, detect_body = self.get_request()
+            self.assertIn('/language/:analyze-text', detect_url)
+            self.assertEqual('LanguageDetection', detect_body['kind'])
+            docs = detect_body['analysisInput']['documents']
+            self.assertEqual(1, len(docs))
+            self.assertEqual(CHINESE_SAMPLE_TEXT, docs[0]['text'])
+
+            # 2) Preview translate request – from-language must be normalized
+            translate_url, translate_body = self.get_request()
+            parsed = urllib.parse.urlparse(translate_url)
+            qd = urllib.parse.parse_qs(parsed.query)
+
+            # Preview API: only api-version in query string
+            self.assertEqual(['2025-10-01-preview'], qd.get('api-version'))
+            self.assertNotIn('from', qd)
+            self.assertNotIn('to', qd)
+
+            # Body must be in "inputs" shape; source language normalized to zh-Hans
+            inputs = translate_body['inputs']
+            self.assertEqual(1, len(inputs))
+            first = inputs[0]
+            self.assertEqual(CHINESE_SAMPLE_TEXT, first['text'])
+            self.assertEqual('zh-Hans', first['language'])
+
+            targets = first['targets']
+            self.assertEqual(1, len(targets))
+            # _to_language is uppercased in TranslationClient, so expect EN.
+            self.assertEqual('EN', targets[0]['language'])
+
+        with self.subTest('Traditional Chinese via updated detection/translation endpoint'):
+            self.set_results_file('language-detect-zh_cht.json')
+            self.set_results_file('preview-translate-single.json')
+
+            props = get_test_properties(
+                LANGUAGE_DETECTION_ENDPOINT='http://localhost:10670',
+                TRANSLATION_API_VERSION='LATEST',
+            )
+            client = TranslationClient(props, self.wtp_model)
+
+            detection_props = dict(TEXT=CHINESE_SAMPLE_TEXT)
+            client.add_translations(detection_props)
+
+            self.assertEqual('zh_cht', detection_props['TRANSLATION SOURCE LANGUAGE'])
+
+            detect_url, detect_body = self.get_request()
+            self.assertIn('/language/:analyze-text', detect_url)
+            docs = detect_body['analysisInput']['documents']
+            self.assertEqual(1, len(docs))
+            self.assertEqual(CHINESE_SAMPLE_TEXT, docs[0]['text'])
+
+            translate_url, translate_body = self.get_request()
+            parsed = urllib.parse.urlparse(translate_url)
+            qd = urllib.parse.parse_qs(parsed.query)
+            self.assertEqual(['2025-10-01-preview'], qd.get('api-version'))
+            self.assertNotIn('from', qd)
+            self.assertNotIn('to', qd)
+
+            inputs = translate_body['inputs']
+            self.assertEqual(1, len(inputs))
+            first = inputs[0]
+            self.assertEqual(CHINESE_SAMPLE_TEXT, first['text'])
+            self.assertEqual('zh-Hant', first['language'])
+
+            targets = first['targets']
+            self.assertEqual(1, len(targets))
+            self.assertEqual('EN', targets[0]['language'])
+
+    def test_mongolian_script_mapping_preview_translate_endpoint(self):
+        mongolian_text = 'Монгол хэлний туршилт'
+
+        with self.subTest('Mongolian (Cyrillic) via updated detection/translation endpoint'):
+            self.set_results_file('language-detect-mn-Cyrl.json')
+            self.set_results_file('preview-translate-single.json')
+
+            props = get_test_properties(
+                LANGUAGE_DETECTION_ENDPOINT='http://localhost:10670',
+                TRANSLATION_API_VERSION='LATEST',
+            )
+            client = TranslationClient(props, self.wtp_model)
+
+            detection_props = dict(TEXT=mongolian_text)
+            client.add_translations(detection_props)
+
+            # Detection metadata keeps the base language code.
+            self.assertEqual('mn', detection_props['TRANSLATION SOURCE LANGUAGE'])
+
+            # 1) Language detection endpoint call
+            detect_url, detect_body = self.get_request()
+            self.assertIn('/language/:analyze-text', detect_url)
+            docs = detect_body['analysisInput']['documents']
+            self.assertEqual(1, len(docs))
+            self.assertEqual(mongolian_text, docs[0]['text'])
+
+            # 2) Preview translate call – language should be mn-Cyrl
+            translate_url, translate_body = self.get_request()
+            parsed = urllib.parse.urlparse(translate_url)
+            qd = urllib.parse.parse_qs(parsed.query)
+            self.assertEqual(['2025-10-01-preview'], qd.get('api-version'))
+            self.assertNotIn('from', qd)
+            self.assertNotIn('to', qd)
+
+            inputs = translate_body['inputs']
+            self.assertEqual(1, len(inputs))
+            first = inputs[0]
+            self.assertEqual(mongolian_text, first['text'])
+            self.assertEqual('mn-Cyrl', first['language'])
+
+            targets = first['targets']
+            self.assertEqual(1, len(targets))
+            self.assertEqual('EN', targets[0]['language'])
+
+        with self.subTest('Mongolian (Traditional) via updated detection/translation endpoint'):
+            self.set_results_file('language-detect-mn-Mong.json')
+            self.set_results_file('preview-translate-single.json')
+
+            props = get_test_properties(
+                LANGUAGE_DETECTION_ENDPOINT='http://localhost:10670',
+                TRANSLATION_API_VERSION='LATEST',
+            )
+            client = TranslationClient(props, self.wtp_model)
+
+            detection_props = dict(TEXT=mongolian_text)
+            client.add_translations(detection_props)
+            self.assertEqual('mn', detection_props['TRANSLATION SOURCE LANGUAGE'])
+
+            detect_url, detect_body = self.get_request()
+            self.assertIn('/language/:analyze-text', detect_url)
+            docs = detect_body['analysisInput']['documents']
+            self.assertEqual(1, len(docs))
+            self.assertEqual(mongolian_text, docs[0]['text'])
+
+            translate_url, translate_body = self.get_request()
+            parsed = urllib.parse.urlparse(translate_url)
+            qd = urllib.parse.parse_qs(parsed.query)
+            self.assertEqual(['2025-10-01-preview'], qd.get('api-version'))
+            self.assertNotIn('from', qd)
+            self.assertNotIn('to', qd)
+
+            inputs = translate_body['inputs']
+            self.assertEqual(1, len(inputs))
+            first = inputs[0]
+            self.assertEqual(mongolian_text, first['text'])
+            self.assertEqual('mn-Mong', first['language'])
+
+            targets = first['targets']
+            self.assertEqual(1, len(targets))
+            self.assertEqual('EN', targets[0]['language'])
+
+    def test_language_detection_endpoint_client(self):
+        # Use the same mock server, but talk directly to the language detection endpoint
+        # instead of going through TranslationClient.
+        self.set_results_file('language-detect-mn-Cyrl.json')
+
+        client = AzureLanguageDetectionClient(
+            endpoint='http://localhost:10670',
+            subscription_key='test_key',
+            region='test-region',
+            http_retry=None,  # Use urllib.request directly
+        )
+
+        text = 'Монгол хэлний туршилт'
+        result = client.detect_language(text, country_hint='MN')
+
+        # Parsed fields from JSON
+        self.assertEqual('mn', result.primary_language)
+        self.assertAlmostEqual(0.99, result.primary_language_confidence)
+        self.assertEqual('Cyrillic', result.script_name)
+        self.assertEqual('Cyrl', result.script_code)
+
+        # Verify the request we sent
+        detect_url, detect_body = self.get_request()
+        self.assertIn('/language/:analyze-text', detect_url)
+        self.assertEqual('LanguageDetection', detect_body['kind'])
+        docs = detect_body['analysisInput']['documents']
+        self.assertEqual(1, len(docs))
+        self.assertEqual('MN', docs[0]['countryHint'])
+        self.assertEqual(text, docs[0]['text'])
+
+    def test_serbian_preview_translate_uses_suggested_script(self):
+
+        serbian_text = 'Ово је тест' # This is a test.
+        self.set_results_file('preview-translate-single.json')
+
+        # By default, if we don't get use language detection
+        # Serbian defaults to Cyrillic text.
+        props = get_test_properties(
+            TRANSLATION_API_VERSION='LATEST',
+            FROM_LANGUAGE='sr',
+            SUGGESTED_FROM_SCRIPT='')
+        client = TranslationClient(props, self.wtp_model)
+
+        detection_props = dict(TEXT=serbian_text)
+        client.add_translations(detection_props)
+
+        translate_url, translate_body = self.get_request()
+        parsed = urllib.parse.urlparse(translate_url)
+        qd = urllib.parse.parse_qs(parsed.query)
+
+        inputs = translate_body['inputs']
+        self.assertEqual(1, len(inputs))
+        result = inputs[0]
+
+        self.assertEqual(serbian_text, result['text'])
+        self.assertEqual('sr-Cyrl', result['language'])
+
+        self.set_results_file('preview-translate-single.json')
+
+        # Shift to the Latin variant:
+        props = get_test_properties(
+            TRANSLATION_API_VERSION='LATEST',
+            FROM_LANGUAGE='sr',
+            SUGGESTED_FROM_SCRIPT='Latn')
+
+        detection_props = dict(TEXT=serbian_text)
+        client.add_translations(detection_props)
+
+        translate_url, translate_body = self.get_request()
+        parsed = urllib.parse.urlparse(translate_url)
+        qd = urllib.parse.parse_qs(parsed.query)
+
+        inputs = translate_body['inputs']
+        self.assertEqual(1, len(inputs))
+        result = inputs[0]
+
+        self.assertEqual(serbian_text, result['text'])
+        self.assertEqual('sr-Latn', result['language'])
+        self.assertEqual('Latn', result['script'])
+
+
+
     def test_different_to_language(self):
         self.set_results_file('eng-detect-result.json')
         self.set_results_file('results-eng-to-russian.json')
@@ -445,6 +693,10 @@ class TestAcsTranslation(unittest.TestCase):
     def test_url_formation(self):
 
         def assert_expected_url(job_properties, expected_to, expected_from, expected_query):
+            job_properties = {
+                'TRANSLATION_API_VERSION': '3.0',
+                **job_properties,
+            }
             builder = AcsTranslateUrlBuilder(job_properties)
             url_parts = urllib.parse.urlparse(builder.url)
             self.assertEqual('/test/translate', url_parts.path)
@@ -1040,10 +1292,51 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(20, get_azure_char_count('😀' * 5 + '👍' * 5))
 
 
+    def test_source_language_normalization_overrides_and_scripts(self):
+        client = TranslationClient(get_test_properties(), self.wtp_model)
+        self.assertEqual(
+            'doi',
+            client._normalize_source_language_for_translation('dgo', None)
+        )
+        self.assertEqual(
+            'nb',
+            client._normalize_source_language_for_translation('NO', None)
+        )
+        self.assertEqual(
+            'zh-Hans',
+            client._normalize_source_language_for_translation('zh_chs', None)
+        )
+        self.assertEqual(
+            'zh-Hant',
+            client._normalize_source_language_for_translation('ZH_CHT', None)
+        )
+
+        # Mongolian (based on script detected)
+        self.assertEqual(
+            'mn-Cyrl',
+            client._normalize_source_language_for_translation('mn', 'Cyrl')
+        )
+        self.assertEqual(
+            'mn-Mong',
+            client._normalize_source_language_for_translation('MN', 'Mong')
+        )
+
+        # Serbian (based on script detected)
+        self.assertEqual(
+            'sr-Cyrl',
+            client._normalize_source_language_for_translation('sr', 'Cyrl')
+        )
+        self.assertEqual(
+            'sr-Latn',
+            client._normalize_source_language_for_translation('sr', 'latn')
+        )
+
+
 def get_test_properties(**extra_properties):
     return {
         'ACS_URL': os.getenv('ACS_URL', 'http://localhost:10670/translator'),
         'ACS_SUBSCRIPTION_KEY': os.getenv('ACS_SUBSCRIPTION_KEY', 'test_key'),
+        'TRANSLATION_API_VERSION': os.getenv('TRANSLATION_API_VERSION', '3.0'),
         **extra_properties
     }
 
@@ -1107,23 +1400,48 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         url_parts = urllib.parse.urlparse(self.path)
+        path = url_parts.path
+        query_dict = urllib.parse.parse_qs(url_parts.query)
+        api_version = query_dict.get('api-version', [''])[0]
 
-        is_detect = url_parts.path == '/translator/detect'
-        is_translate = url_parts.path == '/translator/translate'
-        if not is_detect and not is_translate:
+        is_translator_detect = (path == '/translator/detect')
+        is_translator_translate = (path == '/translator/translate')
+        is_lang_detect = (path == '/language/:analyze-text')
+
+        if not (is_translator_detect or is_translator_translate or is_lang_detect):
             self._send_error(404, 000, 'NOT FOUND')
             return
 
+        # For supported paths, headers must be valid.
         self._validate_headers()
-        self._validate_query_string(url_parts.query, is_translate)
-        max_chars = TranslationClient.DETECT_MAX_CHARS
-        self._validate_body(max_chars)
+
+        if is_lang_detect:
+            # New Azure Language detection endpoint
+            self._validate_lang_detect_query_string(url_parts.query)
+            self._validate_lang_detect_body()
+
+        elif is_translator_translate:
+            # Two API variants for translate: legacy v3.0 and preview 2025-10-01
+            if api_version == '3.0':
+                self._validate_query_string(url_parts.query, is_translate=True)
+                max_chars = TranslationClient.DETECT_MAX_CHARS
+                self._validate_body(max_chars)
+            elif api_version == '2025-10-01-preview':
+                self._validate_preview_translate_query_string(query_dict)
+                self._validate_preview_translate_body()
+            else:
+                self._send_error(400, 21, 'The API version parameter is missing or invalid.')
+                return
+
+        else:
+            self._validate_query_string(url_parts.query, is_translate=False)
+            max_chars = TranslationClient.DETECT_MAX_CHARS
+            self._validate_body(max_chars)
 
         self.send_response(200)
         self.end_headers()
         with self.server.get_results_path().open('rb') as f:
             shutil.copyfileobj(f, self.wfile)
-
 
     def _validate_headers(self) -> None:
         if self.headers['Ocp-Apim-Subscription-Key'] != 'test_key':
@@ -1156,7 +1474,6 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
                 if from_lang[0] == 'si':
                     self._send_error(400, 35, 'The source language is not valid.')
 
-
     def _validate_body(self, max_chars) -> None:
         content_len = int(self.headers['Content-Length'])
         body = json.loads(self.rfile.read(content_len))
@@ -1174,6 +1491,56 @@ class MockRequestHandler(http.server.BaseHTTPRequestHandler):
                 self._send_error(429, 0, 'The server rejected the request because the client has '
                                  'exceeded request limits.')
 
+    def _validate_lang_detect_query_string(self, query_string: str) -> None:
+        query_dict = urllib.parse.parse_qs(query_string)
+        api_version = query_dict.get('api-version', [''])[0]
+        if api_version != '2025-11-15-preview':
+            self._send_error(400, 21, 'The API version parameter is missing or invalid.')
+
+    def _validate_lang_detect_body(self) -> None:
+        content_len = int(self.headers['Content-Length'])
+        raw = self.rfile.read(content_len)
+        body = json.loads(raw)
+
+        full_url = f'http://{self.server.server_name}:{self.server.server_port}{self.path}'
+        self.server.set_request_info(Request(full_url, body))
+
+        if body.get('kind') != 'LanguageDetection':
+            self._send_error(430, 0, 'Language detection request "kind" must be "LanguageDetection".')
+
+        docs = body.get('analysisInput', {}).get('documents', [])
+        if not docs:
+            self._send_error(430, 0, 'Language detection request missing "documents".')
+
+        first_doc = docs[0]
+        if not first_doc.get('text'):
+            self._send_error(430, 0, 'Language detection request did not contain text.')
+
+
+    def _validate_preview_translate_query_string(self, query_dict) -> None:
+        api_version = query_dict.get('api-version', [''])[0]
+        if api_version != '2025-10-01-preview':
+            self._send_error(400, 21, 'The API version parameter is missing or invalid.')
+
+    def _validate_preview_translate_body(self) -> None:
+        content_len = int(self.headers['Content-Length'])
+        raw = self.rfile.read(content_len)
+        body = json.loads(raw)
+
+        full_url = f'http://{self.server.server_name}:{self.server.server_port}{self.path}'
+        self.server.set_request_info(Request(full_url, body))
+
+        inputs = body.get('inputs', [])
+        if not inputs:
+            self._send_error(430, 0, 'Preview translate request missing "inputs".')
+
+        first = inputs[0]
+        if not first.get('text'):
+            self._send_error(430, 0, 'Preview translate request text is missing.')
+
+        targets = first.get('targets', [])
+        if not targets:
+            self._send_error(430, 0, 'Preview translate request missing "targets".')
 
     def _send_error(self, http_status, subcode, message):
         error_body = {
