@@ -538,7 +538,9 @@ class TestAcsTranslation(unittest.TestCase):
 
         text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
-        TranslationClient(get_test_properties(), self.wtp_model).add_translations(detection_props)
+        test_prop = get_test_properties()
+        test_prop['SENTENCE_MODEL'] = 'wtp-bert-mini'
+        TranslationClient(test_prop, self.wtp_model).add_translations(detection_props)
 
         self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])
@@ -566,7 +568,6 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertNotIn(' ', translation_request1,
                             'Spaces should not be added to Chinese text.')
 
-
         translation_request2 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
         self.assertTrue(translation_request2.startswith('天者，陰陽'))
@@ -575,7 +576,6 @@ class TestAcsTranslation(unittest.TestCase):
                             'Newlines were not properly removed')
         self.assertNotIn(' ', translation_request1,
                             'Spaces should not be added to Chinese text.')
-
 
         translation_request3 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
@@ -586,7 +586,6 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertNotIn(' ', translation_request3,
                             'Spaces should not be added to Chinese text.')
 
-
         translation_request4 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
         self.assertTrue(translation_request4.startswith('利而誘之，'))
@@ -596,6 +595,60 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertNotIn(' ', translation_request4,
                             'Spaces should not be added to Chinese text.')
 
+    @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
+    def test_split_sat_known_language(self, _):
+        self.set_results_file('traditional-chinese-detect-result.json')
+        self.set_results_file('split-sentence/art-of-war-translation-sat-1.json')
+        self.set_results_file('split-sentence/art-of-war-translation-sat-2.json')
+        self.set_results_file('split-sentence/art-of-war-translation-sat-3.json')
+
+        text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
+        detection_props = dict(TEXT=text)
+        TranslationClient(get_test_properties(), self.wtp_model).add_translations(detection_props)
+
+        self.assertEqual(5, len(detection_props))
+        self.assertEqual(text, detection_props['TEXT'])
+
+        expected_translation = (TEST_DATA / 'split-sentence/art-war-translation.txt') \
+            .read_text().strip()
+        self.assertEqual(expected_translation, detection_props['TRANSLATION'])
+        self.assertEqual('EN', detection_props['TRANSLATION TO LANGUAGE'])
+        self.assertEqual('zh-Hant', detection_props['TRANSLATION SOURCE LANGUAGE'])
+        self.assertAlmostEqual(1.0,
+            float(detection_props['TRANSLATION SOURCE LANGUAGE CONFIDENCE']))
+
+        detect_request_text = self.get_request_body()[0]['Text']
+        self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
+
+        expected_chunk_lengths = [142, 137, 141]
+        self.assertEqual(sum(expected_chunk_lengths), len(text.replace('\n','')))
+
+        translation_request1 = self.get_request_body()[0]['Text']
+        self.assertTrue(translation_request1.startswith('兵者，'))
+        self.assertTrue(translation_request1.endswith('官道、主用也。'))
+        self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
+        self.assertNotIn('\n', translation_request1,
+                            'Newlines were not properly removed')
+        self.assertNotIn(' ', translation_request1,
+                            'Spaces should not be added to Chinese text.')
+
+        translation_request2 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
+        self.assertTrue(translation_request2.startswith('凡此五者，將莫'))
+        self.assertTrue(translation_request2.endswith('兵者，詭道也。'))
+        self.assertNotIn('\n', translation_request1,
+                            'Newlines were not properly removed')
+        self.assertNotIn(' ', translation_request1,
+                            'Spaces should not be added to Chinese text.')
+
+        translation_request3 = self.get_request_body()[0]['Text']
+        self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
+        self.assertTrue(translation_request3.startswith('故能而示之不'))
+        self.assertTrue(translation_request3.endswith('之，勝負見矣。'))
+        self.assertNotIn('\n', translation_request3,
+                            'Newlines were not properly removed')
+        self.assertNotIn(' ', translation_request3,
+                            'Spaces should not be added to Chinese text.')
 
 
     @mock.patch.object(TranslationClient, 'DETECT_MAX_CHARS', new_callable=lambda: 150)
@@ -610,7 +663,9 @@ class TestAcsTranslation(unittest.TestCase):
 
         text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
-        TranslationClient(get_test_properties(), self.wtp_model).add_translations(detection_props)
+        test_prop = get_test_properties()
+        test_prop['SENTENCE_MODEL'] = 'wtp-bert-mini'
+        TranslationClient(test_prop, self.wtp_model).add_translations(detection_props)
 
         self.assertEqual(5, len(detection_props))
         self.assertEqual(text, detection_props['TEXT'])
@@ -676,10 +731,9 @@ class TestAcsTranslation(unittest.TestCase):
         # Check that the text splitter does not have an issue
         # processing an unknown detected language.
         self.set_results_file('invalid-lang-detect-result.json')
-        self.set_results_file('split-sentence/art-of-war-translation-1.json')
-        self.set_results_file('split-sentence/art-of-war-translation-2.json')
-        self.set_results_file('split-sentence/art-of-war-translation-3.json')
-        self.set_results_file('split-sentence/art-of-war-translation-4.json')
+        self.set_results_file('split-sentence/art-of-war-translation-sat-1.json')
+        self.set_results_file('split-sentence/art-of-war-translation-sat-2.json')
+        self.set_results_file('split-sentence/art-of-war-translation-sat-3.json')
 
         text = (TEST_DATA / 'split-sentence/art-of-war.txt').read_text()
         detection_props = dict(TEXT=text)
@@ -700,7 +754,7 @@ class TestAcsTranslation(unittest.TestCase):
         detect_request_text = self.get_request_body()[0]['Text']
         self.assertEqual(text[0:TranslationClient.DETECT_MAX_CHARS], detect_request_text)
 
-        expected_chunk_lengths = [88, 118, 116, 106]
+        expected_chunk_lengths = [145, 139, 144]
         self.assertEqual(sum(expected_chunk_lengths), len(text))
 
         # Due to an incorrect language detection, newlines are
@@ -710,7 +764,7 @@ class TestAcsTranslation(unittest.TestCase):
         translation_request1 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[0], len(translation_request1))
         self.assertTrue(translation_request1.startswith('兵者，'))
-        self.assertTrue(translation_request1.endswith('而不危也；'))
+        self.assertTrue(translation_request1.endswith('官道、 主用也。'))
         self.assertNotIn('\n', translation_request1,
                          'Newlines were not properly removed')
         self.assertIn(' ', translation_request1,
@@ -718,8 +772,8 @@ class TestAcsTranslation(unittest.TestCase):
 
         translation_request2 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
-        self.assertTrue(translation_request2.startswith('天者，陰陽'))
-        self.assertTrue(translation_request2.endswith('兵眾孰強？'))
+        self.assertTrue(translation_request2.startswith('凡此五者，將莫'))
+        self.assertTrue(translation_request2.endswith('兵者，詭道也。'))
         self.assertNotIn('\n', translation_request2,
                          'Newlines were not properly removed')
         self.assertIn(' ', translation_request2,
@@ -727,21 +781,13 @@ class TestAcsTranslation(unittest.TestCase):
 
         translation_request3 = self.get_request_body()[0]['Text']
         self.assertEqual(expected_chunk_lengths[2], len(translation_request3))
-        self.assertTrue(translation_request3.startswith('士卒孰練？'))
-        self.assertTrue(translation_request3.endswith('亂而取之， '))
+        self.assertTrue(translation_request3.startswith('故能而示之'))
+        self.assertTrue(translation_request3.endswith('觀之，勝負見矣。 '))
         self.assertNotIn('\n', translation_request3,
                          'Newlines were not properly removed')
         self.assertIn(' ', translation_request3,
                       'Spaces should be kept due to incorrect language detection.')
 
-        translation_request4 = self.get_request_body()[0]['Text']
-        self.assertEqual(expected_chunk_lengths[3], len(translation_request4))
-        self.assertTrue(translation_request4.startswith('實而備之，'))
-        self.assertTrue(translation_request4.endswith('勝負見矣。 '))
-        self.assertNotIn('\n', translation_request4,
-                         'Newlines were not properly removed')
-        self.assertIn(' ', translation_request4,
-                      'Spaces should be kept due to incorrect language detection.')
 
 
     def test_newline_removal(self):
