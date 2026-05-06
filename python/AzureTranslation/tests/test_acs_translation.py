@@ -636,9 +636,9 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(expected_chunk_lengths[1], len(translation_request2))
         self.assertTrue(translation_request2.startswith('凡此五者，將莫'))
         self.assertTrue(translation_request2.endswith('兵者，詭道也。'))
-        self.assertNotIn('\n', translation_request1,
+        self.assertNotIn('\n', translation_request2,
                             'Newlines were not properly removed')
-        self.assertNotIn(' ', translation_request1,
+        self.assertNotIn(' ', translation_request2,
                             'Spaces should not be added to Chinese text.')
 
         translation_request3 = self.get_request_body()[0]['Text']
