@@ -888,11 +888,11 @@ class TestAcsTranslation(unittest.TestCase):
 
 
     def test_newline_behavior_with_from_lang(self):
-        behavior = NewLineBehavior.get({})
+        behavior = NewLineBehavior.get(None)
         self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', 'zh-Hans'))
         self.assertEqual('My nameis John.', behavior('My name\nis John.', 'zh-Hans'))
 
-        behavior = NewLineBehavior.get({})
+        behavior = NewLineBehavior.get(None)
         self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。', 'en'))
         self.assertEqual('My name is John.', behavior('My name\nis John.', 'en'))
 
