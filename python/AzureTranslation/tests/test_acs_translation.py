@@ -43,9 +43,10 @@ import mpf_component_api as mpf
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 from nlp_text_splitter import TextSplitterModel
+from nlp_text_splitter.newline_behavior import NewLineBehavior, ChineseAndJapaneseCodePoints
+
 from acs_translation_component.acs_translation_component import (AcsTranslationComponent,
-    get_azure_char_count, TranslationClient, NewLineBehavior, ChineseAndJapaneseCodePoints,
-    AcsTranslateUrlBuilder, get_n_azure_chars)
+    get_azure_char_count, TranslationClient, AcsTranslateUrlBuilder, get_n_azure_chars)
 
 from acs_translation_component.convert_language_code import iso_to_bcp
 
@@ -66,15 +67,12 @@ class TestAcsTranslation(unittest.TestCase):
     mock_server: ClassVar['MockServer']
     wtp_model: ClassVar['TextSplitterModel']
     sat_model: ClassVar['TextSplitterModel']
-    spacy_model: ClassVar['TextSplitterModel']
 
     @classmethod
     def setUpClass(cls):
         cls.mock_server = MockServer()
         cls.wtp_model = TextSplitterModel("wtp-bert-mini", "cpu", "en")
         cls.sat_model = TextSplitterModel("sat-3l-sm", "cpu", "en")
-        cls.spacy_model = TextSplitterModel("xx_sent_ud_sm", "cpu", "en")
-
 
     @classmethod
     def tearDownClass(cls):
@@ -844,7 +842,7 @@ class TestAcsTranslation(unittest.TestCase):
 
     def test_job_prop_newline_behavior(self):
         with self.subTest('default'):
-            behavior = NewLineBehavior.get({})
+            behavior = NewLineBehavior.get(None)
             self.assertEqual('My name is John.', behavior('My name is John.', None))
             self.assertEqual('My name is John.', behavior('My name\nis John.', None))
 
@@ -852,7 +850,7 @@ class TestAcsTranslation(unittest.TestCase):
             self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('GUESS'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='GUESS'))
+            behavior = NewLineBehavior.get('GUESS')
             self.assertEqual('My name is John.', behavior('My name is John.', None))
             self.assertEqual('My name is John.', behavior('My name\nis John.', None))
 
@@ -860,7 +858,7 @@ class TestAcsTranslation(unittest.TestCase):
             self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('REMOVE'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='REMOVE'))
+            behavior = NewLineBehavior.get('REMOVE')
             self.assertEqual('My name is John.', behavior('My name is John.', None))
             self.assertEqual('My nameis John.', behavior('My name\nis John.', None))
 
@@ -868,7 +866,7 @@ class TestAcsTranslation(unittest.TestCase):
             self.assertEqual('我叫约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('SPACE'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='SPACE'))
+            behavior = NewLineBehavior.get('SPACE')
             self.assertEqual('My name is John.', behavior('My name is John.', None))
             self.assertEqual('My name is John.', behavior('My name\nis John.', None))
 
@@ -876,7 +874,7 @@ class TestAcsTranslation(unittest.TestCase):
             self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。', None))
 
         with self.subTest('NONE'):
-            behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='NONE'))
+            behavior = NewLineBehavior.get('NONE')
             self.assertEqual('My name is John.', behavior('My name is John.', None))
             self.assertEqual('My name\nis John.', behavior('My name\nis John.', None))
 
@@ -885,7 +883,7 @@ class TestAcsTranslation(unittest.TestCase):
 
         with self.subTest('INVALID'):
             with self.assertRaises(mpf.DetectionException) as cm:
-                NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='INVALID'))
+                NewLineBehavior.get('INVALID')
             self.assertEqual(mpf.DetectionError.INVALID_PROPERTY, cm.exception.error_code)
 
 
@@ -900,7 +898,7 @@ class TestAcsTranslation(unittest.TestCase):
 
 
     def test_job_prop_overrides_from_lang(self):
-        behavior = NewLineBehavior.get(dict(STRIP_NEW_LINE_BEHAVIOR='SPACE'))
+        behavior = NewLineBehavior.get('SPACE')
         self.assertEqual('我叫 约翰。', behavior('我叫\n约翰。', 'zh-Hans'))
         self.assertEqual('My name is John.', behavior('My name\nis John.', 'zh-Hans'))
 

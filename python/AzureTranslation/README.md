@@ -123,7 +123,7 @@ this model lacks support handling for Chinese punctuation.
   through sentence/text splitter. Default to 500 characters as we only need to process a
   subsection of text to determine an appropriate split. (See discussion of potential char
   lengths
-  [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters).
+  [here](https://discourse.mozilla.org/t/proposal-sentences-lenght-limit-from-14-words-to-100-characters)).
 
 - `SENTENCE_SPLITTER_MODE`: Specifies text splitting behavior, options include:
   - `DEFAULT` : Splits text into chunks based on the `SENTENCE_SPLITTER_CHAR_COUNT` limit.
