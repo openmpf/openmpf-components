@@ -44,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Certain tests are rather expensive, especially the Spanish dracula section.
 # Disabling unless we are making specific changes to the component in future tests.
-RUN_DEEP_TESTS = False
+RUN_DEEP_TESTS = True
 
 class TestNllbTranslation(unittest.TestCase):
 
@@ -559,7 +559,7 @@ satisfeitos de si.
         self.assertEqual(arz_text_translation, result_props["TRANSLATION"])
 
 
-    @unittest.skipIf(not RUN_DEEP_TESTS, "RUN_DEEP_TESTS is disabled")
+    @unittest.skipIf(not RUN_DEEP_TESTS, "RUN_DEEP_TESTS is disabled. Please set RUN_DEEP_TESTS=True to evaluate a longer text sample (Recommended once per component update).")
     def test_long_spanish(self):
         # Excerpt of Dracula (Spanish):
         dracula_long_spa ='''
