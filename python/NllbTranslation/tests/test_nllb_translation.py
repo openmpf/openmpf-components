@@ -44,7 +44,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Certain tests are rather expensive, especially the Spanish dracula section.
 # Disabling unless we are making specific changes to the component in future tests.
-RUN_DEEP_TESTS = True
+RUN_DEEP_TESTS = False
 
 class TestNllbTranslation(unittest.TestCase):
 
