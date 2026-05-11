@@ -664,7 +664,7 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
         difficult_result = component.get_detections_from_generic(difficult_job)[0]
         difficult_translation = difficult_result.detection_properties["TRANSLATION"]
 
-        difficult_target_token_count = len(self.component._tokenizer(difficult_translation)["input_ids"])
+        difficult_target_token_count = len(component._tokenizer(difficult_translation)["input_ids"])
         self.assertGreater(difficult_target_token_count, 50)
 
         # If difficult-language handling only overrides the soft limit, the output should match.

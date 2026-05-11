@@ -1002,9 +1002,6 @@ class TestAcsTranslation(unittest.TestCase):
         self.assertEqual(['en'], query_dict['to'])
 
 
-
-
-
     def test_no_translate_no_detect_when_language_ff_prop_matches(self):
         ff_loc = mpf.ImageLocation(0, 0, 10, 10, -1, dict(TEXT='Hello', DECODED_LANGUAGE='eng'))
         job = mpf.ImageJob('Test', 'test.jpg', get_test_properties(), {}, ff_loc)
