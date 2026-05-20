@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+from __future__ import annotations # Postpones annotation eval
 import os
 import json
 import logging
@@ -40,19 +41,20 @@ from google.cloud import storage
 from google.genai.errors import ClientError
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers.models.gemma4.processing_gemma4 import Gemma4Processor
+from transformers.models.gemma4.modeling_gemma4 import Gemma4ForConditionalGeneration
 
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
 class GeminiVideoSummarizationComponent:
 
-    def __init__(self, model=None, processor=None, device=None):
+    def __init__(self, model: Gemma4ForConditionalGeneration=None, processor: Gemma4Processor=None, device=None):
         self.model = model
         self.processor = processor
         self.device = device
         
         if self.model is not None:
-            assert self.tokenizer is not None, "If a model is provided, a tokenizer must also be provided."
+            assert self.processor is not None, "If a model is provided, a tokenizer must also be provided."
         if self.device is None:
             self.device = model.device # Default to cuda
         
@@ -66,7 +68,6 @@ class GeminiVideoSummarizationComponent:
     def local_get_detections_from_video(self, config: JobConfig, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Running locally...: %s', job.job_name)
         
-        fps = config.process_fps
         enable_timeline=config.enable_timeline
 
         segment_start_time = job.start_frame / float(job.media_properties['FPS'])
@@ -84,7 +85,7 @@ class GeminiVideoSummarizationComponent:
 
         while max(attempts.values()) < max_attempts:
             error= None
-            response = self._local_get_gemini_response(job, prompt, fps)
+            response = self._local_get_gemini_response(job, prompt)
             
             if '```json\n' in response and '```' in response:
                 try:
@@ -93,6 +94,7 @@ class GeminiVideoSummarizationComponent:
                     # Fallback if splitting fails unexpectedly
                     error = "Invalid response format"
                     continue
+                
             response_json, error = self._check_response(attempts, max_attempts, response)
             if error is not None:
                 continue
@@ -124,12 +126,13 @@ class GeminiVideoSummarizationComponent:
         if job.stop_frame < 0:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Job stop frame must be >= 0.')
-        tracks = []
-
-        config = JobConfig(job.job_properties, job.media_properties)
+            
+        config = JobConfig(job.job_properties, job.media_properties, model=True)
 
         if self.model is not None:
             return self.local_get_detections_from_video(config, job)
+        
+        tracks = []
             
         self.google_application_credentials = config.google_application_credentials
         self.project_id = config.project_id
@@ -436,11 +439,9 @@ class GeminiVideoSummarizationComponent:
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {e}")
         
-    def _local_get_gemini_response(self, job: mpf.VideoJob, prompt: str, fps: float) -> str:
+    def _local_get_gemini_response(self, job: mpf.VideoJob, prompt: str) -> str:
         try:
             PROMPT = prompt
-            print("####", type(self.processor), type(self.model))
-            print(prompt)
 
             # Video segment storage information
             FILE_PATH = job.data_uri
@@ -455,14 +456,19 @@ class GeminiVideoSummarizationComponent:
                     "role": "user",
                     "content": [
                         {"type": "video", "video": FILE_PATH},
-                        {"type": "text", "text": PROMPT}
+                        {"type": "text", "text": PROMPT},
+                        {"type": "metadata", "metadata": {
+                                "start_offset": f"{SEGMENT_START:.2f}s",
+                                "end_offset": f"{SEGMENT_STOP:.2f}s",
+                                "fps": VIDEO_FPS
+                        }}
                     ]
                 }
             ]
 
             # 4. Apply the template and prepare model inputs
             text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            inputs = self.processor(videos=FILE_PATH, text=text_prompt, return_tensors="pt").to(self.devices)
+            inputs = self.processor(videos=FILE_PATH, text=text_prompt, return_tensors="pt").to(self.device)
 
             with torch.no_grad():
                 output_ids = self.model.generate(**inputs, max_new_tokens=256)
@@ -483,9 +489,9 @@ class GeminiVideoSummarizationComponent:
                 raise ex
             raise
         except Exception as e:
-            logger.error(f"Error in _get_gemini_response: {e}")
+            logger.error(f"Error in _local_get_gemini_response: {e}")
             raise mpf.DetectionException(
-                f"Gemini API call failed: {e}",
+                f"{type(self.model)} failed to execute: {e}",
                 mpf.DetectionError.DETECTION_FAILED
             )
 
@@ -592,13 +598,13 @@ def _read_file(path: str) -> str:
         ) from e
 
 class JobConfig:
-    def __init__(self, job_properties: Mapping[str, str], media_properties=None):
-
+    def __init__(self, job_properties: Mapping[str, str], media_properties=None, model=False):
         self.generation_prompt_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "")
         self.enable_timeline = int(self._get_prop(job_properties, "ENABLE_TIMELINE", "1"))
+        
         if self.generation_prompt_path == "" and self.enable_timeline == 1:
             self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt.txt')
-        else:
+        elif self.generation_prompt_path == "" and self.enable_timeline == 0:
             self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt_no_tl.txt')
 
         if not os.path.exists(self.generation_prompt_path):
@@ -608,7 +614,7 @@ class JobConfig:
             )
 
         self.google_application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
-        if not os.path.exists(self.google_application_credentials):
+        if not os.path.exists(self.google_application_credentials) and not model:
             raise mpf.DetectionException(
                 "Invalid path provided for GCP credential file: ",
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE

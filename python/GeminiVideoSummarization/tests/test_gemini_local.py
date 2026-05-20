@@ -40,20 +40,12 @@ from gemini_video_summarization_component.gemini_video_summarization_component i
 import unittest
 import mpf_component_api as mpf
 from transformers import AutoProcessor, AutoModelForCausalLM
-import torch
 
 logging.basicConfig(level=logging.DEBUG)
 USE_MOCKS = True
 TEST_DATA = Path("data")
 
-# Replace with your own desired model name
-MODEL_NAME = "gemini-2.5-flash"
-
-# Replace with your own path to the Google Application Credentials JSON file
-GOOGLE_APPLICATION_CREDENTIALS="../application_default_credentials.json"
-
 job_properties=dict(
-    GOOGLE_APPLICATION_CREDENTIALS=GOOGLE_APPLICATION_CREDENTIALS,
     GENERATION_PROMPT_PATH="../gemini_video_summarization_component/data/default_prompt.txt"
 )
 
@@ -244,7 +236,7 @@ class TestGemini(unittest.TestCase):
     def test_local_model(self):
         model_id = "google/gemma-4-E2B-it"
         processor = AutoProcessor.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
+        model = AutoModelForCausalLM.from_pretrained(model_id).to("cuda:2")
         
         component = GeminiVideoSummarizationComponent(model=model, processor=processor)
 
@@ -252,7 +244,6 @@ class TestGemini(unittest.TestCase):
             {
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
-                "MODEL_NAME": MODEL_NAME
             },
             CAT_VIDEO_PROPERTIES, {})
         
