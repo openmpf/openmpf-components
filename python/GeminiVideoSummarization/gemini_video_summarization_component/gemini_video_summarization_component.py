@@ -39,11 +39,22 @@ from google.genai.types import Part
 from google.cloud import storage
 from google.genai.errors import ClientError
 
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
 class GeminiVideoSummarizationComponent:
 
-    def __init__(self):
+    def __init__(self, model=None, processor=None, device=None):
+        self.model = model
+        self.processor = processor
+        self.device = device
+        
+        if self.model is not None:
+            assert self.tokenizer is not None, "If a model is provided, a tokenizer must also be provided."
+        if self.device is None:
+            self.device = model.device # Default to cuda
         
         self.google_application_credentials = ''
         self.project_id = ''
@@ -51,6 +62,57 @@ class GeminiVideoSummarizationComponent:
         self.label_prefix = ''
         self.label_user = ''
         self.label_purpose = ''
+        
+    def local_get_detections_from_video(self, config: JobConfig, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
+        logger.info('Running locally...: %s', job.job_name)
+        
+        fps = config.process_fps
+        enable_timeline=config.enable_timeline
+
+        segment_start_time = job.start_frame / float(job.media_properties['FPS'])
+        segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
+        
+        prompt = _read_file(config.generation_prompt_path)
+
+        max_attempts = int(config.generation_max_attempts)
+        timeline_check_target_threshold = int(config.timeline_check_target_threshold)
+        
+        error = None
+        attempts = dict(
+            base=0,
+            timeline=0)
+
+        while max(attempts.values()) < max_attempts:
+            error= None
+            response = self._local_get_gemini_response(job, prompt, fps)
+            
+            if '```json\n' in response and '```' in response:
+                try:
+                    response = response.split('```json\n')[1].split('```')[0]
+                except IndexError:
+                    # Fallback if splitting fails unexpectedly
+                    error = "Invalid response format"
+                    continue
+            response_json, error = self._check_response(attempts, max_attempts, response)
+            if error is not None:
+                continue
+
+            if enable_timeline == 1:
+                event_timeline = response_json['video_event_timeline'] 
+                error = self._check_timeline(
+                    timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
+                if error is not None:
+                    continue
+
+            break
+
+        if error:
+            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to produce valid JSON file: {error}')
+            
+        tracks = self._create_tracks(job, response_json, enable_timeline)
+
+        logger.info(f"Job complete. Found {len(tracks)} tracks.")
+        return tracks
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', job.job_name)
@@ -66,6 +128,9 @@ class GeminiVideoSummarizationComponent:
 
         config = JobConfig(job.job_properties, job.media_properties)
 
+        if self.model is not None:
+            return self.local_get_detections_from_video(config, job)
+            
         self.google_application_credentials = config.google_application_credentials
         self.project_id = config.project_id
         self.bucket_name = config.bucket_name
@@ -369,7 +434,60 @@ class GeminiVideoSummarizationComponent:
         except ValueError:
             raise ValueError("Invalid timestamp format.")
         except Exception as e:
-            raise Exception(f"An unexpected error occurred: {e}") 
+            raise Exception(f"An unexpected error occurred: {e}")
+        
+    def _local_get_gemini_response(self, job: mpf.VideoJob, prompt: str, fps: float) -> str:
+        try:
+            PROMPT = prompt
+            print("####", type(self.processor), type(self.model))
+            print(prompt)
+
+            # Video segment storage information
+            FILE_PATH = job.data_uri
+            
+            # Processing metadata
+            VIDEO_FPS = float(job.media_properties['FPS'])
+            SEGMENT_START = job.start_frame / VIDEO_FPS
+            SEGMENT_STOP = job.stop_frame / VIDEO_FPS
+
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "video", "video": FILE_PATH},
+                        {"type": "text", "text": PROMPT}
+                    ]
+                }
+            ]
+
+            # 4. Apply the template and prepare model inputs
+            text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            inputs = self.processor(videos=FILE_PATH, text=text_prompt, return_tensors="pt").to(self.devices)
+
+            with torch.no_grad():
+                output_ids = self.model.generate(**inputs, max_new_tokens=256)
+                
+            generated_ids = [out[len(inp):] for inp, out in zip(inputs.input_ids, output_ids)]
+            response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+            return response
+
+        except ClientError as e:
+            if hasattr(e, 'code') and e.code == 429:
+                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
+                ex = mpf.DetectionException(
+                    "Gemini API rate limit (429 Too Many Requests)",
+                    mpf.DetectionError.DETECTION_FAILED
+                )
+                ex.rate_limit = True
+                raise ex
+            raise
+        except Exception as e:
+            logger.error(f"Error in _get_gemini_response: {e}")
+            raise mpf.DetectionException(
+                f"Gemini API call failed: {e}",
+                mpf.DetectionError.DETECTION_FAILED
+            )
 
     def _get_gemini_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
         try:
