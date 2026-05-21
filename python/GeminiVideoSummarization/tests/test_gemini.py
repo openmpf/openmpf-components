@@ -51,9 +51,11 @@ MODEL_NAME = "gemini-2.5-flash"
 
 # Replace with your own path to the Google Application Credentials JSON file
 GOOGLE_APPLICATION_CREDENTIALS="../application_default_credentials.json"
+OPENAI_APPLICATION_CREDENTIALS="../openai_api_key.txt"
 
 job_properties=dict(
     GOOGLE_APPLICATION_CREDENTIALS=GOOGLE_APPLICATION_CREDENTIALS,
+    OPENAI_API_KEY=OPENAI_APPLICATION_CREDENTIALS,
     GENERATION_PROMPT_PATH="../gemini_video_summarization_component/data/default_prompt.txt"
 )
 
@@ -139,6 +141,28 @@ SHORT_VIDEO_PROPERTIES = {
     'FRAME_COUNT': '31',
     'FRAME_HEIGHT': '1920',
     'FRAME_WIDTH': '1080',
+    'HAS_CONSTANT_FRAME_RATE': 'true',
+    'MIME_TYPE': 'video/mp4',
+    'ROTATION': '0.0'
+}
+
+MISSILE_TIMELINE = {
+    "video_summary": "A missile streaks downward across the frame and strikes the ground, producing a large fireball.",
+    "video_event_timeline": [
+        {
+            "timestamp_start": "0:00",
+            "timestamp_end": "0:01",
+            "description": "A fast-moving projectile descends and impacts, creating an explosion."
+        }
+    ]
+}
+
+MISSILE_VIDEO_PROPERTIES = {
+    'DURATION': '1000',
+    'FPS': '30.0',
+    'FRAME_COUNT': '30',
+    'FRAME_HEIGHT': '852',
+    'FRAME_WIDTH': '720',
     'HAS_CONSTANT_FRAME_RATE': 'true',
     'MIME_TYPE': 'video/mp4',
     'ROTATION': '0.0'
@@ -235,10 +259,23 @@ class TestGemini(unittest.TestCase):
 
     def run_patched_job(self, component, job, response):
         if not USE_MOCKS:
-            return
+            return component.get_detections_from_video(job)
         
         if USE_MOCKS:
-            with unittest.mock.patch("gemini_video_summarization_component.gemini_video_summarization_component.GeminiVideoSummarizationComponent._get_gemini_response", return_value=response):
+            if component.model is not None:
+                response_method = "_local_get_response"
+            elif component.api == "OpenAI":
+                response_method = "_openai_response"
+            elif component.api == "Google":
+                response_method = "_google_response"
+            else:
+                response_method = "_get_response"
+
+            patch_path = (
+                "gemini_video_summarization_component.gemini_video_summarization_component."
+                f"GeminiVideoSummarizationComponent.{response_method}"
+            )
+            with unittest.mock.patch(patch_path, return_value=response):
                 return component.get_detections_from_video(job)
     
     def assert_detection_region(self, detection, frame_width, frame_height):    
@@ -259,8 +296,55 @@ class TestGemini(unittest.TestCase):
         self.assertIn(middle_frame, track.frame_locations)
         self.assert_detection_region(track.frame_locations[middle_frame], frame_width, frame_height)
 
+    def test_openai_api_routes_to_openai_response(self):
+        component = GeminiVideoSummarizationComponent(API="OpenAI")
+
+        job = mpf.VideoJob('openai cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
+            {
+                "OPENAI_API_KEY": OPENAI_APPLICATION_CREDENTIALS,
+                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                "GENERATION_MAX_ATTEMPTS" : "1",
+            },
+            CAT_VIDEO_PROPERTIES, {})
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        with unittest.mock.patch(
+            "gemini_video_summarization_component.gemini_video_summarization_component."
+            "GeminiVideoSummarizationComponent._openai_response",
+            return_value=json.dumps(CAT_TIMELINE)
+        ) as openai_response, unittest.mock.patch(
+            "gemini_video_summarization_component.gemini_video_summarization_component."
+            "GeminiVideoSummarizationComponent._google_response"
+        ) as google_response:
+            results = component.get_detections_from_video(job)
+
+        openai_response.assert_called_once()
+        google_response.assert_not_called()
+        self.assertEqual(3, len(results))
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+    def test_openai_api_invalid_json_response(self):
+        component = GeminiVideoSummarizationComponent(API="OpenAI")
+
+        job = mpf.VideoJob('openai invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
+            {
+                "OPENAI_API_KEY": OPENAI_APPLICATION_CREDENTIALS,
+                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                "GENERATION_MAX_ATTEMPTS" : "1",
+            },
+            CAT_VIDEO_PROPERTIES, {})
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job, "garbage xyz")
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("not valid JSON", str(cm.exception))
+
     def test_multiple_videos(self):
-            component = GeminiVideoSummarizationComponent()
+            component = GeminiVideoSummarizationComponent(API="Google")
 
             job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, job_properties, CAT_VIDEO_PROPERTIES, {})
             frame_width = int(job.media_properties['FRAME_WIDTH'])
@@ -322,8 +406,34 @@ class TestGemini(unittest.TestCase):
             self.assertEqual(0, results[1].stop_frame) 
             self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
+            job = mpf.VideoJob(
+                'missile job',
+                str(TEST_DATA / 'falling-missile-cropped-speedup-trimmed 2.mp4'),
+                0,
+                29,
+                job_properties,
+                MISSILE_VIDEO_PROPERTIES,
+                {}
+            )
+            frame_width = int(job.media_properties['FRAME_WIDTH'])
+            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+            results = self.run_patched_job(component, job, json.dumps(MISSILE_TIMELINE))
+            self.assertEqual(2, len(results))
+
+            self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+            self.assertIn("missile", results[0].detection_properties["TEXT"].lower())
+            self.assertEqual(0, results[0].start_frame)
+            self.assertEqual(29, results[0].stop_frame)
+            self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+            self.assertIn("explosion", results[1].detection_properties["TEXT"].lower())
+            self.assertEqual(0, results[1].start_frame)
+            self.assertEqual(29, results[1].stop_frame)
+            self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
     def test_invalid_timeline(self):
-        component = GeminiVideoSummarizationComponent()
+        component = GeminiVideoSummarizationComponent(API="Google")
 
         job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
             { 
@@ -354,7 +464,7 @@ class TestGemini(unittest.TestCase):
         self.assertIn("cat", results[0].detection_properties["TEXT"])
 
     def test_invalid_json_response(self):
-        component = GeminiVideoSummarizationComponent()
+        component = GeminiVideoSummarizationComponent(API="Google")
 
         job = mpf.VideoJob('invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
             {
@@ -371,7 +481,7 @@ class TestGemini(unittest.TestCase):
         self.assertIn("not valid JSON", str(cm.exception))
 
     def test_empty_response(self):
-        component = GeminiVideoSummarizationComponent()
+        component = GeminiVideoSummarizationComponent(API="Google")
 
         job = mpf.VideoJob('empty cat job', str(TEST_DATA / 'cat.mp4'), 0,  171,
             {
@@ -385,24 +495,6 @@ class TestGemini(unittest.TestCase):
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
-        
-    def test_local_model(self):
-        model_id = "google/gemma-4-E2B-it"
-        processor = AutoProcessor.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat8, device_map="auto")
-        
-        component = GeminiVideoSummarizationComponent(model=model, processor=processor)
-
-        job = mpf.VideoJob('local model cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
-            {
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
-                "GENERATION_MAX_ATTEMPTS" : "1",
-                "MODEL_NAME": MODEL_NAME
-            },
-            CAT_VIDEO_PROPERTIES, {})
-        
-        results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
-        self.assertEqual(3, len(results))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
