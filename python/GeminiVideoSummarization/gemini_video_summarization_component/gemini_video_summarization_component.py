@@ -55,7 +55,7 @@ class GeminiVideoSummarizationComponent:
         
         if self.model is not None:
             assert self.processor is not None, "If a model is provided, a tokenizer must also be provided."
-        if self.device is None:
+        if self.model is not None and self.device is None:
             self.device = model.device # Default to cuda
         
         self.google_application_credentials = ''
@@ -128,9 +128,6 @@ class GeminiVideoSummarizationComponent:
                 'Job stop frame must be >= 0.')
             
         config = JobConfig(job.job_properties, job.media_properties, model=True)
-
-        if self.model is not None:
-            return self.local_get_detections_from_video(config, job)
         
         tracks = []
             
@@ -160,7 +157,10 @@ class GeminiVideoSummarizationComponent:
 
         while max(attempts.values()) < max_attempts:
             error= None
-            response = self._get_gemini_response(job, prompt, model_name, fps)
+            
+            if self.model is None: response = self._get_gemini_response(job, prompt, model_name, fps)
+            else: response = self._local_get_gemini_response(job, prompt)
+            
             logger.info(f'Gemini response received.: {response}')
             if '```json\n' in response and '```' in response:
                 try:
