@@ -42,20 +42,20 @@ import mpf_component_api as mpf
 from transformers import AutoProcessor, AutoModelForCausalLM
 import torch
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.ERROR)
 USE_MOCKS = True
 TEST_DATA = Path("data")
 
 # Replace with your own desired model name
 MODEL_NAME = "gemini-2.5-flash"
+OPENAI_MODEL_NAME = "o4-mini"
 
 # Replace with your own path to the Google Application Credentials JSON file
 GOOGLE_APPLICATION_CREDENTIALS="../application_default_credentials.json"
 OPENAI_APPLICATION_CREDENTIALS="../openai_api_key.txt"
 
 job_properties=dict(
-    GOOGLE_APPLICATION_CREDENTIALS=GOOGLE_APPLICATION_CREDENTIALS,
-    OPENAI_API_KEY=OPENAI_APPLICATION_CREDENTIALS,
+    APPLICATION_CREDENTIALS=None,
     GENERATION_PROMPT_PATH="../gemini_video_summarization_component/data/default_prompt.txt"
 )
 
@@ -301,11 +301,12 @@ class TestGemini(unittest.TestCase):
 
         job = mpf.VideoJob('openai cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
             {
-                "OPENAI_API_KEY": OPENAI_APPLICATION_CREDENTIALS,
+                "APPLICATION_CREDENTIALS": OPENAI_APPLICATION_CREDENTIALS,
+                "MODEL_NAME": OPENAI_MODEL_NAME,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
-            CAT_VIDEO_PROPERTIES, {})
+            CAT_VIDEO_PROPERTIES)
         frame_width = int(job.media_properties['FRAME_WIDTH'])
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
@@ -331,11 +332,12 @@ class TestGemini(unittest.TestCase):
 
         job = mpf.VideoJob('openai invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
             {
-                "OPENAI_API_KEY": OPENAI_APPLICATION_CREDENTIALS,
+                "APPLICATION_CREDENTIALS": OPENAI_APPLICATION_CREDENTIALS,
+                "MODEL_NAME": OPENAI_MODEL_NAME,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
-            CAT_VIDEO_PROPERTIES, {})
+            CAT_VIDEO_PROPERTIES)
 
         with self.assertRaises(mpf.DetectionException) as cm:
             self.run_patched_job(component, job, "garbage xyz")
@@ -344,104 +346,105 @@ class TestGemini(unittest.TestCase):
         self.assertIn("not valid JSON", str(cm.exception))
 
     def test_multiple_videos(self):
-            component = GeminiVideoSummarizationComponent(API="Google")
-
-            job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, job_properties, CAT_VIDEO_PROPERTIES, {})
-            frame_width = int(job.media_properties['FRAME_WIDTH'])
-            frame_height = int(job.media_properties['FRAME_HEIGHT'])
-
-
-            results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
-            self.assertEqual(3, len(results))
-            self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-            self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
-            self.assertEqual(0, results[0].start_frame)
-            self.assertEqual(171, results[0].stop_frame)
-            self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
-
-            self.assertIn("looking around.", results[1].detection_properties["TEXT"])
-            self.assertEqual(0, results[1].start_frame) # 0 * 25
-            self.assertEqual(99, results[1].stop_frame) # (4 * 25) - 1
-            self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
-
-            self.assertIn("looks back at the camera", results[2].detection_properties["TEXT"])
-            self.assertEqual(100, results[2].start_frame) # 4 * 25
-            self.assertEqual(149, results[2].stop_frame) # (6 * 25) - 1 
-            self.assert_first_middle_last_detections(results[2], frame_width, frame_height)
+        component = GeminiVideoSummarizationComponent(API="Google")
+        job_props = job_properties.copy()
+        job_props["APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
+        
+        job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, job_props, CAT_VIDEO_PROPERTIES)
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
 
-            job = mpf.VideoJob('valid dog job', str(TEST_DATA / 'dog.mp4'), 0, 153, job_properties, DOG_VIDEO_PROPERTIES, {})
-            frame_width = int(job.media_properties['FRAME_WIDTH'])
-            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
+        self.assertEqual(3, len(results))
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(171, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
-            results = self.run_patched_job(component, job, json.dumps(DOG_TIMELINE))
-            self.assertEqual(2, len(results))
+        self.assertIn("looking around.", results[1].detection_properties["TEXT"])
+        self.assertEqual(0, results[1].start_frame) # 0 * 25
+        self.assertEqual(99, results[1].stop_frame) # (4 * 25) - 1
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
-            self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-            self.assertIn("sitting by a window and looking around", results[0].detection_properties["TEXT"])
-            self.assertEqual(0, results[0].start_frame)
-            self.assertEqual(153, results[0].stop_frame)
-            self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+        self.assertIn("looks back at the camera", results[2].detection_properties["TEXT"])
+        self.assertEqual(100, results[2].start_frame) # 4 * 25
+        self.assertEqual(149, results[2].stop_frame) # (6 * 25) - 1 
+        self.assert_first_middle_last_detections(results[2], frame_width, frame_height)
 
-            self.assertIn("sitting by the window.", results[1].detection_properties["TEXT"])
-            self.assertEqual(0, results[1].start_frame) # 0 * 25
-            self.assertEqual(149, results[1].stop_frame) # (6 * 25) - 1
-            self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
-            job = mpf.VideoJob('short job', str(TEST_DATA / 'short.mp4'), 0, 0, job_properties, SHORT_VIDEO_PROPERTIES, {})
-            frame_width = int(job.media_properties['FRAME_WIDTH'])
-            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        job = mpf.VideoJob('valid dog job', str(TEST_DATA / 'dog.mp4'), 0, 153, job_props, DOG_VIDEO_PROPERTIES)
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
-            results = self.run_patched_job(component, job, json.dumps(SHORT_TIMELINE))
-            self.assertEqual(2, len(results))
+        results = self.run_patched_job(component, job, json.dumps(DOG_TIMELINE))
+        self.assertEqual(2, len(results))
 
-            self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-            self.assertIn("A person is running around.", results[0].detection_properties["TEXT"])
-            self.assertEqual(0, results[0].start_frame)
-            self.assertEqual(0, results[0].stop_frame)
-            self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("sitting by a window and looking around", results[0].detection_properties["TEXT"])
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(153, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
-            self.assertIn("A person running.", results[1].detection_properties["TEXT"])
-            self.assertEqual(0, results[1].start_frame)
-            self.assertEqual(0, results[1].stop_frame) 
-            self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+        self.assertIn("sitting by the window.", results[1].detection_properties["TEXT"])
+        self.assertEqual(0, results[1].start_frame) # 0 * 25
+        self.assertEqual(149, results[1].stop_frame) # (6 * 25) - 1
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
-            job = mpf.VideoJob(
-                'missile job',
-                str(TEST_DATA / 'falling-missile-cropped-speedup-trimmed 2.mp4'),
-                0,
-                29,
-                job_properties,
-                MISSILE_VIDEO_PROPERTIES,
-                {}
-            )
-            frame_width = int(job.media_properties['FRAME_WIDTH'])
-            frame_height = int(job.media_properties['FRAME_HEIGHT'])
+        job = mpf.VideoJob('short job', str(TEST_DATA / 'short.mp4'), 0, 0, job_props, SHORT_VIDEO_PROPERTIES)
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
-            results = self.run_patched_job(component, job, json.dumps(MISSILE_TIMELINE))
-            self.assertEqual(2, len(results))
+        results = self.run_patched_job(component, job, json.dumps(SHORT_TIMELINE))
+        self.assertEqual(2, len(results))
 
-            self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
-            self.assertIn("missile", results[0].detection_properties["TEXT"].lower())
-            self.assertEqual(0, results[0].start_frame)
-            self.assertEqual(29, results[0].stop_frame)
-            self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("A person is running around.", results[0].detection_properties["TEXT"])
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(0, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
-            self.assertIn("explosion", results[1].detection_properties["TEXT"].lower())
-            self.assertEqual(0, results[1].start_frame)
-            self.assertEqual(29, results[1].stop_frame)
-            self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+        self.assertIn("A person running.", results[1].detection_properties["TEXT"])
+        self.assertEqual(0, results[1].start_frame)
+        self.assertEqual(0, results[1].stop_frame) 
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
+        job = mpf.VideoJob(
+            'missile job',
+            str(TEST_DATA / 'falling-missile-cropped-speedup-trimmed 2.mp4'),
+            0,
+            29,
+            job_properties,
+            MISSILE_VIDEO_PROPERTIES
+        )
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        results = self.run_patched_job(component, job, json.dumps(MISSILE_TIMELINE))
+        self.assertEqual(2, len(results))
+
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("missile", results[0].detection_properties["TEXT"].lower())
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(29, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+        self.assertIn("explosion", results[1].detection_properties["TEXT"].lower())
+        self.assertEqual(0, results[1].start_frame)
+        self.assertEqual(29, results[1].stop_frame)
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
     def test_invalid_timeline(self):
         component = GeminiVideoSummarizationComponent(API="Google")
 
         job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
             { 
-                "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
+                "APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             }, 
-            CAT_VIDEO_PROPERTIES, {})
+            CAT_VIDEO_PROPERTIES)
         
         with self.assertRaises(mpf.DetectionException) as cm:
              self.run_patched_job(component, job, json.dumps(INVALID_CAT_TIMELINE)) # don't care about results
@@ -457,7 +460,7 @@ class TestGemini(unittest.TestCase):
                 "GENERATION_MAX_ATTEMPTS" : "1",
                 "TIMELINE_CHECK_TARGET_THRESHOLD" : "-1"
             },
-            CAT_VIDEO_PROPERTIES, {})
+            CAT_VIDEO_PROPERTIES)
             
         results = self.run_patched_job(component, job, json.dumps(INVALID_CAT_TIMELINE))
 
@@ -468,11 +471,11 @@ class TestGemini(unittest.TestCase):
 
         job = mpf.VideoJob('invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
             {
-                "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
+                "APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
-            CAT_VIDEO_PROPERTIES, {})
+            CAT_VIDEO_PROPERTIES)
 
         with self.assertRaises(mpf.DetectionException) as cm:
             self.run_patched_job(component, job, "garbage xyz") # don't care about results
@@ -488,7 +491,7 @@ class TestGemini(unittest.TestCase):
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
-            CAT_VIDEO_PROPERTIES, {})
+            CAT_VIDEO_PROPERTIES)
 
         with self.assertRaises(mpf.DetectionException) as cm:
             self.run_patched_job(component, job, "") # don't care about results
