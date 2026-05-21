@@ -28,6 +28,8 @@ from __future__ import annotations # Postpones annotation eval
 import os
 import json
 import logging
+import base64
+import cv2
 from typing import Iterable, Mapping, Tuple, Union
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
 
@@ -100,6 +102,7 @@ class GeminiVideoSummarizationComponent:
         prompt = _read_file(config.generation_prompt_path)
 
         model_name = config.model_name
+
         max_attempts = int(config.generation_max_attempts)
         timeline_check_target_threshold = int(config.timeline_check_target_threshold)
         
@@ -447,51 +450,85 @@ class GeminiVideoSummarizationComponent:
                 mpf.DetectionError.DETECTION_FAILED
             )
             
+    def _encode_frame_as_jpeg(self, frame, quality=85):
+        success, buffer = cv2.imencode(
+            ".jpg",
+            frame,
+            [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+        )
+        if not success:
+            raise ValueError("Failed to encode video frame as JPEG.")
+
+        return base64.b64encode(buffer).decode("utf-8")
+            
     def _openai_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
-        os.environ["OPENAI_API_KEY"] = self.application_credentials
+        if not model_name:
+            raise mpf.DetectionException(
+                "MODEL_NAME must be provided for OpenAI API requests.",
+                mpf.DetectionError.INVALID_PROPERTY
+            )
+
+        api_key = _read_file(self.application_credentials).strip()
         
         # Video segment storage information
         FILE_PATH = job.data_uri
         FILE_NAME = os.path.basename(FILE_PATH)
-        STORAGE_PATH = self.user + "/" + FILE_NAME
-
+        
         VIDEO_FPS = float(job.media_properties['FPS'])
         SEGMENT_START = job.start_frame / VIDEO_FPS
         SEGMENT_STOP = job.stop_frame / VIDEO_FPS
         
         # Generate OpenAI response
-        client = OpenAI()
+        client = OpenAI(api_key=api_key)
+        reader = mpf_util.VideoCapture(job)
         
-        reader = mpf_util.VideoCaptureMixin(job)
-        
-        frames = []
+        content = [
+            {
+                "type": "text",
+                "text": (
+                    f"{prompt}\n\n"
+                    f"The following frames are sampled from video segment "
+                    f"{SEGMENT_START:.2f}s to {SEGMENT_STOP:.2f}s. "
+                    f"Frame sample FPS: {fps}. "
+                    "Frames are provided in chronological order."
+                )
+            }
+        ]
         
         while True:
+            segment_frame = reader.current_frame_position
+            timestamp_seconds = SEGMENT_START + (reader.current_time_in_millis / 1000.0)
+
             success, frame = reader.read()
             
             if not success:
                 break
             
-            frames.append(frame)
+            encoded_frame = self._encode_frame_as_jpeg(frame)
+            content.append({
+                "type": "text",
+                "text": f"Frame {segment_frame}, timestamp {timestamp_seconds:.2f}s"
+            })
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{encoded_frame}"
+                }
+            })
 
-        response = client.messages.create(
+        response = client.chat.completions.create(
             model=model_name,
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {"type": "video", "video": frames},
-                        {"type": "text", "text": prompt},
-                        {"type": "metadata", "metadata": {
-                                "start_offset": f"{SEGMENT_START:.2f}s",
-                                "end_offset": f"{SEGMENT_STOP:.2f}s",
-                                "fps": VIDEO_FPS
-                        }}
-                    ]
+                    "content": content
                 }
-            ]
+            ],
+            response_format={"type": "json_object"},
         )
-        return response.text
+        
+        print(response.choices[0].message.content)
+        return response.choices[0].message.content
         
     def _google_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.application_credentials
@@ -613,14 +650,14 @@ class JobConfig:
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
             )
 
-        self.application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
+        self.application_credentials = self._get_prop(job_properties, "APPLICATION_CREDENTIALS", "")
         if not os.path.exists(self.application_credentials) and not model:
             raise mpf.DetectionException(
                 "Invalid path provided for GCP credential file: ",
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
             )
 
-        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemini-2.5-flash")
+        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "")
         self.project_id = self._get_prop(job_properties, "PROJECT_ID", "")
         self.bucket_name = self._get_prop(job_properties, "BUCKET_NAME", "")
         self.label_prefix = self._get_prop(job_properties, "LABEL_PREFIX", "")
