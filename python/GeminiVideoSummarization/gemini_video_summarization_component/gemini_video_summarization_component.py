@@ -34,11 +34,14 @@ from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
+
 from google import genai
 from google.genai import types
 from google.genai.types import Part
 from google.cloud import storage
 from google.genai.errors import ClientError
+
+from openai import OpenAI, OpenAIError
 
 import torch
 from transformers.models.gemma4.processing_gemma4 import Gemma4Processor
@@ -48,73 +51,23 @@ logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
 class GeminiVideoSummarizationComponent:
 
-    def __init__(self, model: Gemma4ForConditionalGeneration=None, processor: Gemma4Processor=None, device=None):
+    def __init__(self, model: Gemma4ForConditionalGeneration=None, processor: Gemma4Processor=None, API="OpenAI", device=None):
         self.model = model
         self.processor = processor
         self.device = device
         
         if self.model is not None:
             assert self.processor is not None, "If a model is provided, a tokenizer must also be provided."
-        if self.device is None:
-            self.device = model.device # Default to cuda
+        if self.model is not None and self.device is None:
+            self.device = model.device
         
-        self.google_application_credentials = ''
+        self.api = API
+        self.application_credentials = ''
         self.project_id = ''
         self.bucket_name = ''
         self.label_prefix = ''
         self.label_user = ''
-        self.label_purpose = ''
-        
-    def local_get_detections_from_video(self, config: JobConfig, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
-        logger.info('Running locally...: %s', job.job_name)
-        
-        enable_timeline=config.enable_timeline
-
-        segment_start_time = job.start_frame / float(job.media_properties['FPS'])
-        segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
-        
-        prompt = _read_file(config.generation_prompt_path)
-
-        max_attempts = int(config.generation_max_attempts)
-        timeline_check_target_threshold = int(config.timeline_check_target_threshold)
-        
-        error = None
-        attempts = dict(
-            base=0,
-            timeline=0)
-
-        while max(attempts.values()) < max_attempts:
-            error= None
-            response = self._local_get_gemini_response(job, prompt)
-            
-            if '```json\n' in response and '```' in response:
-                try:
-                    response = response.split('```json\n')[1].split('```')[0]
-                except IndexError:
-                    # Fallback if splitting fails unexpectedly
-                    error = "Invalid response format"
-                    continue
-                
-            response_json, error = self._check_response(attempts, max_attempts, response)
-            if error is not None:
-                continue
-
-            if enable_timeline == 1:
-                event_timeline = response_json['video_event_timeline'] 
-                error = self._check_timeline(
-                    timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
-                if error is not None:
-                    continue
-
-            break
-
-        if error:
-            raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to produce valid JSON file: {error}')
-            
-        tracks = self._create_tracks(job, response_json, enable_timeline)
-
-        logger.info(f"Job complete. Found {len(tracks)} tracks.")
-        return tracks
+        self.label_purpose = ''  
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', job.job_name)
@@ -128,13 +81,10 @@ class GeminiVideoSummarizationComponent:
                 'Job stop frame must be >= 0.')
             
         config = JobConfig(job.job_properties, job.media_properties, model=True)
-
-        if self.model is not None:
-            return self.local_get_detections_from_video(config, job)
         
         tracks = []
             
-        self.google_application_credentials = config.google_application_credentials
+        self.application_credentials = config.application_credentials
         self.project_id = config.project_id
         self.bucket_name = config.bucket_name
         self.label_prefix = config.label_prefix
@@ -160,7 +110,9 @@ class GeminiVideoSummarizationComponent:
 
         while max(attempts.values()) < max_attempts:
             error= None
-            response = self._get_gemini_response(job, prompt, model_name, fps)
+            if self.model is None: response = self._get_response(job, prompt, model_name, fps)
+            else: response = self._local_get_response(job, prompt)
+            
             logger.info(f'Gemini response received.: {response}')
             if '```json\n' in response and '```' in response:
                 try:
@@ -439,7 +391,7 @@ class GeminiVideoSummarizationComponent:
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {e}")
         
-    def _local_get_gemini_response(self, job: mpf.VideoJob, prompt: str) -> str:
+    def _local_get_response(self, job: mpf.VideoJob, prompt: str) -> str:
         try:
             PROMPT = prompt
 
@@ -494,80 +446,127 @@ class GeminiVideoSummarizationComponent:
                 f"{type(self.model)} failed to execute: {e}",
                 mpf.DetectionError.DETECTION_FAILED
             )
+            
+    def _openai_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
+        os.environ["OPENAI_API_KEY"] = self.application_credentials
+        
+        # Video segment storage information
+        FILE_PATH = job.data_uri
+        FILE_NAME = os.path.basename(FILE_PATH)
+        STORAGE_PATH = self.user + "/" + FILE_NAME
 
-    def _get_gemini_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
-        try:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.google_application_credentials
+        VIDEO_FPS = float(job.media_properties['FPS'])
+        SEGMENT_START = job.start_frame / VIDEO_FPS
+        SEGMENT_STOP = job.stop_frame / VIDEO_FPS
+        
+        # Generate OpenAI response
+        client = OpenAI()
+        
+        reader = mpf_util.VideoCaptureMixin(job)
+        
+        frames = []
+        
+        while True:
+            success, frame = reader.read()
+            
+            if not success:
+                break
+            
+            frames.append(frame)
 
-            # GCP resources
-            USER = self.label_user
-            PURPOSE = self.label_purpose
-            LABEL_PREFIX = self.label_prefix
-            PROJECT_ID = self.project_id
-            BUCKET_NAME = self.bucket_name
+        response = client.messages.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "video", "video": frames},
+                        {"type": "text", "text": prompt},
+                        {"type": "metadata", "metadata": {
+                                "start_offset": f"{SEGMENT_START:.2f}s",
+                                "end_offset": f"{SEGMENT_STOP:.2f}s",
+                                "fps": VIDEO_FPS
+                        }}
+                    ]
+                }
+            ]
+        )
+        return response.text
+        
+    def _google_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.application_credentials
+        
+        # Video segment storage information
+        FILE_PATH = job.data_uri
+        FILE_NAME = os.path.basename(FILE_PATH)
+        STORAGE_PATH = self.label_user + "/" + FILE_NAME
 
-            PROMPT = prompt
-            MODEL = model_name
+        VIDEO_FPS = float(job.media_properties['FPS'])
+        SEGMENT_START = job.start_frame / VIDEO_FPS
+        SEGMENT_STOP = job.stop_frame / VIDEO_FPS
+        
+        # Uploads file to GCP bucket
+        client = storage.Client(project=self.project_id)
+        bucket = client.bucket(self.bucket_name)
+        blob = bucket.blob(STORAGE_PATH)
+        blob.upload_from_filename(FILE_PATH)
 
-            # Video segment storage information
-            FILE_PATH = job.data_uri
-            FILE_NAME = os.path.basename(FILE_PATH)
-            STORAGE_PATH = USER + "/" + FILE_NAME
+        file_uri = f"gs://{self.bucket_name}/{STORAGE_PATH}"
 
-            VIDEO_FPS = float(job.media_properties['FPS'])
-            SEGMENT_START = job.start_frame / VIDEO_FPS
-            SEGMENT_STOP = job.stop_frame / VIDEO_FPS
+        # Generate Gemini response
+        genai_client = genai.Client(
+            project=self.project_id,
+            location="global",
+            vertexai=True
+        )
 
-            # Uploads file to GCP bucket
-            client = storage.Client(project=PROJECT_ID)
-            bucket = client.bucket(BUCKET_NAME)
-            blob = bucket.blob(STORAGE_PATH)
-            blob.upload_from_filename(FILE_PATH)
-
-            file_uri = f"gs://{BUCKET_NAME}/{STORAGE_PATH}"
-
-            # Generate Gemini response
-            genai_client = genai.Client(
-                project=PROJECT_ID,
-                location="global",
-                vertexai=True
+        content_config = None
+        if self.label_user and self.label_prefix and self.label_purpose:
+            content_config = types.GenerateContentConfig(
+                labels={
+                    self.label_prefix + "user": self.label_user,
+                    self.label_prefix + "purpose": self.label_purpose,
+                    self.label_prefix + "modality": "video"
+                }
             )
 
-            content_config = None
-            if USER and LABEL_PREFIX and PURPOSE:
-                content_config = types.GenerateContentConfig(
-                    labels={
-                        LABEL_PREFIX + "user": USER,
-                        LABEL_PREFIX + "purpose": PURPOSE,
-                        LABEL_PREFIX + "modality": "video"
-                    }
-                )
-
-            response = genai_client.models.generate_content(
-                model=MODEL,
-                contents=types.Content(
-                    role='user',
-                    parts=[
-                        Part(
-                            file_data=types.FileData(
-                                file_uri=file_uri,
-                                mime_type='video/mp4'
-                            ),
-                            video_metadata=types.VideoMetadata(
-                                start_offset=f"{SEGMENT_START:.2f}s",
-                                end_offset=f"{SEGMENT_STOP:.2f}s",
-                                fps=fps
-                            )
+        response = genai_client.models.generate_content(
+            model=model_name,
+            contents=types.Content(
+                role='user',
+                parts=[
+                    Part(
+                        file_data=types.FileData(
+                            file_uri=file_uri,
+                            mime_type='video/mp4'
                         ),
-                        Part(
-                            text=PROMPT
+                        video_metadata=types.VideoMetadata(
+                            start_offset=f"{SEGMENT_START:.2f}s",
+                            end_offset=f"{SEGMENT_STOP:.2f}s",
+                            fps=fps
                         )
-                    ],
-                ),
-                config=content_config
-            )
-            return response.text
-
+                    ),
+                    Part(
+                        text=prompt
+                    )
+                ],
+            ),
+            config=content_config
+        )
+        return response.text
+    
+    def _get_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
+        try:
+            if self.api == "OpenAI":
+                return self._openai_response(job, prompt, model_name, fps)
+            elif self.api == "Google":
+                return self._google_response(job, prompt, model_name, fps)
+            else:
+                raise mpf.DetectionException(
+                    f"Unsupported API specified: {self.api}",
+                    mpf.DetectionError.INVALID_PROPERTY
+                )
+            
         except ClientError as e:
             if hasattr(e, 'code') and e.code == 429:
                 logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
@@ -578,10 +577,11 @@ class GeminiVideoSummarizationComponent:
                 ex.rate_limit = True
                 raise ex
             raise
+        
         except Exception as e:
-            logger.error(f"Error in _get_gemini_response: {e}")
+            logger.error(f"Error in _get_response: {e}")
             raise mpf.DetectionException(
-                f"Gemini API call failed: {e}",
+                f"{self.api} API call failed: {e}",
                 mpf.DetectionError.DETECTION_FAILED
             )
 
@@ -613,8 +613,8 @@ class JobConfig:
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
             )
 
-        self.google_application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
-        if not os.path.exists(self.google_application_credentials) and not model:
+        self.application_credentials = self._get_prop(job_properties, "GOOGLE_APPLICATION_CREDENTIALS", "")
+        if not os.path.exists(self.application_credentials) and not model:
             raise mpf.DetectionException(
                 "Invalid path provided for GCP credential file: ",
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE

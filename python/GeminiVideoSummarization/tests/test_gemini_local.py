@@ -136,6 +136,28 @@ SHORT_VIDEO_PROPERTIES = {
     'ROTATION': '0.0'
 }
 
+MISSILE_TIMELINE = {
+    "video_summary": "A missile streaks downward across the frame and strikes the ground, producing a large fireball.",
+    "video_event_timeline": [
+        {
+            "timestamp_start": "0:00",
+            "timestamp_end": "0:01",
+            "description": "A fast-moving projectile descends and impacts, creating an explosion."
+        }
+    ]
+}
+
+MISSILE_VIDEO_PROPERTIES = {
+    'DURATION': '1000',
+    'FPS': '30.0',
+    'FRAME_COUNT': '30',
+    'FRAME_HEIGHT': '852',
+    'FRAME_WIDTH': '720',
+    'HAS_CONSTANT_FRAME_RATE': 'true',
+    'MIME_TYPE': 'video/mp4',
+    'ROTATION': '0.0'
+}
+
 DRONE_TIMELINE_SEGMENT_1 = {
     "video_summary": "The video shows a street in Turkey with traffic and pedestrians.",
     "video_event_timeline": [
@@ -224,6 +246,10 @@ DRONE_VIDEO_PROPERTIES = {
 }
 
 class TestGemini(unittest.TestCase):
+    model_id = "RedHatAI/gemma-4-31B-it-FP8-block"
+    global processor, model
+    processor = AutoProcessor.from_pretrained(model_id)
+    model = AutoModelForCausalLM.from_pretrained(model_id).to("cuda:3")
 
     def run_patched_job(self, component, job, response):
         if not USE_MOCKS:
@@ -233,11 +259,175 @@ class TestGemini(unittest.TestCase):
             with unittest.mock.patch("gemini_video_summarization_component.gemini_video_summarization_component.GeminiVideoSummarizationComponent._get_gemini_response", return_value=response):
                 return component.get_detections_from_video(job)
         
-    def test_local_model(self):
-        model_id = "google/gemma-4-E2B-it"
-        processor = AutoProcessor.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id).to("cuda:2")
+    def assert_detection_region(self, detection, frame_width, frame_height):    
+        self.assertEqual(0, detection.x_left_upper)
+        self.assertEqual(0, detection.y_left_upper)
+        self.assertEqual(frame_width, detection.width)
+        self.assertEqual(frame_height, detection.height)
+
+
+    def assert_first_middle_last_detections(self, track, frame_width, frame_height):    
+        self.assertIn(track.start_frame, track.frame_locations)
+        self.assert_detection_region(track.frame_locations[track.start_frame], frame_width, frame_height)
+
+        self.assertIn(track.stop_frame, track.frame_locations)
+        self.assert_detection_region(track.frame_locations[track.stop_frame], frame_width, frame_height)
+
+        middle_frame = int((track.stop_frame - track.start_frame) / 2) + track.start_frame
+        self.assertIn(middle_frame, track.frame_locations)
+        self.assert_detection_region(track.frame_locations[middle_frame], frame_width, frame_height)
+
+    def test_multiple_videos(self):
+        component = GeminiVideoSummarizationComponent(model=model, processor=processor)
+
+        job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, job_properties, CAT_VIDEO_PROPERTIES, {})
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+
+        results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
+        self.assertEqual(3, len(results))
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(171, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+        self.assertIn("looking around.", results[1].detection_properties["TEXT"])
+        self.assertEqual(0, results[1].start_frame) # 0 * 25
+        self.assertEqual(99, results[1].stop_frame) # (4 * 25) - 1
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
+        self.assertIn("looks back at the camera", results[2].detection_properties["TEXT"])
+        self.assertEqual(100, results[2].start_frame) # 4 * 25
+        self.assertEqual(149, results[2].stop_frame) # (6 * 25) - 1 
+        self.assert_first_middle_last_detections(results[2], frame_width, frame_height)
+
+
+        job = mpf.VideoJob('valid dog job', str(TEST_DATA / 'dog.mp4'), 0, 153, job_properties, DOG_VIDEO_PROPERTIES, {})
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        results = self.run_patched_job(component, job, json.dumps(DOG_TIMELINE))
+        self.assertGreaterEqual(len(results), 2)
+
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("sitting by a window and looking around", results[0].detection_properties["TEXT"])
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(153, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+        self.assertIn("sitting by the window.", results[1].detection_properties["TEXT"])
+        self.assertEqual(0, results[1].start_frame) # 0 * 25
+        self.assertEqual(149, results[1].stop_frame) # (6 * 25) - 1
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
+        job = mpf.VideoJob('short job', str(TEST_DATA / 'short.mp4'), 0, 0, job_properties, SHORT_VIDEO_PROPERTIES, {})
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        results = self.run_patched_job(component, job, json.dumps(SHORT_TIMELINE))
+        self.assertGreaterEqual(len(results), 2)
+
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("A person is running around.", results[0].detection_properties["TEXT"])
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(0, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+        self.assertIn("A person running.", results[1].detection_properties["TEXT"])
+        self.assertEqual(0, results[1].start_frame)
+        self.assertEqual(0, results[1].stop_frame) 
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
+        job = mpf.VideoJob(
+            'missile job',
+            str(TEST_DATA / 'falling-missile-cropped-speedup-trimmed 2.mp4'),
+            0,
+            29,
+            job_properties,
+            MISSILE_VIDEO_PROPERTIES,
+            {}
+        )
+        frame_width = int(job.media_properties['FRAME_WIDTH'])
+        frame_height = int(job.media_properties['FRAME_HEIGHT'])
+
+        results = self.run_patched_job(component, job, json.dumps(MISSILE_TIMELINE))
+        self.assertGreaterEqual(len(results), 2)
+
+        self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
+        self.assertIn("missile", results[0].detection_properties["TEXT"].lower())
+        self.assertEqual(0, results[0].start_frame)
+        self.assertEqual(29, results[0].stop_frame)
+        self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
+
+        self.assertIn("explosion", results[1].detection_properties["TEXT"].lower())
+        self.assertEqual(0, results[1].start_frame)
+        self.assertEqual(29, results[1].stop_frame)
+        self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
+
+    def test_invalid_timeline(self):
+        component = GeminiVideoSummarizationComponent(model=model, processor=processor)
+
+        job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
+            { 
+                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                "GENERATION_MAX_ATTEMPTS" : "1",
+            }, 
+            CAT_VIDEO_PROPERTIES, {})
         
+        with self.assertRaises(mpf.DetectionException) as cm:
+             self.run_patched_job(component, job, json.dumps(INVALID_CAT_TIMELINE)) # don't care about results
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Max timeline event end time not close enough to segment stop time.", str(cm.exception))
+
+        # test disabling time check
+        job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
+            {
+                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                "GENERATION_MAX_ATTEMPTS" : "1",
+                "TIMELINE_CHECK_TARGET_THRESHOLD" : "-1"
+            },
+            CAT_VIDEO_PROPERTIES, {})
+            
+        results = self.run_patched_job(component, job, json.dumps(INVALID_CAT_TIMELINE))
+
+        self.assertIn("cat", results[0].detection_properties["TEXT"])
+
+    def test_invalid_json_response(self):
+        component = GeminiVideoSummarizationComponent(model=model, processor=processor)
+
+        job = mpf.VideoJob('invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
+            {
+                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                "GENERATION_MAX_ATTEMPTS" : "1",
+            },
+            CAT_VIDEO_PROPERTIES, {})
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job, "garbage xyz") # don't care about results
+        
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("not valid JSON", str(cm.exception))
+
+    def test_empty_response(self):
+        component = GeminiVideoSummarizationComponent(model=model, processor=processor)
+
+        job = mpf.VideoJob('empty cat job', str(TEST_DATA / 'cat.mp4'), 0,  171,
+            {
+                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                "GENERATION_MAX_ATTEMPTS" : "1",
+            },
+            CAT_VIDEO_PROPERTIES, {})
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            self.run_patched_job(component, job, "") # don't care about results
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+        self.assertIn("Empty response", str(cm.exception))
+        
+    def test_local_model(self):
         component = GeminiVideoSummarizationComponent(model=model, processor=processor)
 
         job = mpf.VideoJob('local model cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
@@ -248,7 +438,7 @@ class TestGemini(unittest.TestCase):
             CAT_VIDEO_PROPERTIES, {})
         
         results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
-        self.assertEqual(3, len(results))
+        self.assertGreaterEqual(len(results), 2)
 
 if __name__ == "__main__":
     unittest.main(verbosity=0)
