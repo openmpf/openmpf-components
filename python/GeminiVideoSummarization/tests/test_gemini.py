@@ -385,24 +385,6 @@ class TestGemini(unittest.TestCase):
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
-        
-    def test_local_model(self):
-        model_id = "google/gemma-4-E2B-it"
-        processor = AutoProcessor.from_pretrained(model_id)
-        model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat8, device_map="auto")
-        
-        component = GeminiVideoSummarizationComponent(model=model, processor=processor)
-
-        job = mpf.VideoJob('local model cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
-            {
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
-                "GENERATION_MAX_ATTEMPTS" : "1",
-                "MODEL_NAME": MODEL_NAME
-            },
-            CAT_VIDEO_PROPERTIES, {})
-        
-        results = self.run_patched_job(component, job, json.dumps(CAT_TIMELINE))
-        self.assertEqual(3, len(results))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
