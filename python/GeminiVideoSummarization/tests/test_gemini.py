@@ -257,6 +257,58 @@ DRONE_VIDEO_PROPERTIES = {
 
 class TestGemini(unittest.TestCase):
 
+    def test_local_model_clamps_processor_num_frames_for_short_video(self):
+        response = json.dumps(MISSILE_TIMELINE)
+
+        class FakeInputs(dict):
+            def __init__(self):
+                super().__init__(input_ids=[[1, 2]])
+
+            @property
+            def input_ids(self):
+                return self["input_ids"]
+
+            def to(self, device):
+                return self
+
+        class FakeModel:
+            def generate(self, **kwargs):
+                return [[1, 2, 3]]
+
+        class FakeVideoProcessor:
+            num_frames = 32
+
+        class FakeProcessor:
+            video_processor = FakeVideoProcessor()
+
+            def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
+                return "<|video|> Summarize."
+
+            def __call__(self, **kwargs):
+                self.call_kwargs = kwargs
+                return FakeInputs()
+
+            def batch_decode(self, generated_ids, skip_special_tokens=True):
+                return [response]
+
+        processor = FakeProcessor()
+        component = GeminiVideoSummarizationComponent(
+            model=FakeModel(),
+            processor=processor,
+            device="cpu"
+        )
+        job = mpf.VideoJob(
+            "short local model job",
+            str(TEST_DATA / "falling-missile-cropped-speedup-trimmed 2.mp4"),
+            0,
+            29,
+            {},
+            MISSILE_VIDEO_PROPERTIES
+        )
+
+        self.assertEqual(response, component._local_get_response(job, "Summarize."))
+        self.assertEqual(30, processor.call_kwargs["num_frames"])
+
     def run_patched_job(self, component, job, response):
         if not USE_MOCKS:
             return component.get_detections_from_video(job)

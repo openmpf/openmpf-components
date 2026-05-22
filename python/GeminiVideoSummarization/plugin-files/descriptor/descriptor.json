@@ -119,6 +119,24 @@
                     "defaultValue": "1.0"
                 },
                 {
+                    "name": "MOTION_EMPHASIS_PERCENTILE",
+                    "description": "For local video processing, frames with motion scores at or above this percentile are duplicated to make brief high-motion events more visible to the model.",
+                    "type": "FLOAT",
+                    "defaultValue": "90.0"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_DUPLICATES",
+                    "description": "For local video processing, the number of extra copies to add for each high-motion frame and its selected neighbors.",
+                    "type": "INT",
+                    "defaultValue": "8"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_NEIGHBOR_FRAMES",
+                    "description": "For local video processing, the number of frames before and after each high-motion frame that should also be duplicated.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                },
+                {
                     "name": "ENABLE_TIMELINE",
                     "description": "When set to 1, generate a timeline of events for the video. When set to 0, does not generate a timeline.",
                     "type": "INT",

@@ -29,6 +29,7 @@ import os
 import json
 import logging
 import base64
+import tempfile
 import cv2
 from typing import Iterable, Mapping, Tuple, Union
 from tenacity import retry, wait_random_exponential, stop_after_delay, retry_if_exception
@@ -43,7 +44,7 @@ from google.genai.types import Part
 from google.cloud import storage
 from google.genai.errors import ClientError
 
-from openai import OpenAI, OpenAIError
+from openai import OpenAI
 
 import torch
 from transformers.models.gemma4.processing_gemma4 import Gemma4Processor
@@ -82,7 +83,7 @@ class GeminiVideoSummarizationComponent:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Job stop frame must be >= 0.')
             
-        config = JobConfig(job.job_properties, job.media_properties, model=True)
+        config = JobConfig(job.job_properties, job.media_properties, model=self.model is not None)
         
         tracks = []
             
@@ -117,13 +118,7 @@ class GeminiVideoSummarizationComponent:
             else: response = self._local_get_response(job, prompt)
             
             logger.info(f'Gemini response received.: {response}')
-            if '```json\n' in response and '```' in response:
-                try:
-                    response = response.split('```json\n')[1].split('```')[0]
-                except IndexError:
-                    # Fallback if splitting fails unexpectedly
-                    error = "Invalid response format"
-                    continue
+            response = self._extract_json_object(response)
             response_json, error = self._check_response(attempts, max_attempts, response)
             if error is not None:
                 continue
@@ -144,6 +139,26 @@ class GeminiVideoSummarizationComponent:
 
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
         return tracks
+
+    def _extract_json_object(self, response: str) -> str:
+        if not response:
+            return response
+
+        response = response.strip()
+        if response.startswith("```"):
+            lines = response.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            response = "\n".join(lines).strip()
+
+        json_start = response.find("{")
+        json_end = response.rfind("}")
+        if json_start != -1 and json_end != -1 and json_end > json_start:
+            return response[json_start:json_end + 1]
+
+        return response
 
     def _is_rate_limit_error(self, stderr):
         return "Caught a ResourceExhausted error (429 Too Many Requests)" in stderr
@@ -393,62 +408,203 @@ class GeminiVideoSummarizationComponent:
             raise ValueError("Invalid timestamp format.")
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {e}")
+
+    def _get_local_num_frames(self, job: mpf.VideoJob) -> Union[int, None]:
+        video_processor = getattr(self.processor, "video_processor", None)
+        requested_num_frames = getattr(video_processor, "num_frames", None)
+        try:
+            requested_num_frames = int(requested_num_frames)
+        except (TypeError, ValueError):
+            return None
+        if requested_num_frames <= 0:
+            return None
+
+        frame_limits = [requested_num_frames]
+
+        segment_frame_count = job.stop_frame - job.start_frame + 1
+        if segment_frame_count > 0:
+            frame_limits.append(segment_frame_count)
+
+        media_frame_count = self._get_media_frame_count(job)
+        if media_frame_count is not None and media_frame_count > 0:
+            frame_limits.append(media_frame_count)
+
+        return max(1, min(frame_limits))
+
+    def _get_media_frame_count(self, job: mpf.VideoJob) -> Union[int, None]:
+        frame_counts = []
+
+        try:
+            frame_count = int(float((job.media_properties or {})["FRAME_COUNT"]))
+            if frame_count > 0:
+                frame_counts.append(frame_count)
+        except (KeyError, TypeError, ValueError):
+            pass
+
+        video = cv2.VideoCapture(job.data_uri)
+        try:
+            if video.isOpened():
+                frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+                if frame_count > 0:
+                    frame_counts.append(frame_count)
+        finally:
+            video.release()
+
+        return min(frame_counts) if frame_counts else None
         
     def _local_get_response(self, job: mpf.VideoJob, prompt: str) -> str:
+        preprocessed_video = None
         try:
-            PROMPT = prompt
-
-            # Video segment storage information
-            FILE_PATH = job.data_uri
-            
             # Processing metadata
             VIDEO_FPS = float(job.media_properties['FPS'])
             SEGMENT_START = job.start_frame / VIDEO_FPS
-            SEGMENT_STOP = job.stop_frame / VIDEO_FPS
-
+            SEGMENT_STOP = (job.stop_frame + 1) / VIDEO_FPS
+            preprocessed_video = self._preprocess_video_for_model(job)
+            preprocessed_video_path = preprocessed_video['path']
+            
             messages = [
                 {
                     "role": "user",
                     "content": [
-                        {"type": "video", "video": FILE_PATH},
-                        {"type": "text", "text": PROMPT},
-                        {"type": "metadata", "metadata": {
-                                "start_offset": f"{SEGMENT_START:.2f}s",
-                                "end_offset": f"{SEGMENT_STOP:.2f}s",
-                                "fps": VIDEO_FPS
-                        }}
+                        {"type": "video", "video": preprocessed_video_path},
+                        {
+                            "type": "text",
+                            "text": (
+                                f"{prompt}\n\n"
+                                "The supplied video has been preprocessed to make brief, high-motion events easier to see. "
+                                "Frames with large motion may be duplicated, so repeated frames do not mean the event lasted longer. "
+                                f"Describe timestamps relative to the original {SEGMENT_STOP - SEGMENT_START:.2f}-second segment, "
+                                "not the preprocessed video's playback duration."
+                            )
+                        }
                     ]
                 }
             ]
-
-            # 4. Apply the template and prepare model inputs
             text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-            inputs = self.processor(videos=FILE_PATH, text=text_prompt, return_tensors="pt").to(self.device)
+            processor_kwargs = {
+                "videos": preprocessed_video_path,
+                "text": text_prompt,
+                "return_tensors": "pt"
+            }
+            local_num_frames = self._get_local_num_frames(job)
+            if local_num_frames is not None:
+                processor_kwargs["num_frames"] = local_num_frames
+
+            inputs = self.processor(**processor_kwargs).to(self.device)
 
             with torch.no_grad():
-                output_ids = self.model.generate(**inputs, max_new_tokens=256)
+                output_ids = self.model.generate(**inputs, max_new_tokens=1024)
                 
             generated_ids = [out[len(inp):] for inp, out in zip(inputs.input_ids, output_ids)]
             response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
             return response
-
-        except ClientError as e:
-            if hasattr(e, 'code') and e.code == 429:
-                logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
-                ex = mpf.DetectionException(
-                    "Gemini API rate limit (429 Too Many Requests)",
-                    mpf.DetectionError.DETECTION_FAILED
-                )
-                ex.rate_limit = True
-                raise ex
-            raise
+        
         except Exception as e:
-            logger.error(f"Error in _local_get_gemini_response: {e}")
+            logger.error(f"Error in _local_get_response: {e}")
             raise mpf.DetectionException(
                 f"{type(self.model)} failed to execute: {e}",
                 mpf.DetectionError.DETECTION_FAILED
             )
+        finally:
+            self._cleanup_preprocessed_video(preprocessed_video)
+
+    def _preprocess_video_for_model(self, job: mpf.VideoJob) -> dict:
+        reader = mpf_util.VideoCapture(job)
+        frames = []
+        gray_frames = []
+        frame_timestamps = []
+        try:
+            while True:
+                timestamp_seconds = reader.current_time_in_millis / 1000.0
+                success, frame = reader.read()
+                if not success:
+                    break
+                frames.append(frame)
+                gray_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+                frame_timestamps.append(timestamp_seconds)
+        finally:
+            reader.release()
+
+        if not frames:
+            raise ValueError('No frames were read from the video segment.')
+
+        motion_scores = [0.0]
+        for current_gray, previous_gray in zip(gray_frames[1:], gray_frames[:-1]):
+            motion_scores.append(float(cv2.absdiff(current_gray, previous_gray).mean()))
+
+        threshold = self._get_motion_emphasis_threshold(job, motion_scores)
+        duplicate_count = max(0, int(mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_DUPLICATES', 8)))
+        neighbor_frames = max(0, int(mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_NEIGHBOR_FRAMES', 1)))
+
+        high_motion_indexes = {
+            index
+            for index, score in enumerate(motion_scores)
+            if score >= threshold and score > 0
+        }
+        emphasized_indexes = set()
+        for index in high_motion_indexes:
+            start_index = max(0, index - neighbor_frames)
+            stop_index = min(len(frames) - 1, index + neighbor_frames)
+            emphasized_indexes.update(range(start_index, stop_index + 1))
+
+        output_frames = []
+        output_timestamps = []
+        for index, frame in enumerate(frames):
+            output_frames.append(frame)
+            output_timestamps.append(frame_timestamps[index])
+            if index in emphasized_indexes:
+                for _ in range(duplicate_count):
+                    output_frames.append(frame.copy())
+                    output_timestamps.append(frame_timestamps[index])
+
+        temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
+        temp_file.close()
+
+        height, width = frames[0].shape[:2]
+        fps = float(job.media_properties['FPS'])
+        writer = cv2.VideoWriter(temp_file.name, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+        try:
+            if not writer.isOpened():
+                raise ValueError(f'Unable to open video writer for {temp_file.name}.')
+            for frame in output_frames:
+                writer.write(frame)
+        finally:
+            writer.release()
+
+        logger.info(
+            'Created motion-emphasized video with %d original frames, %d output frames, threshold %.3f, emphasized frames %d.',
+            len(frames), len(output_frames), threshold, len(emphasized_indexes))
+        return {
+            'path': temp_file.name,
+            'frame_timestamps': output_timestamps,
+            'duration_seconds': len(output_frames) / fps,
+            'original_duration_seconds': (job.stop_frame - job.start_frame + 1) / fps
+        }
+
+    def _cleanup_preprocessed_video(self, preprocessed_video):
+        if not preprocessed_video:
+            return
+
+        path = preprocessed_video.get('path')
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                logger.warning('Unable to remove temporary preprocessed video: %s', path)
+
+    def _get_motion_emphasis_threshold(self, job: mpf.VideoJob, motion_scores) -> float:
+        configured_threshold = mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_THRESHOLD', '')
+        if configured_threshold != '':
+            return float(configured_threshold)
+
+        percentile = float(mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_PERCENTILE', 90.0))
+        sorted_scores = sorted(score for score in motion_scores if score > 0)
+        if not sorted_scores:
+            return float('inf')
+
+        percentile = min(100.0, max(0.0, percentile))
+        index = round((percentile / 100.0) * (len(sorted_scores) - 1))
+        return sorted_scores[index]
             
     def _encode_frame_as_jpeg(self, frame, quality=85):
         success, buffer = cv2.imencode(
@@ -468,129 +624,135 @@ class GeminiVideoSummarizationComponent:
                 mpf.DetectionError.INVALID_PROPERTY
             )
 
-        api_key = _read_file(self.application_credentials).strip()
-        
-        # Video segment storage information
-        FILE_PATH = job.data_uri
-        FILE_NAME = os.path.basename(FILE_PATH)
-        
-        VIDEO_FPS = float(job.media_properties['FPS'])
-        SEGMENT_START = job.start_frame / VIDEO_FPS
-        SEGMENT_STOP = job.stop_frame / VIDEO_FPS
-        
-        # Generate OpenAI response
-        client = OpenAI(api_key=api_key)
-        reader = mpf_util.VideoCapture(job)
-        
-        content = [
-            {
-                "type": "text",
-                "text": (
-                    f"{prompt}\n\n"
-                    f"The following frames are sampled from video segment "
-                    f"{SEGMENT_START:.2f}s to {SEGMENT_STOP:.2f}s. "
-                    f"Frame sample FPS: {fps}. "
-                    "Frames are provided in chronological order."
-                )
-            }
-        ]
-        
-        while True:
-            segment_frame = reader.current_frame_position
-            timestamp_seconds = SEGMENT_START + (reader.current_time_in_millis / 1000.0)
-
-            success, frame = reader.read()
+        preprocessed_video = None
+        video = None
+        try:
+            api_key = _read_file(self.application_credentials).strip()
+            preprocessed_video = self._preprocess_video_for_model(job)
+            frame_timestamps = preprocessed_video['frame_timestamps']
             
-            if not success:
-                break
+            # Generate OpenAI response
+            client = OpenAI(api_key=api_key)
+            video = cv2.VideoCapture(preprocessed_video['path'])
+            if not video.isOpened():
+                raise ValueError(f"Unable to open preprocessed video: {preprocessed_video['path']}")
             
-            encoded_frame = self._encode_frame_as_jpeg(frame)
-            content.append({
-                "type": "text",
-                "text": f"Frame {segment_frame}, timestamp {timestamp_seconds:.2f}s"
-            })
-            content.append({
-                "type": "image_url",
-                "image_url": {
-                    "url": f"data:image/jpeg;base64,{encoded_frame}"
-                }
-            })
-
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[
+            content = [
                 {
-                    "role": "user",
-                    "content": content
+                    "type": "text",
+                    "text": (
+                        f"{prompt}\n\n"
+                        "The following frames come from a preprocessed version of the video segment. "
+                        "Frames with large motion may be duplicated to make brief events easier to see. "
+                        "Each frame is labeled with its timestamp in the original video segment; use those labels for event times."
+                    )
                 }
-            ],
-            response_format={"type": "json_object"},
-        )
-        
-        print(response.choices[0].message.content)
-        return response.choices[0].message.content
+            ]
+
+            frame_index = 0
+            while True:
+                success, frame = video.read()
+                if not success:
+                    break
+
+                timestamp_seconds = frame_timestamps[min(frame_index, len(frame_timestamps) - 1)]
+                encoded_frame = self._encode_frame_as_jpeg(frame)
+                content.append({
+                    "type": "text",
+                    "text": f"Frame {frame_index}, original timestamp {timestamp_seconds:.2f}s"
+                })
+                content.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{encoded_frame}"
+                    }
+                })
+                frame_index += 1
+
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": content
+                    }
+                ],
+                response_format={"type": "json_object"},
+            )
+            
+            return response.choices[0].message.content
+        finally:
+            if video is not None:
+                video.release()
+            self._cleanup_preprocessed_video(preprocessed_video)
         
     def _google_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.application_credentials
-        
-        # Video segment storage information
-        FILE_PATH = job.data_uri
-        FILE_NAME = os.path.basename(FILE_PATH)
-        STORAGE_PATH = self.label_user + "/" + FILE_NAME
+        preprocessed_video = None
+        try:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.application_credentials
+            preprocessed_video = self._preprocess_video_for_model(job)
+            
+            # Video segment storage information
+            FILE_NAME = os.path.basename(preprocessed_video['path'])
+            STORAGE_PATH = self.label_user + "/" + FILE_NAME
+            
+            # Uploads file to GCP bucket
+            client = storage.Client(project=self.project_id)
+            bucket = client.bucket(self.bucket_name)
+            blob = bucket.blob(STORAGE_PATH)
+            blob.upload_from_filename(preprocessed_video['path'])
 
-        VIDEO_FPS = float(job.media_properties['FPS'])
-        SEGMENT_START = job.start_frame / VIDEO_FPS
-        SEGMENT_STOP = job.stop_frame / VIDEO_FPS
-        
-        # Uploads file to GCP bucket
-        client = storage.Client(project=self.project_id)
-        bucket = client.bucket(self.bucket_name)
-        blob = bucket.blob(STORAGE_PATH)
-        blob.upload_from_filename(FILE_PATH)
+            file_uri = f"gs://{self.bucket_name}/{STORAGE_PATH}"
 
-        file_uri = f"gs://{self.bucket_name}/{STORAGE_PATH}"
-
-        # Generate Gemini response
-        genai_client = genai.Client(
-            project=self.project_id,
-            location="global",
-            vertexai=True
-        )
-
-        content_config = None
-        if self.label_user and self.label_prefix and self.label_purpose:
-            content_config = types.GenerateContentConfig(
-                labels={
-                    self.label_prefix + "user": self.label_user,
-                    self.label_prefix + "purpose": self.label_purpose,
-                    self.label_prefix + "modality": "video"
-                }
+            # Generate Gemini response
+            genai_client = genai.Client(
+                project=self.project_id,
+                location="global",
+                vertexai=True
             )
 
-        response = genai_client.models.generate_content(
-            model=model_name,
-            contents=types.Content(
-                role='user',
-                parts=[
-                    Part(
-                        file_data=types.FileData(
-                            file_uri=file_uri,
-                            mime_type='video/mp4'
+            content_config = None
+            if self.label_user and self.label_prefix and self.label_purpose:
+                content_config = types.GenerateContentConfig(
+                    labels={
+                        self.label_prefix + "user": self.label_user,
+                        self.label_prefix + "purpose": self.label_purpose,
+                        self.label_prefix + "modality": "video"
+                    }
+                )
+
+            response = genai_client.models.generate_content(
+                model=model_name,
+                contents=types.Content(
+                    role='user',
+                    parts=[
+                        Part(
+                            file_data=types.FileData(
+                                file_uri=file_uri,
+                                mime_type='video/mp4'
+                            ),
+                            video_metadata=types.VideoMetadata(
+                                start_offset="0.00s",
+                                end_offset=f"{preprocessed_video['duration_seconds']:.2f}s",
+                                fps=fps
+                            )
                         ),
-                        video_metadata=types.VideoMetadata(
-                            start_offset=f"{SEGMENT_START:.2f}s",
-                            end_offset=f"{SEGMENT_STOP:.2f}s",
-                            fps=fps
+                        Part(
+                            text=(
+                                f"{prompt}\n\n"
+                                "The supplied video has been preprocessed to make brief, high-motion events easier to see. "
+                                "Frames with large motion may be duplicated, so repeated frames do not mean the event lasted longer. "
+                                f"Describe timestamps relative to the original {preprocessed_video['original_duration_seconds']:.2f}-second segment, "
+                                "not the preprocessed video's playback duration."
+                            )
                         )
-                    ),
-                    Part(
-                        text=prompt
-                    )
-                ],
-            ),
-            config=content_config
-        )
-        return response.text
+                    ],
+                ),
+                config=content_config
+            )
+            return response.text
+        finally:
+            self._cleanup_preprocessed_video(preprocessed_video)
     
     def _get_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
         try:
