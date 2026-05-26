@@ -50,13 +50,13 @@ try:
 
     from .llm_util.classifiers import get_classifier_lines, get_classifier_dict
     from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-    from .llm_util.input_cleanup import convert_speech_tracks_to_csv
+    from .llm_util.input_cleanup import convert_feed_forward_inputs_to_csv
 except:
     from schema import StructuredResponseClassFactory
 
     from llm_util.classifiers import get_classifier_lines, get_classifier_dict
     from llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-    from llm_util.input_cleanup import convert_speech_tracks_to_csv
+    from llm_util.input_cleanup import convert_feed_forward_inputs_to_csv
 
 class JobConfig:
     def __init__(self, props: Mapping[str, str]):
@@ -225,6 +225,32 @@ class LlmSpeechSummaryComponent:
     def __init__(self, clientFactory=None):
         self.client_factory = clientFactory
 
+    def get_detections_from_all_image_locations(self, image_job):
+        logger.info('Received feed forward image job.')
+        config = JobConfig(image_job.job_properties)
+
+        final_summary = self._get_final_summary(image_job, config)
+        summary_detection_properties = LlmSpeechSummaryComponent._get_summary_detection_properties(final_summary)
+
+        results = [
+            mpf.ImageLocation(
+                0, 0, 0, 0, -1, summary_detection_properties
+            )
+        ]
+
+        if hasattr(final_summary, 'classifiers'):
+            for classifier in final_summary.classifiers:
+                if classifier[1].confidence >= config.classifier_confidence_minimum:
+                    detection_properties = {'CLASSIFIER': classifier[0], 'REASONING': classifier[1].reasoning}
+                    results.append(
+                        mpf.ImageLocation(
+                            0, 0, 0, 0, classifier[1].confidence, detection_properties
+                        )
+                    )
+
+        logger.info(f'get_detections_from_all_image_locations generated {len(results)} detections')
+        return results
+
     def get_detections_from_all_video_tracks(self, video_job):
         logger.info('Received feed forward video job.')
         config = JobConfig(video_job.job_properties)
@@ -256,7 +282,7 @@ class LlmSpeechSummaryComponent:
                         )
                     )
 
-        logger.info(f'get_detections_from_all_video_tracks found {len(results)} detections')
+        logger.info(f'get_detections_from_all_video_tracks generated {len(results)} tracks')
         return results
 
     def get_detections_from_all_audio_tracks(self, audio_job):
@@ -288,7 +314,35 @@ class LlmSpeechSummaryComponent:
                         )
                     )
 
-        logger.info(f'get_detections_from_all_audio_tracks found {len(results)} detections')
+        logger.info(f'get_detections_from_all_audio_tracks generated {len(results)} tracks')
+        return results
+
+    def get_detections_from_all_generic_tracks(self, generic_job):
+        logger.info('Received feed forward generic job.')
+        config = JobConfig(generic_job.job_properties)
+
+        final_summary = self._get_final_summary(generic_job, config)
+        summary_detection_properties = LlmSpeechSummaryComponent._get_summary_detection_properties(final_summary)
+
+        results = [
+            mpf.GenericTrack(
+                -1,
+                summary_detection_properties
+            )
+        ]
+
+        if hasattr(final_summary, 'classifiers'):
+            for classifier in final_summary.classifiers:
+                if classifier[1].confidence >= config.classifier_confidence_minimum:
+                    detection_properties = {'CLASSIFIER': classifier[0], 'REASONING': classifier[1].reasoning}
+                    results.append(
+                        mpf.GenericTrack(
+                            classifier[1].confidence,
+                            detection_properties
+                        )
+                    )
+
+        logger.info(f'get_detections_from_all_generic_tracks generated {len(results)} tracks')
         return results
 
     def _get_final_summary(self, job, config):
@@ -301,16 +355,23 @@ class LlmSpeechSummaryComponent:
         env = Environment(loader=FileSystemLoader(os.path.dirname(config.prompt_template)))
         template = env.get_template(os.path.basename(config.prompt_template))
 
-        if job.feed_forward_tracks is None:
-            raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
+        ff_inputs = None
+        if isinstance(job, mpf.AllImageLocationsJob):
+            if not job.feed_forward_locations:
+                raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward locations')
+            ff_inputs = job.feed_forward_locations;
+        else:
+            if not job.feed_forward_tracks:
+                raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, 'Received no feed forward tracks')
+            ff_inputs = job.feed_forward_tracks;
 
         classifiers = get_classifier_dict(config.classifiers_path, config.enabled_classifiers)
         StructuredResponse = StructuredResponseClassFactory(classifiers)
 
-        input = convert_speech_tracks_to_csv(job.feed_forward_tracks)
+        csv_input = convert_feed_forward_inputs_to_csv(ff_inputs)
 
         summaries = []
-        chunks = split_csv_into_chunks(tokenizer, input, config.chunk_size, config.overlap)
+        chunks = split_csv_into_chunks(tokenizer, csv_input, config.chunk_size, config.overlap)
         nchunks = len(chunks)
         for idx, chunk in enumerate(chunks):
             logger.debug(f"chunk [{idx+1} / {nchunks}] ({round(100.0 * (idx+1) / nchunks)}%)")

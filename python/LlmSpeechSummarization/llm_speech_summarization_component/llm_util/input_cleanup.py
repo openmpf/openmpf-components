@@ -27,29 +27,35 @@
 from typing import List
 import mpf_component_api as mpf
 
-def convert_speech_tracks_to_csv(input: List[mpf.VideoTrack]|List[mpf.AudioTrack]):
+def convert_feed_forward_inputs_to_csv(
+        ff_inputs: List[mpf.ImageLocation] 
+                   | List[mpf.VideoTrack]
+                   | List[mpf.AudioTrack]
+                   | List[mpf.GenericTrack]) -> str:
     from csv import DictWriter
     import io
     buffer = io.StringIO()
     writer = DictWriter(buffer, ['speaker_id', 'gender', 'start_timestamp', 'end_timestamp', 'english_text', 'original_language'], delimiter='|')
     writer.writeheader()
-    for track in input:
+    for input in ff_inputs:
+        props = input.detection_properties
+
         text = None
-        if 'TRANSLATION' in track.detection_properties:
-            text = str(track.detection_properties['TRANSLATION'])
-        elif 'TRANSCRIPT' in  track.detection_properties:
-            text = str(track.detection_properties['TRANSCRIPT'])
+        if 'TRANSLATION' in props:
+            text = str(props['TRANSLATION'])
+        elif 'TRANSCRIPT' in props:
+            text = str(props['TRANSCRIPT'])
         else:
-            text = str(track.detection_properties['TEXT'])
+            text = str(props['TEXT'])
         # this is a slight compromise BUT spoken newlines don't exist. If it's one utterance, treat as one line.
         text = text.replace('\n', ' ')
         writer.writerow({
-            "speaker_id": track.detection_properties['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in track.detection_properties else (track.detection_properties['SPEAKER_ID'] if 'SPEAKER_ID' in track.detection_properties else None),
-            "gender": track.detection_properties['GENDER'] if 'GENDER' in track.detection_properties else None,
+            "speaker_id": props['LONG_SPEAKER_ID'] if 'LONG_SPEAKER_ID' in props else (props['SPEAKER_ID'] if 'SPEAKER_ID' in props else None),
+            "gender": props['GENDER'] if 'GENDER' in props else None,
             "start_timestamp": 0, #TODO
             "end_timestamp": 1, #TODO
             "english_text": text,
-            "original_language": track.detection_properties['DECODED_LANGUAGE'] if 'DECODED_LANGUAGE' in track.detection_properties else None,
+            "original_language": props['DECODED_LANGUAGE'] if 'DECODED_LANGUAGE' in props else None,
         })
     output = buffer.getvalue()
     del writer

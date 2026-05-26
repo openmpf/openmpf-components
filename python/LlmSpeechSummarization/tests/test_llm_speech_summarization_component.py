@@ -515,53 +515,115 @@ FakeLLM = lambda: FakeClass(chat = FakeClass(completions=FakeClass(create=lambda
                                  content=""))], object="chat.completion.chunk"), \
         ])))
 
-def run_component_test(clientFactory = None,
-                       detection_func_name = 'get_detections_from_all_video_tracks',
-                       jobType=mpf.AllVideoTracksJob,
-                       trackFactory=lambda transcript: mpf.VideoTrack(0, 1, -100, {}, { # type: ignore
-                            "DEFAULT_LANGUAGE": "eng",
-                            "LANGUAGE": "eng",
-                            "SPEAKER_ID": None,
-                            "GENDER": None,
-                            "TRANSCRIPT": transcript})):
-    component = LlmSpeechSummaryComponent(clientFactory)
-    if not hasattr(component, detection_func_name):
-        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function, {detection_func_name}')
+def get_ff_inputs(input_factory):
     input = None
     with open(str(TEST_DATA / 'test.txt')) as f:
         input = f.read()
     input = input.replace("\r\n", "\n")
+    return [
+        input_factory(x) for x in input.split('\n') if len(x) # type: ignore
+    ]
 
-    job = jobType('Test Job', '/dev/null', 0, 9000, {
-        **os.environ
-    }, {}, [
-        trackFactory(x) for x in input.split('\n') if len(x) # type: ignore
-    ])
+def run_component_test(client_factory, detection_func_name, job):
+    component = LlmSpeechSummaryComponent(client_factory)
+    if not hasattr(component, detection_func_name):
+        raise _log_exception(mpf.DetectionError.OTHER_DETECTION_ERROR_TYPE, f'LlmSpeechSummaryComponent instance has no function {detection_func_name}')
+    result = getattr(component, detection_func_name)(job)
+    
+    assert len(result) == 2
+    main_detection = result[0]
+    classifier_detection = result[1]
+    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
+    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
+    assert classifier_detection.confidence == 0.95
 
-    return getattr(component, detection_func_name)(job)
+def test_image_invocation_with_fake_client():
+    job = mpf.AllImageLocationsJob(
+        'Test Job',
+        '/dev/null',
+        {**os.environ},
+        {},
+        get_ff_inputs(
+            lambda transcript: mpf.ImageLocation(
+              1, 2, 3, 4, -1,
+              { # type: ignore
+                  "DEFAULT_LANGUAGE": "eng",
+                  "LANGUAGE": "eng",
+                  "SPEAKER_ID": None,
+                  "GENDER": None,
+                  "TRANSCRIPT": transcript
+              }
+            )
+        )
+    )
+    run_component_test(FakeLLM, 'get_detections_from_all_image_locations', job)
 
 def test_video_invocation_with_fake_client():
-    result = run_component_test(FakeLLM)
-    assert len(result) == 2
-    main_detection = result[0]
-    classifier_detection = result[1]
-    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
-    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
-    assert classifier_detection.confidence == 0.95
+    job = mpf.AllVideoTracksJob(
+        'Test Job',
+        '/dev/null',
+        0,
+        9000,
+        {**os.environ},
+        {},
+        get_ff_inputs(
+            lambda transcript: mpf.VideoTrack(
+              0, 1, -1, {},
+              { # type: ignore
+                  "DEFAULT_LANGUAGE": "eng",
+                  "LANGUAGE": "eng",
+                  "SPEAKER_ID": None,
+                  "GENDER": None,
+                  "TRANSCRIPT": transcript
+              }
+            )
+        )
+    )
+    run_component_test(FakeLLM, 'get_detections_from_all_video_tracks', job)
 
 def test_audio_invocation_with_fake_client():
-    result = run_component_test(FakeLLM, 'get_detections_from_all_audio_tracks', mpf.AllAudioTracksJob, lambda transcript: mpf.AudioTrack(0, 1, -100, { # type: ignore
-                            "DEFAULT_LANGUAGE": "eng",
-                            "LANGUAGE": "eng",
-                            "SPEAKER_ID": None,
-                            "GENDER": None,
-                            "TRANSCRIPT": transcript}))
-    assert len(result) == 2
-    main_detection = result[0]
-    classifier_detection = result[1]
-    assert main_detection.detection_properties['TEXT'] == SUMMARY_TEXT
-    assert classifier_detection.detection_properties['CLASSIFIER'] == 'Major League Baseball'
-    assert classifier_detection.confidence == 0.95
+    job = mpf.AllAudioTracksJob(
+        'Test Job',
+        '/dev/null',
+        0,
+        9000,
+        {**os.environ},
+        {},
+        get_ff_inputs(
+            lambda transcript: mpf.AudioTrack(
+              0, 1, -1,
+              { # type: ignore
+                  "DEFAULT_LANGUAGE": "eng",
+                  "LANGUAGE": "eng",
+                  "SPEAKER_ID": None,
+                  "GENDER": None,
+                  "TRANSCRIPT": transcript
+              }
+            )
+        )
+    )
+    run_component_test(FakeLLM, 'get_detections_from_all_audio_tracks', job)
+
+def test_generic_invocation_with_fake_client():
+    job = mpf.AllGenericTracksJob(
+        'Test Job',
+        '/dev/null',
+        {**os.environ},
+        {},
+        get_ff_inputs(
+            lambda transcript: mpf.GenericTrack(
+              -1,
+              { # type: ignore
+                  "DEFAULT_LANGUAGE": "eng",
+                  "LANGUAGE": "eng",
+                  "SPEAKER_ID": None,
+                  "GENDER": None,
+                  "TRANSCRIPT": transcript
+              }
+            )
+        )
+    )
+    run_component_test(FakeLLM, 'get_detections_from_all_generic_tracks', job)
 
 def test_exception_throwing():
     try:

@@ -30,4 +30,4 @@ from .schema import StructuredResponseClassFactory
 
 from .llm_util.classifiers import get_classifier_lines, get_classifier_dict
 from .llm_util.slapchop import split_csv_into_chunks, summarize_summaries, BOUNDARY_TOKEN_FOR_COUNTING
-from .llm_util.input_cleanup import convert_speech_tracks_to_csv
+from .llm_util.input_cleanup import convert_feed_forward_inputs_to_csv
