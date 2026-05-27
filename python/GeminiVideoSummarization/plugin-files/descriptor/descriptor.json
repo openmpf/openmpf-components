@@ -119,8 +119,14 @@
                     "defaultValue": "1.0"
                 },
                 {
+                    "name": "MOTION_EMPHASIS_THRESHOLD",
+                    "description": "For local video processing, duplicate frames only when their motion score is at or above this threshold. Leave empty to use MOTION_EMPHASIS_PERCENTILE instead.",
+                    "type": "FLOAT",
+                    "defaultValue": "5.0"
+                },
+                {
                     "name": "MOTION_EMPHASIS_PERCENTILE",
-                    "description": "For local video processing, frames with motion scores at or above this percentile are duplicated to make brief high-motion events more visible to the model.",
+                    "description": "For local video processing, frames with motion scores at or above this percentile are duplicated to make brief high-motion events more visible to the model. Ignored when MOTION_EMPHASIS_THRESHOLD is set.",
                     "type": "FLOAT",
                     "defaultValue": "90.0"
                 },
@@ -128,13 +134,13 @@
                     "name": "MOTION_EMPHASIS_DUPLICATES",
                     "description": "For local video processing, the number of extra copies to add for each high-motion frame and its selected neighbors.",
                     "type": "INT",
-                    "defaultValue": "8"
+                    "defaultValue": "1"
                 },
                 {
                     "name": "MOTION_EMPHASIS_NEIGHBOR_FRAMES",
                     "description": "For local video processing, the number of frames before and after each high-motion frame that should also be duplicated.",
                     "type": "INT",
-                    "defaultValue": "1"
+                    "defaultValue": "0"
                 },
                 {
                     "name": "MOTION_EMPHASIS_FAST_OBJECT_MODE",
