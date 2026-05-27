@@ -65,19 +65,19 @@ class GeminiVideoSummarizationComponent:
         self.processor = processor
         self.device = device
         self.base_url = base_url
-        
+
         if self.model is not None:
             assert self.processor is not None, "If a model is provided, a tokenizer must also be provided."
         if self.model is not None and self.device is None:
             self.device = model.device
-        
+
         self.api = API
         self.application_credentials = ''
         self.project_id = ''
         self.bucket_name = ''
         self.label_prefix = ''
         self.label_user = ''
-        self.label_purpose = ''  
+        self.label_purpose = ''
 
     def get_detections_from_video(self, job: mpf.VideoJob) -> Iterable[mpf.VideoTrack]:
         logger.info('Received video job: %s', job.job_name)
@@ -89,11 +89,11 @@ class GeminiVideoSummarizationComponent:
         if job.stop_frame < 0:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Job stop frame must be >= 0.')
-            
+
         config = JobConfig(job.job_properties, job.media_properties, model=self.model is not None)
-        
+
         tracks = []
-            
+
         self.application_credentials = config.application_credentials
         self.project_id = config.project_id
         self.bucket_name = config.bucket_name
@@ -106,14 +106,14 @@ class GeminiVideoSummarizationComponent:
 
         segment_start_time = job.start_frame / float(job.media_properties['FPS'])
         segment_stop_time = (job.stop_frame + 1) / float(job.media_properties['FPS'])
-        
+
         prompt = _read_file(config.generation_prompt_path)
 
         model_name = config.model_name
 
         max_attempts = int(config.generation_max_attempts)
         timeline_check_target_threshold = int(config.timeline_check_target_threshold)
-        
+
         error = None
         attempts = dict(
             base=0,
@@ -123,7 +123,7 @@ class GeminiVideoSummarizationComponent:
             error= None
             if self.model is None: response = self._get_response(job, prompt, model_name, fps)
             else: response = self._local_get_response(job, prompt)
-            
+
             logger.info(f'Gemini response received.: {response}')
             response = self._extract_json_object(response)
             response_json, error = self._check_response(attempts, max_attempts, response)
@@ -131,7 +131,7 @@ class GeminiVideoSummarizationComponent:
                 continue
 
             if enable_timeline == 1:
-                event_timeline = response_json['video_event_timeline'] 
+                event_timeline = response_json['video_event_timeline']
                 error = self._check_timeline(
                     timeline_check_target_threshold, attempts, max_attempts, segment_start_time, segment_stop_time, event_timeline)
                 if error is not None:
@@ -141,7 +141,7 @@ class GeminiVideoSummarizationComponent:
 
         if error:
             raise mpf.DetectionError.DETECTION_FAILED.exception(f'Failed to produce valid JSON file: {error}')
-            
+
         tracks = self._create_tracks(job, response_json, enable_timeline)
 
         logger.info(f"Job complete. Found {len(tracks)} tracks.")
@@ -188,7 +188,7 @@ class GeminiVideoSummarizationComponent:
         segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
         video_fps = float(job.media_properties['FPS'])
         segment_start_time = job.start_frame / video_fps
-        
+
         frame_width = 0
         frame_height = 0
         if 'FRAME_WIDTH' in job.media_properties:
@@ -247,8 +247,8 @@ class GeminiVideoSummarizationComponent:
                     offset_middle_frame = job.start_frame
 
                 track = mpf.VideoTrack(
-                    offset_start_frame, 
-                    offset_stop_frame, 
+                    offset_start_frame,
+                    offset_stop_frame,
                     1.0,
                     # Add start and top frame locations to prevent the Workflow Manager from dropping / truncating track.
                     # Add middle frame for artifact extraction.
@@ -261,19 +261,19 @@ class GeminiVideoSummarizationComponent:
                 )
 
                 track.frame_locations[offset_middle_frame].detection_properties["EXEMPLAR"] = "1"
-                
+
                 tracks.append(track)
 
         else: # no events timeline, create summary only
             tracks.append(self._create_segment_summary_track(job, response_json))
-            
+
         logger.info('Processing complete. Video segment %s summarized in %d tracks.' % (segment_id, len(tracks)))
         return tracks
 
     def _create_segment_summary_track(self, job: mpf.VideoJob, response_json: dict) -> mpf.VideoTrack:
         start_frame = job.start_frame
         stop_frame = job.stop_frame
-        
+
         segment_id = str(job.start_frame) + "-" + str(job.stop_frame)
         detection_properties={
             "SEGMENT ID": segment_id,
@@ -290,8 +290,8 @@ class GeminiVideoSummarizationComponent:
         middle_frame = int((stop_frame - start_frame) / 2) + start_frame
 
         track = mpf.VideoTrack(
-            start_frame, 
-            stop_frame, 
+            start_frame,
+            stop_frame,
             1.0,
             # Add start and top frame locations to prevent the Workflow Manager from dropping / truncating track.
             # Add middle frame for artifact extraction.
@@ -327,7 +327,7 @@ class GeminiVideoSummarizationComponent:
             logger.warning(f'Failed {attempts["base"] + 1} of {max_attempts} base attempts.')
             attempts['base'] += 1
             return response_json, error
-        
+
         return response_json, None
 
 
@@ -343,7 +343,7 @@ class GeminiVideoSummarizationComponent:
             logger.warning(f'Failed {attempts["timeline"] + 1} of {max_attempts} timeline attempts.')
             attempts['timeline'] += 1
             return error
-        
+
         for event in event_timeline:
 
             try:
@@ -353,7 +353,7 @@ class GeminiVideoSummarizationComponent:
                 if timestamp_start < 0:
                     error = (f'Timeline event start time of {timestamp_start} < 0.')
                     break
-            
+
                 if timestamp_end < 0:
                     error = (f'Timeline event end time of {timestamp_end} < 0.')
                     break
@@ -362,7 +362,7 @@ class GeminiVideoSummarizationComponent:
                     error = (f'Timeline event end time is less than event start time. '
                             f'{timestamp_end} < {timestamp_start}.')
                     break
-                
+
                 if threshold != -1:
 
                     if (segment_start_time - timestamp_start) > threshold:
@@ -374,11 +374,11 @@ class GeminiVideoSummarizationComponent:
                         error = (f'Timeline event end time occurs too late after segment stop time. '
                                 f'({timestamp_end} - {segment_stop_time}) > {threshold}.')
                         break
-                    
+
             except Exception as e:
                 error = (f'Timestamps could not be converted: {e}')
                 break
-        
+
         if threshold != -1:
             if not error:
                 min_event_start = min(list(map(lambda d: float(self.convert_mm_ss_to_seconds(d.get('timestamp_start'), segment_start_time)),
@@ -536,7 +536,7 @@ class GeminiVideoSummarizationComponent:
             prompt_parts.append("<|turn>model\n")
 
         return "".join(prompt_parts)
-        
+
     def _local_get_response(self, job: mpf.VideoJob, prompt: str) -> str:
         preprocessed_video = None
         try:
@@ -546,7 +546,7 @@ class GeminiVideoSummarizationComponent:
             SEGMENT_STOP = (job.stop_frame + 1) / VIDEO_FPS
             preprocessed_video = self._preprocess_video_for_model(job)
             preprocessed_video_path = preprocessed_video['path']
-            
+
             messages = [
                 {
                     "role": "user",
@@ -582,11 +582,11 @@ class GeminiVideoSummarizationComponent:
 
             with torch.no_grad():
                 output_ids = self.model.generate(**inputs, max_new_tokens=1024)
-                
+
             generated_ids = [out[len(inp):] for inp, out in zip(inputs.input_ids, output_ids)]
             response = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
             return response
-        
+
         except Exception as e:
             logger.error(f"Error in _local_get_response: {e}")
             raise mpf.DetectionException(
@@ -596,11 +596,23 @@ class GeminiVideoSummarizationComponent:
         finally:
             self._cleanup_preprocessed_video(preprocessed_video)
 
-    def _preprocess_video_for_model(self, job: mpf.VideoJob) -> dict:
+    def _get_preprocess_fps(self, job: mpf.VideoJob, source_fps: float) -> float:
+        process_fps = mpf_util.get_property(job.job_properties, 'PROCESS_FPS', source_fps)
+        try:
+            process_fps = float(process_fps)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f'PROCESS_FPS must be a positive number: {process_fps}') from error
+
+        if process_fps <= 0:
+            raise ValueError(f'PROCESS_FPS must be positive: {process_fps}')
+
+        return min(source_fps, process_fps)
+
+    def _iter_sampled_video_frames(self, job: mpf.VideoJob, target_fps: float):
         reader = mpf_util.VideoCapture(job)
-        frames = []
-        gray_frames = []
-        frame_timestamps = []
+        sample_interval_seconds = 1.0 / target_fps
+        next_sample_time = None
+        sample_index = 0
         try:
             max_frames = max(0, job.stop_frame - job.start_frame + 1)
             frames_read = 0
@@ -609,19 +621,39 @@ class GeminiVideoSummarizationComponent:
                 success, frame = reader.read()
                 if not success:
                     break
-                frames.append(frame)
-                gray_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
-                frame_timestamps.append(timestamp_seconds)
+
+                if next_sample_time is None:
+                    next_sample_time = timestamp_seconds
+
+                if timestamp_seconds + 1e-6 >= next_sample_time:
+                    yield sample_index, timestamp_seconds, frame
+                    sample_index += 1
+                    while next_sample_time <= timestamp_seconds + 1e-6:
+                        next_sample_time += sample_interval_seconds
+
                 frames_read += 1
         finally:
             reader.release()
 
-        if not frames:
-            raise ValueError('No frames were read from the video segment.')
+    def _collect_preprocessed_frames(self, job: mpf.VideoJob) -> dict:
+        source_fps = float(job.media_properties['FPS'])
+        target_fps = self._get_preprocess_fps(job, source_fps)
+        source_frame_count = max(0, job.stop_frame - job.start_frame + 1)
 
-        motion_scores = [0.0]
-        for current_gray, previous_gray in zip(gray_frames[1:], gray_frames[:-1]):
-            motion_scores.append(float(cv2.absdiff(current_gray, previous_gray).mean()))
+        sampled_frames = []
+        motion_scores = []
+        previous_gray = None
+        for _, timestamp_seconds, frame in self._iter_sampled_video_frames(job, target_fps):
+            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            if previous_gray is None:
+                motion_scores.append(0.0)
+            else:
+                motion_scores.append(float(cv2.absdiff(gray_frame, previous_gray).mean()))
+            previous_gray = gray_frame
+            sampled_frames.append((timestamp_seconds, frame))
+
+        if not sampled_frames:
+            raise ValueError('No frames were read from the video segment.')
 
         threshold = self._get_motion_emphasis_threshold(job, motion_scores)
         duplicate_count = max(0, int(mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_DUPLICATES', 8)))
@@ -633,43 +665,85 @@ class GeminiVideoSummarizationComponent:
             if score >= threshold and score > 0
         }
         emphasized_indexes = set()
+        sampled_frame_count = len(sampled_frames)
         for index in high_motion_indexes:
             start_index = max(0, index - neighbor_frames)
-            stop_index = min(len(frames) - 1, index + neighbor_frames)
+            stop_index = min(sampled_frame_count - 1, index + neighbor_frames)
             emphasized_indexes.update(range(start_index, stop_index + 1))
 
-        output_frames = []
-        output_timestamps = []
-        for index, frame in enumerate(frames):
-            output_frames.append(frame)
-            output_timestamps.append(frame_timestamps[index])
-            if index in emphasized_indexes:
-                for _ in range(duplicate_count):
-                    output_frames.append(frame.copy())
-                    output_timestamps.append(frame_timestamps[index])
+        return {
+            'sampled_frames': sampled_frames,
+            'motion_scores': motion_scores,
+            'emphasized_indexes': emphasized_indexes,
+            'duplicate_count': duplicate_count,
+            'neighbor_frames': neighbor_frames,
+            'threshold': threshold,
+            'source_fps': source_fps,
+            'target_fps': target_fps,
+            'source_frame_count': source_frame_count,
+        }
 
+    @staticmethod
+    def _iter_motion_emphasized_frames(preprocessed_frames: dict):
+        emphasized_indexes = preprocessed_frames['emphasized_indexes']
+        duplicate_count = preprocessed_frames['duplicate_count']
+
+        for sample_index, (timestamp_seconds, frame) in enumerate(preprocessed_frames['sampled_frames']):
+            yield sample_index, timestamp_seconds, frame
+            if sample_index in emphasized_indexes:
+                for _ in range(duplicate_count):
+                    yield sample_index, timestamp_seconds, frame
+
+    def _preprocess_video_for_model(self, job: mpf.VideoJob) -> dict:
+        preprocessed_frames = self._collect_preprocessed_frames(job)
         temp_file = tempfile.NamedTemporaryFile(suffix='.mp4', delete=False)
         temp_file.close()
 
-        height, width = frames[0].shape[:2]
-        fps = float(job.media_properties['FPS'])
-        writer = cv2.VideoWriter(temp_file.name, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
+        output_timestamps = []
+        writer = None
         try:
-            if not writer.isOpened():
-                raise ValueError(f'Unable to open video writer for {temp_file.name}.')
-            for frame in output_frames:
+            for _, timestamp_seconds, frame in self._iter_motion_emphasized_frames(preprocessed_frames):
+                if writer is None:
+                    height, width = frame.shape[:2]
+                    writer = cv2.VideoWriter(
+                        temp_file.name,
+                        cv2.VideoWriter_fourcc(*'mp4v'),
+                        preprocessed_frames['target_fps'],
+                        (width, height))
+                    if not writer.isOpened():
+                        raise ValueError(f'Unable to open video writer for {temp_file.name}.')
+
                 writer.write(frame)
+                output_timestamps.append(timestamp_seconds)
+        except Exception:
+            try:
+                os.remove(temp_file.name)
+            except OSError:
+                pass
+            raise
         finally:
-            writer.release()
+            if writer is not None:
+                writer.release()
+
+        if not output_timestamps:
+            try:
+                os.remove(temp_file.name)
+            except OSError:
+                pass
+            raise ValueError('No sampled frames were written to the preprocessed video.')
 
         logger.info(
-            'Created motion-emphasized video with %d original frames, %d output frames, threshold %.3f, emphasized frames %d.',
-            len(frames), len(output_frames), threshold, len(emphasized_indexes))
+            'Created motion-emphasized video with %d source frames, %d sampled frames, %d output frames, '
+            'source fps %.3f, process fps %.3f, threshold %.3f, emphasized frames %d.',
+            preprocessed_frames['source_frame_count'], len(preprocessed_frames['sampled_frames']), len(output_timestamps),
+            preprocessed_frames['source_fps'], preprocessed_frames['target_fps'], preprocessed_frames['threshold'],
+            len(preprocessed_frames['emphasized_indexes']))
         return {
             'path': temp_file.name,
             'frame_timestamps': output_timestamps,
-            'duration_seconds': len(output_frames) / fps,
-            'original_duration_seconds': (job.stop_frame - job.start_frame + 1) / fps
+            'fps': preprocessed_frames['target_fps'],
+            'duration_seconds': len(output_timestamps) / preprocessed_frames['target_fps'],
+            'original_duration_seconds': preprocessed_frames['source_frame_count'] / preprocessed_frames['source_fps']
         }
 
     def _cleanup_preprocessed_video(self, preprocessed_video):
@@ -696,7 +770,7 @@ class GeminiVideoSummarizationComponent:
         percentile = min(100.0, max(0.0, percentile))
         index = round((percentile / 100.0) * (len(sorted_scores) - 1))
         return sorted_scores[index]
-            
+
     def _encode_frame_as_jpeg(self, frame, quality=85):
         success, buffer = cv2.imencode(
             ".jpg",
@@ -707,81 +781,66 @@ class GeminiVideoSummarizationComponent:
             raise ValueError("Failed to encode video frame as JPEG.")
 
         return base64.b64encode(buffer).decode("utf-8")
-            
+
     def _openai_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
         if not model_name:
             raise mpf.DetectionException(
                 "MODEL_NAME must be provided for OpenAI API requests.",
                 mpf.DetectionError.INVALID_PROPERTY
             )
+        api_key = os.environ.get(self.application_credentials, "Empty")
 
-        preprocessed_video = None
-        video = None
-        try:
-            api_key = os.environ.get(self.application_credentials)
-            if not api_key:
-                raise mpf.DetectionException(
-                    f"Environment variable '{self.application_credentials}' is not set.",
-                    mpf.DetectionError.INVALID_PROPERTY
+        preprocessed_frames = self._collect_preprocessed_frames(job)
+        logger.info(
+            'Selected %d OpenAI frames from %d sampled frames, source fps %.3f, process fps %.3f, '
+            'threshold %.3f, emphasized frames %d.',
+            len(preprocessed_frames['sampled_frames']), len(preprocessed_frames['sampled_frames']),
+            preprocessed_frames['source_fps'], preprocessed_frames['target_fps'], preprocessed_frames['threshold'],
+            len(preprocessed_frames['emphasized_indexes']))
+
+        # Generate OpenAI response
+        client = OpenAI(api_key=api_key, base_url=self.base_url)
+        content = [
+            {
+                "type": "text",
+                "text": (
+                    f"{prompt}\n\n"
+                    "The following JPEG frames were sampled from a motion-analyzed version of the video segment. "
+                    "Frames labeled high-motion met the motion emphasis threshold. "
+                    "Each frame is labeled with its timestamp in the original video segment; use those labels for event times."
                 )
-            preprocessed_video = self._preprocess_video_for_model(job)
-            frame_timestamps = preprocessed_video['frame_timestamps']
-            
-            # Generate OpenAI response
-            client = OpenAI(api_key=api_key, base_url=self.base_url)
-            video = cv2.VideoCapture(preprocessed_video['path'])
-            if not video.isOpened():
-                raise ValueError(f"Unable to open preprocessed video: {preprocessed_video['path']}")
-            
-            content = [
-                {
-                    "type": "text",
-                    "text": (
-                        f"{prompt}\n\n"
-                        "The following frames come from a preprocessed version of the video segment. "
-                        "Frames with large motion may be duplicated to make brief events easier to see. "
-                        "Each frame is labeled with its timestamp in the original video segment; use those labels for event times."
-                    )
+            }
+        ]
+
+        emphasized_indexes = preprocessed_frames['emphasized_indexes']
+        sampled_frames = preprocessed_frames['sampled_frames']
+        for frame_index, (timestamp_seconds, frame) in enumerate(sampled_frames):
+            encoded_frame = self._encode_frame_as_jpeg(frame)
+            motion_label = ', high-motion' if frame_index in emphasized_indexes else ''
+            content.append({
+                "type": "text",
+                "text": f"Frame {frame_index}, original timestamp {timestamp_seconds:.2f}s{motion_label}"
+            })
+            content.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{encoded_frame}"
                 }
-            ]
+            })
 
-            frame_index = 0
-            while True:
-                success, frame = video.read()
-                if not success:
-                    break
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ],
+            response_format={"type": "json_object"},
+        )
 
-                timestamp_seconds = frame_timestamps[min(frame_index, len(frame_timestamps) - 1)]
-                encoded_frame = self._encode_frame_as_jpeg(frame)
-                content.append({
-                    "type": "text",
-                    "text": f"Frame {frame_index}, original timestamp {timestamp_seconds:.2f}s"
-                })
-                content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{encoded_frame}"
-                    }
-                })
-                frame_index += 1
+        return response.choices[0].message.content
 
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": content
-                    }
-                ],
-                response_format={"type": "json_object"},
-            )
-            
-            return response.choices[0].message.content
-        finally:
-            if video is not None:
-                video.release()
-            self._cleanup_preprocessed_video(preprocessed_video)
-        
     def _google_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
         preprocessed_video = None
         try:
@@ -792,11 +851,11 @@ class GeminiVideoSummarizationComponent:
                     mpf.DetectionError.INVALID_PROPERTY
                 )
             preprocessed_video = self._preprocess_video_for_model(job)
-            
+
             # Video segment storage information
             FILE_NAME = os.path.basename(preprocessed_video['path'])
             STORAGE_PATH = self.label_user + "/" + FILE_NAME
-            
+
             # Uploads file to GCP bucket
             client = storage.Client(project=self.project_id)
             bucket = client.bucket(self.bucket_name)
@@ -835,7 +894,7 @@ class GeminiVideoSummarizationComponent:
                             video_metadata=types.VideoMetadata(
                                 start_offset="0.00s",
                                 end_offset=f"{preprocessed_video['duration_seconds']:.2f}s",
-                                fps=fps
+                                fps=preprocessed_video.get('fps', fps)
                             )
                         ),
                         Part(
@@ -855,7 +914,7 @@ class GeminiVideoSummarizationComponent:
             return response.text
         finally:
             self._cleanup_preprocessed_video(preprocessed_video)
-    
+
     def _get_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
         try:
             if self.api == "OpenAI":
@@ -867,7 +926,7 @@ class GeminiVideoSummarizationComponent:
                     f"Unsupported API specified: {self.api}",
                     mpf.DetectionError.INVALID_PROPERTY
                 )
-            
+
         except ClientError as e:
             if hasattr(e, 'code') and e.code == 429:
                 logger.warning("Gemini rate limit hit (429). Retrying with backoff...")
@@ -878,7 +937,7 @@ class GeminiVideoSummarizationComponent:
                 ex.rate_limit = True
                 raise ex
             raise
-        
+
         except Exception as e:
             logger.error(f"Error in _get_response: {e}")
             raise mpf.DetectionException(
@@ -902,7 +961,7 @@ class JobConfig:
     def __init__(self, job_properties: Mapping[str, str], media_properties=None, model=False):
         self.generation_prompt_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "")
         self.enable_timeline = int(self._get_prop(job_properties, "ENABLE_TIMELINE", "1"))
-        
+
         if self.generation_prompt_path == "" and self.enable_timeline == 1:
             self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt.txt')
         elif self.generation_prompt_path == "" and self.enable_timeline == 0:
