@@ -82,11 +82,11 @@ INVALID_CAT_TIMELINE = {
 }
 
 CAT_VIDEO_PROPERTIES = {
-    'DURATION': '6890',
+    'DURATION': '6840',
     'FPS': '25',
-    'FRAME_COUNT': '172',
-    'FRAME_HEIGHT': '360',
-    'FRAME_WIDTH': '640',
+    'FRAME_COUNT': '171',
+    'FRAME_HEIGHT': '640',
+    'FRAME_WIDTH': '360',
     'HAS_CONSTANT_FRAME_RATE': 'true',
     'MIME_TYPE': 'video/mp4',
     'ROTATION': '0.0'
@@ -280,7 +280,7 @@ class TestGemini(unittest.TestCase):
     def test_multiple_videos(self):
         component = GeminiVideoSummarizationComponent(model=model, processor=processor)
 
-        job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 171, job_properties, CAT_VIDEO_PROPERTIES, {})
+        job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 170, job_properties, CAT_VIDEO_PROPERTIES, {})
         frame_width = int(job.media_properties['FRAME_WIDTH'])
         frame_height = int(job.media_properties['FRAME_HEIGHT'])
 
@@ -290,7 +290,7 @@ class TestGemini(unittest.TestCase):
         self.assertEqual('TRUE', results[0].detection_properties['SEGMENT SUMMARY'])
         self.assertIn("looking around as people walk by.", results[0].detection_properties["TEXT"])
         self.assertEqual(0, results[0].start_frame)
-        self.assertEqual(171, results[0].stop_frame)
+        self.assertEqual(170, results[0].stop_frame)
         self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
         self.assertIn("looking around.", results[1].detection_properties["TEXT"])
@@ -414,7 +414,7 @@ class TestGemini(unittest.TestCase):
     def test_empty_response(self):
         component = GeminiVideoSummarizationComponent(model=model, processor=processor)
 
-        job = mpf.VideoJob('empty cat job', str(TEST_DATA / 'cat.mp4'), 0,  171,
+        job = mpf.VideoJob('empty cat job', str(TEST_DATA / 'cat.mp4'), 0,  170,
             {
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
@@ -430,7 +430,7 @@ class TestGemini(unittest.TestCase):
     def test_local_model(self):
         component = GeminiVideoSummarizationComponent(model=model, processor=processor)
 
-        job = mpf.VideoJob('local model cat job', str(TEST_DATA / 'cat.mp4'), 0, 171,
+        job = mpf.VideoJob('local model cat job', str(TEST_DATA / 'cat.mp4'), 0, 170,
             {
                 "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",

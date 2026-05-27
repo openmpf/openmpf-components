@@ -137,6 +137,24 @@
                     "defaultValue": "1"
                 },
                 {
+                    "name": "MOTION_EMPHASIS_FAST_OBJECT_MODE",
+                    "description": "When true, adds red-boxed and zoomed copies of localized high-speed motion regions to help models see very small fast-moving objects.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_PIXEL_THRESHOLD",
+                    "description": "Pixel-difference threshold used to find localized fast-motion regions when MOTION_EMPHASIS_FAST_OBJECT_MODE is true.",
+                    "type": "INT",
+                    "defaultValue": "25"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_MIN_AREA_RATIO",
+                    "description": "Minimum changed-region area as a fraction of the frame used by fast-object motion emphasis.",
+                    "type": "FLOAT",
+                    "defaultValue": "0.00005"
+                },
+                {
                     "name": "ENABLE_TIMELINE",
                     "description": "When set to 1, generate a timeline of events for the video. When set to 0, does not generate a timeline.",
                     "type": "INT",
