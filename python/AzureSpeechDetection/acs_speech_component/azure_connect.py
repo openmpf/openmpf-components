@@ -85,7 +85,7 @@ class AzureConnection(object):
 
 
     @staticmethod
-    def _convert_case_bcp(bcp: str) -> str:
+    def convert_case_bcp(bcp: str) -> str:
         if not bcp:
             return bcp
 
@@ -118,7 +118,7 @@ class AzureConnection(object):
         expanded = set()
         for loc in locales:
             expanded.add(loc)
-            expanded.add(cls._convert_case_bcp(loc))
+            expanded.add(cls.convert_case_bcp(loc))
         return expanded
 
     @staticmethod
@@ -219,8 +219,8 @@ class AzureConnection(object):
         self.transcribe_locales = self._expand_locale_set(set(raw_transcribe))
         self.supported_locales = self.submit_locales
 
-        logger.info('Supported locales (Submit): %s', sorted(raw_submit))
-        logger.info('Supported locales (Transcribe): %s', sorted(raw_transcribe))
+        logger.debug('Supported locales (Submit): %s', sorted(raw_submit))
+        logger.debug('Supported locales (Transcribe): %s', sorted(raw_transcribe))
 
         if (self.blob_container_url != server_info.blob_container_url
                 or self.blob_service_key != server_info.blob_service_key

@@ -209,7 +209,7 @@ class AcsSpeechDetectionProcessor(object):
             )
 
         missing_models = set()
-        default_locale = AzureConnection._convert_case_bcp(job_config.language)
+        default_locale = AzureConnection.convert_case_bcp(job_config.language)
         if (lang := job_config.override_default_language) is not None:
             if lang.lower() in ISO6393_TO_BCP47:
                 for locale in ISO6393_TO_BCP47[lang.lower()]:
@@ -284,7 +284,7 @@ class AcsSpeechDetectionProcessor(object):
                     )
                     locale = default_locale
 
-        locale = AzureConnection._convert_case_bcp(locale)
+        locale = AzureConnection.convert_case_bcp(locale)
         if locale not in self.acs.supported_locales:
             raise mpf.DetectionException(
                 f"Selected locale ('{locale}') is not supported by Azure "
