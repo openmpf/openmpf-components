@@ -65,6 +65,7 @@ cmake-build-release/
 *.private
 venv
 *.mp4
+*.mov
 *.png
 *.csv
 *.zip
