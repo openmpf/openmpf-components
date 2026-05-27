@@ -52,12 +52,19 @@ from transformers.models.gemma4.modeling_gemma4 import Gemma4ForConditionalGener
 
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
+_MISSING_CHAT_TEMPLATE_ERRORS = (
+    "chat_template is not set",
+    "does not have a chat template",
+)
+
+
 class GeminiVideoSummarizationComponent:
 
-    def __init__(self, model: Gemma4ForConditionalGeneration=None, processor: Gemma4Processor=None, API="OpenAI", device=None):
+    def __init__(self, model: Gemma4ForConditionalGeneration=None, processor: Gemma4Processor=None, API="OpenAI", base_url=None, device=None):
         self.model = model
         self.processor = processor
         self.device = device
+        self.base_url = base_url
         
         if self.model is not None:
             assert self.processor is not None, "If a model is provided, a tokenizer must also be provided."
@@ -409,7 +416,11 @@ class GeminiVideoSummarizationComponent:
         except Exception as e:
             raise Exception(f"An unexpected error occurred: {e}")
 
-    def _get_local_num_frames(self, job: mpf.VideoJob) -> Union[int, None]:
+    def _get_local_num_frames(
+        self,
+        job: mpf.VideoJob,
+        available_frame_count: Union[int, None] = None
+    ) -> Union[int, None]:
         video_processor = getattr(self.processor, "video_processor", None)
         requested_num_frames = getattr(video_processor, "num_frames", None)
         try:
@@ -421,15 +432,45 @@ class GeminiVideoSummarizationComponent:
 
         frame_limits = [requested_num_frames]
 
-        segment_frame_count = job.stop_frame - job.start_frame + 1
-        if segment_frame_count > 0:
-            frame_limits.append(segment_frame_count)
+        if available_frame_count is not None:
+            try:
+                available_frame_count = int(available_frame_count)
+            except (TypeError, ValueError):
+                available_frame_count = None
+            if available_frame_count is not None and available_frame_count > 0:
+                frame_limits.append(available_frame_count)
+        else:
+            segment_frame_count = job.stop_frame - job.start_frame + 1
+            if segment_frame_count > 0:
+                frame_limits.append(segment_frame_count)
 
-        media_frame_count = self._get_media_frame_count(job)
-        if media_frame_count is not None and media_frame_count > 0:
-            frame_limits.append(media_frame_count)
+            media_frame_count = self._get_media_frame_count(job)
+            if media_frame_count is not None and media_frame_count > 0:
+                frame_limits.append(media_frame_count)
 
-        return max(1, min(frame_limits))
+        num_frames = max(1, min(frame_limits))
+        return self._avoid_torchvision_endpoint_frame_index(available_frame_count, num_frames)
+
+    @staticmethod
+    def _avoid_torchvision_endpoint_frame_index(
+        available_frame_count: Union[int, None],
+        num_frames: int
+    ) -> int:
+        if available_frame_count is None or available_frame_count <= 0:
+            return num_frames
+
+        num_frames = min(num_frames, available_frame_count)
+        while num_frames > 1:
+            indices = torch.arange(
+                0,
+                available_frame_count,
+                available_frame_count / num_frames
+            ).int()
+            if len(indices) <= num_frames and int(indices.max()) < available_frame_count:
+                return num_frames
+            num_frames -= 1
+
+        return 1
 
     def _get_media_frame_count(self, job: mpf.VideoJob) -> Union[int, None]:
         frame_counts = []
@@ -451,6 +492,50 @@ class GeminiVideoSummarizationComponent:
             video.release()
 
         return min(frame_counts) if frame_counts else None
+
+    def _apply_local_chat_template(self, messages: list) -> str:
+        try:
+            return self.processor.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True
+            )
+        except Exception as e:
+            if not any(error_text in str(e) for error_text in _MISSING_CHAT_TEMPLATE_ERRORS):
+                raise
+            logger.warning(
+                "Processor tokenizer has no chat template; using Gemma 4 local prompt fallback."
+            )
+            return self._format_gemma4_chat_prompt(messages, add_generation_prompt=True)
+
+    @staticmethod
+    def _format_gemma4_chat_prompt(messages: list, add_generation_prompt: bool = True) -> str:
+        prompt_parts = ["<bos>"]
+        for message in messages:
+            role = "model" if message.get("role") == "assistant" else message.get("role", "user")
+            prompt_parts.append(f"<|turn>{role}\n")
+
+            content = message.get("content", "")
+            if isinstance(content, str):
+                prompt_parts.append(content.strip())
+            else:
+                for item in content:
+                    content_type = item.get("type")
+                    if content_type == "text":
+                        prompt_parts.append(item.get("text", "").strip())
+                    elif content_type == "video":
+                        prompt_parts.append("\n\n<|video|>\n\n")
+                    elif content_type == "image":
+                        prompt_parts.append("\n\n<|image|>\n\n")
+                    elif content_type == "audio":
+                        prompt_parts.append("<|audio|>")
+
+            prompt_parts.append("<turn|>\n")
+
+        if add_generation_prompt:
+            prompt_parts.append("<|turn>model\n")
+
+        return "".join(prompt_parts)
         
     def _local_get_response(self, job: mpf.VideoJob, prompt: str) -> str:
         preprocessed_video = None
@@ -480,13 +565,16 @@ class GeminiVideoSummarizationComponent:
                     ]
                 }
             ]
-            text_prompt = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+            text_prompt = self._apply_local_chat_template(messages)
             processor_kwargs = {
                 "videos": preprocessed_video_path,
                 "text": text_prompt,
                 "return_tensors": "pt"
             }
-            local_num_frames = self._get_local_num_frames(job)
+            local_num_frames = self._get_local_num_frames(
+                job,
+                len(preprocessed_video.get('frame_timestamps', []))
+            )
             if local_num_frames is not None:
                 processor_kwargs["num_frames"] = local_num_frames
 
@@ -514,7 +602,9 @@ class GeminiVideoSummarizationComponent:
         gray_frames = []
         frame_timestamps = []
         try:
-            while True:
+            max_frames = max(0, job.stop_frame - job.start_frame + 1)
+            frames_read = 0
+            while frames_read < max_frames:
                 timestamp_seconds = reader.current_time_in_millis / 1000.0
                 success, frame = reader.read()
                 if not success:
@@ -522,6 +612,7 @@ class GeminiVideoSummarizationComponent:
                 frames.append(frame)
                 gray_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
                 frame_timestamps.append(timestamp_seconds)
+                frames_read += 1
         finally:
             reader.release()
 
@@ -627,12 +718,17 @@ class GeminiVideoSummarizationComponent:
         preprocessed_video = None
         video = None
         try:
-            api_key = _read_file(self.application_credentials).strip()
+            api_key = os.environ.get(self.application_credentials)
+            if not api_key:
+                raise mpf.DetectionException(
+                    f"Environment variable '{self.application_credentials}' is not set.",
+                    mpf.DetectionError.INVALID_PROPERTY
+                )
             preprocessed_video = self._preprocess_video_for_model(job)
             frame_timestamps = preprocessed_video['frame_timestamps']
             
             # Generate OpenAI response
-            client = OpenAI(api_key=api_key)
+            client = OpenAI(api_key=api_key, base_url=self.base_url)
             video = cv2.VideoCapture(preprocessed_video['path'])
             if not video.isOpened():
                 raise ValueError(f"Unable to open preprocessed video: {preprocessed_video['path']}")
@@ -690,6 +786,11 @@ class GeminiVideoSummarizationComponent:
         preprocessed_video = None
         try:
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.application_credentials
+            if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+                raise mpf.DetectionException(
+                    f"Environment variable 'GOOGLE_APPLICATION_CREDENTIALS' is not set.",
+                    mpf.DetectionError.INVALID_PROPERTY
+                )
             preprocessed_video = self._preprocess_video_for_model(job)
             
             # Video segment storage information
@@ -708,7 +809,7 @@ class GeminiVideoSummarizationComponent:
             genai_client = genai.Client(
                 project=self.project_id,
                 location="global",
-                vertexai=True
+                enterprise=True
             )
 
             content_config = None
@@ -750,6 +851,7 @@ class GeminiVideoSummarizationComponent:
                 ),
                 config=content_config
             )
+
             return response.text
         finally:
             self._cleanup_preprocessed_video(preprocessed_video)
