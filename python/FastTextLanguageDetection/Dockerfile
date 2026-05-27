@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.20
 
 #############################################################################
 # NOTICE                                                                    #
@@ -29,7 +29,7 @@
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 
-FROM ubuntu:20.04 AS download_model
+FROM ubuntu:24.04 AS download_model
 
 RUN --mount=type=tmpfs,target=/var/cache/apt \
     --mount=type=tmpfs,target=/var/lib/apt/lists  \

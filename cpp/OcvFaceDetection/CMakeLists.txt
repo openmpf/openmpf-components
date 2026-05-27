@@ -32,7 +32,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(../ComponentSetup.cmake)
 
-find_package(OpenCV 4.9.0 EXACT REQUIRED PATHS /opt/opencv-4.9.0
+find_package(OpenCV 4.13.0 EXACT REQUIRED PATHS /opt/opencv-4.13.0
     COMPONENTS opencv_highgui opencv_objdetect opencv_features2d opencv_ml opencv_flann opencv_video)
 
 find_package(mpfComponentInterface REQUIRED)
@@ -55,4 +55,3 @@ add_subdirectory(test)
 
 add_executable(sample_ocv_face_detector sample_ocv_face_detector.cpp)
 target_link_libraries(sample_ocv_face_detector mpfOcvFaceDetection)
-

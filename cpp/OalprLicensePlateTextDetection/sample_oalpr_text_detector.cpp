@@ -53,9 +53,9 @@ int main(int argc, char* argv[]) {
 
     // set up logger
     log4cxx::LoggerPtr logger = log4cxx::Logger::getLogger("logger");
-    log4cxx::SimpleLayoutPtr layout = new log4cxx::SimpleLayout();
-    log4cxx::ConsoleAppenderPtr console_appender =
-            new log4cxx::ConsoleAppender(layout);
+    log4cxx::SimpleLayoutPtr layout{new log4cxx::SimpleLayout()};
+    log4cxx::ConsoleAppenderPtr console_appender{
+            new log4cxx::ConsoleAppender(layout)};
     logger->addAppender(console_appender);
     logger->setLevel(log4cxx::Level::getDebug());
 

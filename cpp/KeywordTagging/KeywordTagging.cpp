@@ -326,7 +326,7 @@ void KeywordTagging::load_tags_json(const MPFJob &job, map<wstring, vector<pair<
 
     string plugin_path = run_dir + "/KeywordTagging";
 
-    LOG4CXX_DEBUG(hw_logger_, "Running from directory " + plugin_path)
+    LOG4CXX_DEBUG(hw_logger_, "Running from directory " + plugin_path);
 
     string jsonfile_path = DetectionComponentUtils::GetProperty<string>(job.job_properties, "TAGGING_FILE",
                                                                         "text-tags.json");
@@ -339,9 +339,9 @@ void KeywordTagging::load_tags_json(const MPFJob &job, map<wstring, vector<pair<
         jsonfile_path = plugin_path + "/config/" + jsonfile_path;
     }
 
-    LOG4CXX_DEBUG(hw_logger_, "About to read JSON from: " + jsonfile_path)
+    LOG4CXX_DEBUG(hw_logger_, "About to read JSON from: " + jsonfile_path);
     json_kvs_regex = parse_json(job, jsonfile_path);
-    LOG4CXX_DEBUG(hw_logger_, "Read JSON")
+    LOG4CXX_DEBUG(hw_logger_, "Read JSON");
 }
 
 bool is_only_ascii_whitespace(const wstring &str) {
@@ -491,7 +491,7 @@ bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &de
     for (string prop_to_process : split_props_to_process) {
         boost::trim(prop_to_process);
         if (detection_properties.find(prop_to_process) != detection_properties.end()) {
-            LOG4CXX_INFO(hw_logger_, "Performing tagging on " + prop_to_process + " property.")
+            LOG4CXX_INFO(hw_logger_, "Performing tagging on " + prop_to_process + " property.");
             text = boost::locale::conv::utf_to_utf<wchar_t>(detection_properties.at(prop_to_process));
             prop_texts[prop_to_process] = text;
             has_prop = true;
@@ -499,7 +499,7 @@ bool KeywordTagging::get_text_to_process(const MPFJob &job, const Properties &de
     }
 
     if (!has_prop) {
-        LOG4CXX_WARN(hw_logger_, "Feed forward element missing one of the following properties: " + props_to_process)
+        LOG4CXX_WARN(hw_logger_, "Feed forward element missing one of the following properties: " + props_to_process);
     }
 
     return has_prop;
@@ -519,13 +519,13 @@ void KeywordTagging::process_text_tagging(Properties &detection_properties, cons
         prop_text = it.second;
 
         LOG4CXX_DEBUG(hw_logger_, "Processing tags on " +
-                                  boost::locale::conv::utf_to_utf<char>(prop))
+                                  boost::locale::conv::utf_to_utf<char>(prop));
         LOG4CXX_DEBUG(hw_logger_, "Text is: " +
-                                  boost::locale::conv::utf_to_utf<char>(prop_text))
+                                  boost::locale::conv::utf_to_utf<char>(prop_text));
 
         if (is_only_ascii_whitespace(prop_text)) {
             LOG4CXX_WARN(hw_logger_, "No text to process for " +
-                                     boost::locale::conv::utf_to_utf<char>(prop))
+                                     boost::locale::conv::utf_to_utf<char>(prop));
             continue;
         }
         has_text = true;

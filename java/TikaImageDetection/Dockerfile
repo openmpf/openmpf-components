@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.20
+
 #############################################################################
 # NOTICE                                                                    #
 #                                                                           #
@@ -27,7 +29,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_java_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_java_component_build:${BUILD_TAG} AS build_component
 
 COPY pom.xml pom.xml
 
@@ -47,7 +49,7 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then \
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_java_executor:${BUILD_TAG} as install_component
+FROM ${BUILD_REGISTRY}openmpf_java_executor:${BUILD_TAG} AS install_component
 
 
 COPY --from=build_component /home/mpf/component_src/target/plugin-packages/TikaImageDetection/TikaImageDetection \

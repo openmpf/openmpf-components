@@ -1060,7 +1060,7 @@ vector <MPFVideoTrack> TrtisDetection::GetDetections(const MPFVideoJob &job) {
 
         // Abort now if an error occurred.
         if (eptr) {
-            LOG4CXX_ERROR(_log, "An error occurred. Aborting job.")
+            LOG4CXX_ERROR(_log, "An error occurred. Aborting job.");
             rethrow_exception(eptr);
         }
 

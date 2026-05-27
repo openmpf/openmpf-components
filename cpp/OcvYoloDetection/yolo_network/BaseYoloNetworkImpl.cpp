@@ -68,7 +68,7 @@ namespace {
 
             std::string message = "An error occurred while trying to set CUDA device: " + ex.msg;
             if (config.fallback2CpuWhenGpuProblem) {
-                LOG4CXX_WARN(log, message << ". Job will run on CPU instead.")
+                LOG4CXX_WARN(log, message << ". Job will run on CPU instead.");
                 return -1;
             } else {
                 throw MPFDetectionException(MPFDetectionError::MPF_GPU_ERROR, message);

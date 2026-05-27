@@ -47,12 +47,12 @@
 #define LOG_PREFIX ""
 #endif
 
-#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, LOG_PREFIX << MSG) }
-#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, LOG_PREFIX << MSG) }
-#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, LOG_PREFIX << MSG) }
-#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, LOG_PREFIX << MSG) }
-#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, LOG_PREFIX << MSG) }
-#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, LOG_PREFIX << MSG) }
+#define LOG_TRACE(MSG){ LOG4CXX_TRACE(Config::log, LOG_PREFIX << MSG); }
+#define LOG_DEBUG(MSG){ LOG4CXX_DEBUG(Config::log, LOG_PREFIX << MSG); }
+#define LOG_INFO(MSG){ LOG4CXX_INFO (Config::log, LOG_PREFIX << MSG); }
+#define LOG_WARN(MSG){ LOG4CXX_WARN (Config::log, LOG_PREFIX << MSG); }
+#define LOG_ERROR(MSG){ LOG4CXX_ERROR(Config::log, LOG_PREFIX << MSG); }
+#define LOG_FATAL(MSG){ LOG4CXX_FATAL(Config::log, LOG_PREFIX << MSG); }
 
 
 class Config {

@@ -24,6 +24,7 @@
  * limitations under the License.                                             *
  ******************************************************************************/
 
+#include <memory>
 #include <string>
 
 #include <log4cxx/consoleappender.h>
@@ -38,7 +39,8 @@ using namespace std;
 
 S3StorageUtil _init() {
     auto log = log4cxx::Logger::getLogger("S3StorageUtil");
-    auto appender = new log4cxx::ConsoleAppender(new log4cxx::SimpleLayout());
+    auto appender = std::make_shared<log4cxx::ConsoleAppender>(
+            std::make_shared<log4cxx::SimpleLayout>());
     log->addAppender(appender);
     log->setLevel(log4cxx::Level::getTrace());
 

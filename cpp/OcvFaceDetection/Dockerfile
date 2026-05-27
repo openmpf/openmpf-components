@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1.20
 
 #############################################################################
 # NOTICE                                                                    #
@@ -28,7 +28,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} as build_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_component_build:${BUILD_TAG} AS build_component
 
 RUN --mount=target=. build-component.sh
 
@@ -37,9 +37,9 @@ RUN if [ "${RUN_TESTS,,}" == true ]; then cd $BUILD_DIR/test && ./OcvFaceDetecti
 
 
 
-FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} as install_component
+FROM ${BUILD_REGISTRY}openmpf_cpp_executor:${BUILD_TAG} AS install_component
 
-ENV LD_LIBRARY_PATH $PLUGINS_DIR/OcvFaceDetection/lib
+ENV LD_LIBRARY_PATH=$PLUGINS_DIR/OcvFaceDetection/lib
 
 COPY --from=build_component $BUILD_DIR/plugin/OcvFaceDetection $PLUGINS_DIR/OcvFaceDetection
 
