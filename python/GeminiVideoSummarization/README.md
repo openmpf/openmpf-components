@@ -16,6 +16,8 @@ The following are the properties that can be specified for the component. The fi
 - `TARGET_SEGMENT_LENGTH`: The length of segments the video is divided into.
 - `VFR_TARGET_SEGMENT_LENGTH`: The length of segments the video is divided into.
 - `PROCESS_FPS`: The amount of frames to process per second. The FPS processing limit for Gemini is (0.0, 24.0]
+- `MOTION_EMPHASIS_SCORE_FPS`: The maximum FPS used to compute motion scores for high-motion frame insertion. `PROCESS_FPS` still controls regular output sampling.
+- `MOTION_EMPHASIS_SCORE_WIDTH`: The maximum frame width used for motion-score calculations. This downscales only scoring frames; selected output frames stay full resolution. Set to 0 to score at original resolution.
 - `ENABLE_TIMELINE`: When set to 1, this enables the creation of timelines. If there is no custom prompt file, it will use default_prompt.txt. When set to 0, this disables timelines. If there is no custom prompt file, it will use default_prompt_no_tl.txt.
 
 REQUIRED PROPERTIES:
