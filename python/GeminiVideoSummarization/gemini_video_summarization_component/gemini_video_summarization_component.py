@@ -53,6 +53,8 @@ from transformers.models.gemma4.modeling_gemma4 import Gemma4ForConditionalGener
 
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
+MOTION_SCORE_WIDTH = 320
+
 _MISSING_CHAT_TEMPLATE_ERRORS = (
     "chat_template is not set",
     "does not have a chat template",
@@ -708,7 +710,33 @@ class GeminiVideoSummarizationComponent:
 
         return min(source_fps, process_fps)
 
+    @staticmethod
+    def _has_constant_frame_rate(job: mpf.VideoJob) -> bool:
+        value = mpf_util.get_property(job.media_properties, 'HAS_CONSTANT_FRAME_RATE', False)
+        if isinstance(value, str):
+            return value.lower() == 'true'
+        return bool(value)
+
+    @staticmethod
+    def _sampled_frame_indexes(source_frame_count: int, source_fps: float, sample_fps: float) -> list[int]:
+        if source_frame_count <= 0:
+            return []
+        duration_seconds = source_frame_count / source_fps
+        sample_count = max(1, math.ceil(duration_seconds * sample_fps))
+        indexes = []
+        previous_index = None
+        for sample_index in range(sample_count):
+            frame_index = min(round(sample_index * source_fps / sample_fps), source_frame_count - 1)
+            if frame_index != previous_index:
+                indexes.append(frame_index)
+                previous_index = frame_index
+        return indexes
+
     def _iter_sampled_video_frames(self, job: mpf.VideoJob, target_fps: float):
+        if self._has_constant_frame_rate(job):
+            yield from self._iter_seek_sampled_video_frames(job, target_fps)
+            return
+
         reader = mpf_util.VideoCapture(job)
         sample_interval_seconds = 1.0 / target_fps
         next_sample_time = None
@@ -735,31 +763,146 @@ class GeminiVideoSummarizationComponent:
         finally:
             reader.release()
 
+    def _iter_seek_sampled_video_frames(self, job: mpf.VideoJob, target_fps: float):
+        reader = mpf_util.VideoCapture(job)
+        source_fps = float(job.media_properties['FPS'])
+        source_frame_count = max(0, job.stop_frame - job.start_frame + 1)
+        try:
+            for sample_index, frame_index in enumerate(
+                    self._sampled_frame_indexes(source_frame_count, source_fps, target_fps)):
+                if not reader.set_frame_position(frame_index):
+                    break
+                timestamp_seconds = reader.current_time_in_millis / 1000.0
+                success, frame = reader.read()
+                if not success:
+                    break
+                yield sample_index, timestamp_seconds, frame
+        finally:
+            reader.release()
+
+    def _iter_motion_sampling_video_frames(self, job: mpf.VideoJob, target_fps: float, score_fps: float):
+        if self._has_constant_frame_rate(job):
+            yield from self._iter_seek_motion_sampling_video_frames(job, target_fps, score_fps)
+            return
+
+        reader = mpf_util.VideoCapture(job)
+        sample_interval_seconds = 1.0 / target_fps
+        score_interval_seconds = 1.0 / score_fps
+        next_sample_time = None
+        next_score_time = None
+        try:
+            max_frames = max(0, job.stop_frame - job.start_frame + 1)
+            frames_read = 0
+            while frames_read < max_frames:
+                timestamp_seconds = reader.current_time_in_millis / 1000.0
+                success, frame = reader.read()
+                if not success:
+                    break
+
+                if next_sample_time is None:
+                    next_sample_time = timestamp_seconds
+                if next_score_time is None:
+                    next_score_time = timestamp_seconds
+
+                is_regular_sample = timestamp_seconds + 1e-6 >= next_sample_time
+                is_score_sample = timestamp_seconds + 1e-6 >= next_score_time
+
+                if is_regular_sample:
+                    while next_sample_time <= timestamp_seconds + 1e-6:
+                        next_sample_time += sample_interval_seconds
+                if is_score_sample:
+                    while next_score_time <= timestamp_seconds + 1e-6:
+                        next_score_time += score_interval_seconds
+
+                if is_regular_sample or is_score_sample:
+                    yield frames_read, timestamp_seconds, frame, is_regular_sample, is_score_sample
+
+                frames_read += 1
+        finally:
+            reader.release()
+
+    def _iter_seek_motion_sampling_video_frames(self, job: mpf.VideoJob, target_fps: float, score_fps: float):
+        reader = mpf_util.VideoCapture(job)
+        source_fps = float(job.media_properties['FPS'])
+        source_frame_count = max(0, job.stop_frame - job.start_frame + 1)
+        regular_indexes = set(self._sampled_frame_indexes(source_frame_count, source_fps, target_fps))
+        score_indexes = set(self._sampled_frame_indexes(source_frame_count, source_fps, score_fps))
+        try:
+            for frame_index in sorted(regular_indexes | score_indexes):
+                if not reader.set_frame_position(frame_index):
+                    break
+                timestamp_seconds = reader.current_time_in_millis / 1000.0
+                success, frame = reader.read()
+                if not success:
+                    break
+                yield frame_index, timestamp_seconds, frame, frame_index in regular_indexes, frame_index in score_indexes
+        finally:
+            reader.release()
+
     def _get_configured_motion_emphasis_threshold(self, job: mpf.VideoJob):
         configured_threshold = mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_THRESHOLD', '5.0')
-        if configured_threshold == '':
+        if configured_threshold is None:
+            return None
+        configured_threshold = str(configured_threshold).strip()
+        if configured_threshold == '' or configured_threshold.lower() == 'none':
             return None
         return float(configured_threshold)
+
+    @staticmethod
+    def _get_motion_emphasis_score_width(job: mpf.VideoJob) -> int:
+        score_width = mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_SCORE_WIDTH', MOTION_SCORE_WIDTH)
+        if score_width is None or str(score_width).strip() == '':
+            return MOTION_SCORE_WIDTH
+        try:
+            score_width = int(float(score_width))
+        except (TypeError, ValueError) as error:
+            raise ValueError(f'MOTION_EMPHASIS_SCORE_WIDTH must be a non-negative integer: {score_width}') from error
+        if score_width < 0:
+            raise ValueError(f'MOTION_EMPHASIS_SCORE_WIDTH must be non-negative: {score_width}')
+        return score_width
+
+    @staticmethod
+    def _get_motion_emphasis_score_fps(job: mpf.VideoJob, source_fps: float, target_fps: float) -> float:
+        score_fps = mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_SCORE_FPS', 5.0)
+        if score_fps is None or str(score_fps).strip() == '':
+            return source_fps
+        try:
+            score_fps = float(score_fps)
+        except (TypeError, ValueError) as error:
+            raise ValueError(f'MOTION_EMPHASIS_SCORE_FPS must be a positive number: {score_fps}') from error
+        if score_fps <= 0:
+            raise ValueError(f'MOTION_EMPHASIS_SCORE_FPS must be positive: {score_fps}')
+        return min(source_fps, max(target_fps, score_fps))
+
+    @staticmethod
+    def _get_motion_score_gray_frame(frame, score_width: int):
+        if score_width > 0:
+            height, width = frame.shape[:2]
+            if width > score_width:
+                score_height = max(1, round(height * (score_width / width)))
+                frame = cv2.resize(
+                    frame,
+                    (score_width, score_height),
+                    interpolation=cv2.INTER_AREA)
+        return cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     def _collect_preprocessed_frames(self, job: mpf.VideoJob) -> dict:
         source_fps = float(job.media_properties['FPS'])
         target_fps = self._get_preprocess_fps(job, source_fps)
         source_frame_count = max(0, job.stop_frame - job.start_frame + 1)
         configured_threshold = self._get_configured_motion_emphasis_threshold(job)
+        score_width = self._get_motion_emphasis_score_width(job)
+        score_fps = self._get_motion_emphasis_score_fps(job, source_fps, target_fps)
 
         if configured_threshold is None:
-            preprocessed_frames = self._collect_sampled_preprocessed_frames(job, target_fps)
-            threshold = self._get_motion_emphasis_threshold(job, preprocessed_frames['motion_scores'])
-            high_motion_indexes = {
-                index
-                for index, score in enumerate(preprocessed_frames['motion_scores'])
-                if score >= threshold and score > 0
-            }
+            threshold = self._get_motion_emphasis_threshold(
+                job, self._collect_motion_scores(job, score_fps, score_width))
         else:
-            preprocessed_frames = self._collect_sampled_and_high_motion_frames(
-                job, target_fps, configured_threshold)
             threshold = configured_threshold
-            high_motion_indexes = preprocessed_frames['high_motion_indexes']
+
+        preprocessed_frames = self._collect_sampled_and_high_motion_frames(
+            job, target_fps, threshold, score_fps, score_width)
+        high_motion_indexes = preprocessed_frames['high_motion_indexes']
 
         sampled_frames = preprocessed_frames['sampled_frames']
         motion_scores = preprocessed_frames['motion_scores']
@@ -786,6 +929,8 @@ class GeminiVideoSummarizationComponent:
             'source_fps': source_fps,
             'target_fps': target_fps,
             'source_frame_count': source_frame_count,
+            'motion_score_fps': score_fps,
+            'motion_score_width': score_width,
             'regular_sampled_frame_count': preprocessed_frames['regular_sampled_frame_count'],
             'high_motion_inserted_frame_count': preprocessed_frames.get('high_motion_inserted_frame_count', 0),
         }
@@ -795,7 +940,7 @@ class GeminiVideoSummarizationComponent:
         motion_scores = []
         previous_gray = None
         for _, timestamp_seconds, frame in self._iter_sampled_video_frames(job, target_fps):
-            gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray_frame = self._get_motion_score_gray_frame(frame, MOTION_SCORE_WIDTH)
             if previous_gray is None:
                 motion_scores.append(0.0)
             else:
@@ -809,58 +954,49 @@ class GeminiVideoSummarizationComponent:
             'regular_sampled_frame_count': len(sampled_frames),
         }
 
-    def _collect_sampled_and_high_motion_frames(self, job: mpf.VideoJob, target_fps: float, threshold: float) -> dict:
-        reader = mpf_util.VideoCapture(job)
-        sample_interval_seconds = 1.0 / target_fps
-        next_sample_time = None
+    def _collect_motion_scores(self, job: mpf.VideoJob, score_fps: float, score_width: int) -> list[float]:
+        motion_scores = []
+        previous_gray = None
+        for _, _, frame in self._iter_sampled_video_frames(job, score_fps):
+            gray_frame = self._get_motion_score_gray_frame(frame, score_width)
+            if previous_gray is None:
+                motion_scores.append(0.0)
+            else:
+                motion_scores.append(float(cv2.absdiff(gray_frame, previous_gray).mean()))
+            previous_gray = gray_frame
+        return motion_scores
+
+    def _collect_sampled_and_high_motion_frames(
+            self, job: mpf.VideoJob, target_fps: float, threshold: float, score_fps: float, score_width: int) -> dict:
         previous_gray = None
         sampled_frames = []
         motion_scores = []
         high_motion_indexes = set()
         regular_sampled_frame_count = 0
         high_motion_inserted_frame_count = 0
-        last_selected_source_index = None
 
-        try:
-            max_frames = max(0, job.stop_frame - job.start_frame + 1)
-            frames_read = 0
-            while frames_read < max_frames:
-                timestamp_seconds = reader.current_time_in_millis / 1000.0
-                success, frame = reader.read()
-                if not success:
-                    break
-
-                gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                if previous_gray is None:
-                    motion_score = 0.0
-                else:
+        for _, timestamp_seconds, frame, is_regular_sample, is_score_sample in (
+                self._iter_motion_sampling_video_frames(job, target_fps, score_fps)):
+            motion_score = 0.0
+            if is_score_sample:
+                gray_frame = self._get_motion_score_gray_frame(frame, score_width)
+                if previous_gray is not None:
                     motion_score = float(cv2.absdiff(gray_frame, previous_gray).mean())
                 previous_gray = gray_frame
 
-                if next_sample_time is None:
-                    next_sample_time = timestamp_seconds
+            is_high_motion = is_score_sample and motion_score >= threshold and motion_score > 0
+            if not is_regular_sample and not is_high_motion:
+                continue
 
-                is_regular_sample = timestamp_seconds + 1e-6 >= next_sample_time
-                is_high_motion = motion_score >= threshold and motion_score > 0
-                if is_regular_sample:
-                    while next_sample_time <= timestamp_seconds + 1e-6:
-                        next_sample_time += sample_interval_seconds
-
-                if (is_regular_sample or is_high_motion) and last_selected_source_index != frames_read:
-                    selected_index = len(sampled_frames)
-                    sampled_frames.append((timestamp_seconds, frame))
-                    motion_scores.append(motion_score)
-                    last_selected_source_index = frames_read
-                    if is_regular_sample:
-                        regular_sampled_frame_count += 1
-                    if is_high_motion:
-                        high_motion_indexes.add(selected_index)
-                        if not is_regular_sample:
-                            high_motion_inserted_frame_count += 1
-
-                frames_read += 1
-        finally:
-            reader.release()
+            selected_index = len(sampled_frames)
+            sampled_frames.append((timestamp_seconds, frame))
+            motion_scores.append(motion_score)
+            if is_regular_sample:
+                regular_sampled_frame_count += 1
+            if is_high_motion:
+                high_motion_indexes.add(selected_index)
+                if not is_regular_sample:
+                    high_motion_inserted_frame_count += 1
 
         return {
             'sampled_frames': sampled_frames,
@@ -925,10 +1061,11 @@ class GeminiVideoSummarizationComponent:
         logger.info(
             'Created motion-emphasized video with %d source frames, %d regular sampled frames, '
             '%d high-motion inserted frames, %d selected frames, %d output frames, source fps %.3f, '
-            'process fps %.3f, threshold %.3f, emphasized frames %d.',
+            'process fps %.3f, score fps %.3f, score width %d, threshold %.3f, emphasized frames %d.',
             preprocessed_frames['source_frame_count'], preprocessed_frames['regular_sampled_frame_count'],
             preprocessed_frames['high_motion_inserted_frame_count'], len(preprocessed_frames['sampled_frames']),
             len(output_timestamps), preprocessed_frames['source_fps'], preprocessed_frames['target_fps'],
+            preprocessed_frames['motion_score_fps'], preprocessed_frames['motion_score_width'],
             preprocessed_frames['threshold'], len(preprocessed_frames['emphasized_indexes']))
         return {
             'path': temp_file.name,

@@ -70,3 +70,4 @@ venv
 *.csv
 *.zip
 _*.py
+_*.txt

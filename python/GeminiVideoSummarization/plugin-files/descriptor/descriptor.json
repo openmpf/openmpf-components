@@ -119,6 +119,18 @@
                     "defaultValue": "1.0"
                 },
                 {
+                    "name": "MOTION_EMPHASIS_SCORE_FPS",
+                    "description": "For local video processing, maximum FPS used when computing motion scores for high-motion frame insertion. PROCESS_FPS still controls regular output sampling.",
+                    "type": "FLOAT",
+                    "defaultValue": "5.0"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_SCORE_WIDTH",
+                    "description": "Maximum frame width used for motion-score calculations. Frames wider than this are downscaled before grayscale differencing; selected output frames remain full resolution. Set to 0 to score at original size.",
+                    "type": "INT",
+                    "defaultValue": "320"
+                },
+                {
                     "name": "MOTION_EMPHASIS_THRESHOLD",
                     "description": "For local video processing, duplicate frames only when their motion score is at or above this threshold. Leave empty to use MOTION_EMPHASIS_PERCENTILE instead.",
                     "type": "FLOAT",
