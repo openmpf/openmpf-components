@@ -30,6 +30,8 @@ import json
 import logging
 import base64
 import math
+import shutil
+import subprocess
 import tempfile
 import cv2
 from typing import Iterable, Mapping, Tuple, Union
@@ -649,6 +651,11 @@ class GeminiVideoSummarizationComponent:
             preprocessed_video = self._preprocess_video_for_model(job)
             preprocessed_video_path = preprocessed_video['path']
 
+            include_timestamp_instructions = int(mpf_util.get_property(
+                job.job_properties, "ENABLE_TIMELINE", "1")) == 1
+            preprocessing_prompt = self._build_preprocessed_timing_prompt(
+                preprocessed_video,
+                include_timestamp_instructions=include_timestamp_instructions)
             messages = [
                 {
                     "role": "user",
@@ -656,13 +663,7 @@ class GeminiVideoSummarizationComponent:
                         {"type": "video", "video": preprocessed_video_path},
                         {
                             "type": "text",
-                            "text": (
-                                f"{prompt}\n\n"
-                                "The supplied video has been preprocessed to make brief, high-motion events easier to see. "
-                                "Frames with large motion may be duplicated, so repeated frames do not mean the event lasted longer."
-                                f"Describe timestamps relative to the original {SEGMENT_STOP - SEGMENT_START:.2f}-second segment, "
-                                "not the preprocessed video's playback duration."
-                            )
+                            "text": f"{prompt}\n\n{preprocessing_prompt}"
                         }
                     ]
                 }
@@ -732,8 +733,9 @@ class GeminiVideoSummarizationComponent:
                 previous_index = frame_index
         return indexes
 
-    def _iter_sampled_video_frames(self, job: mpf.VideoJob, target_fps: float):
-        if self._has_constant_frame_rate(job):
+    def _iter_sampled_video_frames(
+            self, job: mpf.VideoJob, target_fps: float, motion_profiling: bool = False):
+        if motion_profiling and self._has_constant_frame_rate(job):
             yield from self._iter_seek_sampled_video_frames(job, target_fps)
             return
 
@@ -957,7 +959,7 @@ class GeminiVideoSummarizationComponent:
     def _collect_motion_scores(self, job: mpf.VideoJob, score_fps: float, score_width: int) -> list[float]:
         motion_scores = []
         previous_gray = None
-        for _, _, frame in self._iter_sampled_video_frames(job, score_fps):
+        for _, _, frame in self._iter_sampled_video_frames(job, score_fps, motion_profiling=True):
             gray_frame = self._get_motion_score_gray_frame(frame, score_width)
             if previous_gray is None:
                 motion_scores.append(0.0)
@@ -1073,7 +1075,8 @@ class GeminiVideoSummarizationComponent:
             'fps': preprocessed_frames['target_fps'],
             'duration_seconds': len(output_timestamps) / preprocessed_frames['target_fps'],
             'original_duration_seconds': preprocessed_frames['source_frame_count'] / preprocessed_frames['source_fps'],
-            'original_fps': preprocessed_frames['source_fps']
+            'original_fps': preprocessed_frames['source_fps'],
+            'source_frame_count': preprocessed_frames['source_frame_count']
         }
 
     def _cleanup_preprocessed_video(self, preprocessed_video):
@@ -1086,6 +1089,80 @@ class GeminiVideoSummarizationComponent:
                 os.remove(path)
             except OSError:
                 logger.warning('Unable to remove temporary preprocessed video: %s', path)
+        audio_path = preprocessed_video.get('audio_path')
+        if audio_path:
+            try:
+                os.remove(audio_path)
+            except OSError:
+                logger.warning('Unable to remove temporary preprocessed audio: %s', audio_path)
+
+    @staticmethod
+    def _get_source_segment_timing(
+            job: mpf.VideoJob, source_fps: float, source_frame_count: int) -> tuple[float, float]:
+        start_seconds = max(0.0, job.start_frame / source_fps)
+        duration_seconds = source_frame_count / source_fps
+        return start_seconds, duration_seconds
+
+    def _build_ffmpeg_audio_input_args(
+            self, job: mpf.VideoJob, source_fps: float, source_frame_count: int) -> list[str]:
+        start_seconds, duration_seconds = self._get_source_segment_timing(job, source_fps, source_frame_count)
+        audio_input_args = []
+        if start_seconds > 0:
+            audio_input_args.extend(['-ss', f'{start_seconds:.6f}'])
+        if duration_seconds > 0:
+            audio_input_args.extend(['-t', f'{duration_seconds:.6f}'])
+        audio_input_args.extend(['-i', job.data_uri])
+        return audio_input_args
+
+    @staticmethod
+    def _get_ffmpeg_path() -> str | None:
+        ffmpeg_path = shutil.which('ffmpeg')
+        if ffmpeg_path:
+            return ffmpeg_path
+        try:
+            import imageio_ffmpeg
+        except ImportError:
+            return None
+        return imageio_ffmpeg.get_ffmpeg_exe()
+
+    def _extract_source_audio_for_model(
+            self, job: mpf.VideoJob, source_fps: float, source_frame_count: int) -> str | None:
+        ffmpeg_path = self._get_ffmpeg_path()
+        if not ffmpeg_path:
+            logger.info('ffmpeg was not found; source audio will not be sent separately.')
+            return None
+
+        audio_file = tempfile.NamedTemporaryFile(suffix='.m4a', delete=False)
+        audio_file.close()
+        command = [
+            ffmpeg_path,
+            '-hide_banner',
+            '-loglevel',
+            'error',
+            '-y',
+            *self._build_ffmpeg_audio_input_args(job, source_fps, source_frame_count),
+            '-vn',
+            '-map',
+            '0:a:0',
+            '-c:a',
+            'aac',
+            audio_file.name,
+        ]
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True)
+        except (OSError, subprocess.CalledProcessError) as error:
+            try:
+                os.remove(audio_file.name)
+            except OSError:
+                pass
+            stderr = getattr(error, 'stderr', '') or ''
+            if 'matches no streams' in stderr or 'Stream map' in stderr:
+                logger.info('Source video does not contain an audio stream.')
+            else:
+                logger.warning('Unable to extract source audio for model request: %s', error)
+            return None
+
+        return audio_file.name
 
     def _get_motion_emphasis_threshold(self, job: mpf.VideoJob, motion_scores) -> float:
         configured_threshold = mpf_util.get_property(job.job_properties, 'MOTION_EMPHASIS_THRESHOLD', '5.0')
@@ -1102,25 +1179,54 @@ class GeminiVideoSummarizationComponent:
         return sorted_scores[index]
 
     @staticmethod
-    def _build_preprocessed_timing_prompt(preprocessed_video: dict) -> str:
-        return (
+    def _build_preprocessed_timing_prompt(
+            preprocessed_video: dict, include_timestamp_instructions: bool = True) -> str:
+        prompt = (
             "The supplied video has been preprocessed to make brief, high-motion events easier to see. "
             "Frames with large motion may be duplicated.\n\n"
-            "Timing metadata:\n"
+            "Preprocessing metadata:\n"
             f"- Original segment duration: {preprocessed_video['original_duration_seconds']:.2f} seconds\n"
             f"- Original FPS: {preprocessed_video['original_fps']:.3f}\n"
             f"- Preprocessed video FPS: {preprocessed_video['fps']:.3f}\n"
             f"- Preprocessed playback duration: {preprocessed_video['duration_seconds']:.2f} seconds\n"
             "- The video you see is the preprocessed version.\n"
-            "- Return timestamps relative to the supplied preprocessed video's playback time.\n"
-            "- Do not attempt to compensate for duplicated frames.\n"
-            "- The component will convert your preprocessed-video timestamps back to original-video timestamps."
+            "- Do not treat duplicated frames as meaning the event lasted longer.\n"
+        )
+        if include_timestamp_instructions:
+            return (
+                f"{prompt}"
+                "- Return timestamps relative to the supplied preprocessed video's playback time.\n"
+                "- The component will convert your preprocessed-video timestamps back to "
+                "original-video timestamps."
+            )
+        return (
+            f"{prompt}"
+            "- Do not include timestamps or frame indexes in the response."
         )
 
+    @staticmethod
+    def _encode_file_as_data_url(path: str, mime_type: str) -> str:
+        with open(path, 'rb') as data_file:
+            encoded_data = base64.b64encode(data_file.read()).decode('utf-8')
+        return f'data:{mime_type};base64,{encoded_data}'
+
     def _encode_video_as_data_url(self, video_path: str) -> str:
-        with open(video_path, 'rb') as video_file:
-            encoded_video = base64.b64encode(video_file.read()).decode('utf-8')
-        return f'data:video/mp4;base64,{encoded_video}'
+        return self._encode_file_as_data_url(video_path, 'video/mp4')
+
+    def _encode_audio_as_data_url(self, audio_path: str) -> str:
+        return self._encode_file_as_data_url(audio_path, 'audio/mp4')
+
+    @staticmethod
+    def _model_supports_audio_input(model_name: str) -> bool:
+        normalized_model_name = (model_name or '').lower()
+        return any(
+            audio_model in normalized_model_name
+            for audio_model in ('gemma-4-e2b', 'gemma-4-e4b', 'gemma-4-12b')
+        )
+
+    @staticmethod
+    def _is_enabled(value) -> bool:
+        return str(value).strip().lower() not in ('0', 'false', 'no', 'off')
 
     def _openai_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
         if not model_name:
@@ -1139,31 +1245,90 @@ class GeminiVideoSummarizationComponent:
                 preprocessed_video.get('fps', fps),
                 preprocessed_video['duration_seconds'])
 
-            client = OpenAI(api_key=api_key, base_url=self.base_url)
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[
+            timeout_seconds = float(mpf_util.get_property(
+                job.job_properties, "OPENAI_REQUEST_TIMEOUT_SECONDS", "600"))
+            max_retries = int(mpf_util.get_property(
+                job.job_properties, "OPENAI_MAX_RETRIES", "2" if not self.base_url else "0"))
+            client = OpenAI(
+                api_key=api_key,
+                base_url=self.base_url,
+                timeout=timeout_seconds,
+                max_retries=max_retries)
+            include_timestamp_instructions = int(mpf_util.get_property(
+                job.job_properties, "ENABLE_TIMELINE", "1")) == 1
+            preprocessing_prompt = self._build_preprocessed_timing_prompt(
+                preprocessed_video,
+                include_timestamp_instructions=include_timestamp_instructions)
+            request_content = [
+                {
+                    "type": "text",
+                    "text": f"{prompt}\n\n{preprocessing_prompt}"
+                },
+                {
+                    "type": "video_url",
+                    "video_url": {
+                        "url": self._encode_video_as_data_url(preprocessed_video['path'])
+                    }
+                }
+            ]
+            enable_audio = self._is_enabled(mpf_util.get_property(job.job_properties, "ENABLE_AUDIO", "1"))
+            if enable_audio and self._model_supports_audio_input(model_name):
+                audio_path = self._extract_source_audio_for_model(
+                    job,
+                    preprocessed_video['original_fps'],
+                    preprocessed_video['source_frame_count'])
+                if audio_path:
+                    preprocessed_video['audio_path'] = audio_path
+                    request_content.append({
+                        "type": "audio_url",
+                        "audio_url": {
+                            "url": self._encode_audio_as_data_url(audio_path)
+                        }
+                    })
+                    logger.info('Sending original segment audio with OpenAI/vLLM request.')
+                else:
+                    logger.info('No source audio was available to send with the OpenAI/vLLM request.')
+            elif enable_audio:
+                logger.info('Model %s does not support audio input; sending video frames only.', model_name)
+
+            request_args = {
+                "model": model_name,
+                "messages": [
                     {
                         "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": (
-                                    f"{prompt}\n\n"
-                                    f"{self._build_preprocessed_timing_prompt(preprocessed_video)}"
-                                )
-                            },
-                            {
-                                "type": "video_url",
-                                "video_url": {
-                                    "url": self._encode_video_as_data_url(preprocessed_video['path'])
-                                }
-                            }
-                        ]
+                        "content": request_content
                     }
                 ],
-                response_format={"type": "json_object"},
-            )
+            }
+            default_json_response_format = "true" if not self.base_url else "false"
+            use_json_response_format = mpf_util.get_property(
+                job.job_properties,
+                "OPENAI_RESPONSE_FORMAT_JSON_OBJECT",
+                default_json_response_format)
+            if str(use_json_response_format).lower() == "true":
+                request_args["response_format"] = {"type": "json_object"}
+
+            max_tokens = str(mpf_util.get_property(
+                job.job_properties, "OPENAI_MAX_TOKENS", "")).strip()
+            if max_tokens:
+                request_args["max_tokens"] = int(max_tokens)
+
+            temperature = str(mpf_util.get_property(
+                job.job_properties, "OPENAI_TEMPERATURE", "")).strip()
+            if temperature:
+                request_args["temperature"] = float(temperature)
+
+            logger.info(
+                "OpenAI/vLLM request options: response_format_json=%s, max_tokens=%s, "
+                "temperature=%s, timeout=%.1fs, max_retries=%d",
+                "enabled" if "response_format" in request_args else "disabled",
+                request_args.get("max_tokens", "default"),
+                request_args.get("temperature", "default"),
+                timeout_seconds,
+                max_retries)
+
+            response = client.chat.completions.create(**request_args)
+
             return response.choices[0].message.content
         finally:
             self._cleanup_preprocessed_video(preprocessed_video)
@@ -1227,7 +1392,10 @@ class GeminiVideoSummarizationComponent:
                         Part(
                             text=(
                                 f"{prompt}\n\n"
-                                f"{self._build_preprocessed_timing_prompt(preprocessed_video)}"
+                                f"{self._build_preprocessed_timing_prompt(
+                                    preprocessed_video,
+                                    include_timestamp_instructions=int(mpf_util.get_property(
+                                        job.job_properties, 'ENABLE_TIMELINE', '1')) == 1)}"
                             )
                         )
                     ],

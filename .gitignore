@@ -66,6 +66,7 @@ cmake-build-release/
 venv
 *.mp4
 *.mov
+*.mkv
 *.png
 *.csv
 *.zip

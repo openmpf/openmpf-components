@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+
+FROM vllm/vllm-openai:gemma4-unified-cu129
+
+ENV HF_HOME=/root/.cache/huggingface
+
+ARG DEFAULT_VLLM_MODEL=google/gemma-4-E4B-it
+ARG DEFAULT_VLLM_DRAFT_MODEL=
+
+ENV VLLM_MODEL=${DEFAULT_VLLM_MODEL}
+ENV VLLM_DRAFT_MODEL=${DEFAULT_VLLM_DRAFT_MODEL}
+ENV VLLM_HOST=0.0.0.0
+ENV VLLM_PORT=8001
+ENV VLLM_TENSOR_PARALLEL_SIZE=1
+ENV VLLM_DRAFT_TENSOR_PARALLEL_SIZE=1
+ENV VLLM_DTYPE=auto
+ENV VLLM_QUANTIZATION=fp8
+ENV VLLM_KV_CACHE_DTYPE=auto
+ENV VLLM_MAX_MODEL_LEN=131072
+ENV VLLM_MAX_NUM_BATCHED_TOKENS=8192
+ENV VLLM_MAX_NUM_SEQS=3
+ENV VLLM_NUM_SPECULATIVE_TOKENS=1
+ENV VLLM_ENABLE_MTP=1
+
+EXPOSE 8000
+
+ENTRYPOINT []
+# CMD ["bash", "-lc", "rm -rf /root/.cache/huggingface/hub/.locks/models--google--gemma-4-e4b*"]
+CMD ["bash", "-lc", "pip install --upgrade --no-deps transformers && set -euo pipefail\n\ndraft_model=\"${VLLM_DRAFT_MODEL:-${VLLM_MODEL}-assistant}\"\necho \"Serving ${VLLM_MODEL}\"\nset -- vllm serve \"${VLLM_MODEL}\"\nset -- \"$@\" --host \"${VLLM_HOST}\"\nset -- \"$@\" --port \"${VLLM_PORT}\"\nset -- \"$@\" --tensor-parallel-size \"${VLLM_TENSOR_PARALLEL_SIZE}\"\nset -- \"$@\" --dtype \"${VLLM_DTYPE}\"\nset -- \"$@\" --kv_cache_dtype \"${VLLM_KV_CACHE_DTYPE}\"\nset -- \"$@\" --max-model-len \"${VLLM_MAX_MODEL_LEN}\"\nset -- \"$@\" --max-num-batched-tokens \"${VLLM_MAX_NUM_BATCHED_TOKENS}\"\n\nif [ -n \"${VLLM_MAX_NUM_SEQS}\" ]; then\n  set -- \"$@\" --max-num-seqs \"${VLLM_MAX_NUM_SEQS}\"\nfi\n\nif [ -n \"${VLLM_QUANTIZATION}\" ]; then\n  set -- \"$@\" --quantization \"${VLLM_QUANTIZATION}\"\nfi\n\nif [ \"${VLLM_ENABLE_MTP}\" = \"1\" ]; then\n  echo \"Using MTP draft model ${draft_model}\"\n  speculative_config=$(printf '{\"method\":\"mtp\",\"model\":\"%s\",\"num_speculative_tokens\":%s,\"draft_tensor_parallel_size\":%s,\"max_model_len\":%s}' \"${draft_model}\" \"${VLLM_NUM_SPECULATIVE_TOKENS}\" \"${VLLM_DRAFT_TENSOR_PARALLEL_SIZE}\" \"${VLLM_MAX_MODEL_LEN}\")\n  set -- \"$@\" --speculative-config \"${speculative_config}\"\nfi\n\nexec \"$@\"\n"]

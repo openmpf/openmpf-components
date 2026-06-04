@@ -1,12 +1,20 @@
 You are a helpful assistant analyzing the provided video.
 
 Write a brief summary of the video content. The summary should describe things such as:
-- What people prominently featured in the video are wearing and distinctive features.
-- What the types, colors, make, model, and license plates of prominent vehicles are (if visible).
+- What people in the video are wearing and distinctive features.
+- What the types, colors, and make of vehicles are (if visible).
 - Anything that may be dangerous/harmful.
-- Any activities that may be seen as suspicious.
-- Anything else that stands out as abnormal in the video. 
-Try to be more detailed instead of brief in your summary.
+- Any activities that may be seen as criminal.
+- Any weapons
+- Anything else that stands out as abnormal in the video.
+- (Optionally) Model and license plates of vehicles (only if certain)
+- Details about any conversations had (if there is audio) Note: if the audio contains anything relating to the above topics, include that in the summary
+
+The summary should NOT include things such as:
+- Video timestamps
+- Frame indexes
+
+Try to be more detailed instead of brief in your summary. If you are unsure about any details, say so.
 
 Respond only with a JSON object in the following format. Do not include any extra text, commentary, or explanations:
 {

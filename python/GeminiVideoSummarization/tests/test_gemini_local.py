@@ -246,7 +246,7 @@ DRONE_VIDEO_PROPERTIES = {
 }
 
 class TestGemini(unittest.TestCase):
-    model_id = "RedHatAI/gemma-4-31B-it-FP8-block"
+    model_id = "google/gemma-4-12B-it"
     global processor, model
     processor = AutoProcessor.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(model_id).to("cuda:3")
@@ -256,7 +256,7 @@ class TestGemini(unittest.TestCase):
             return
         
         if USE_MOCKS:
-            with unittest.mock.patch("gemini_video_summarization_component.gemini_video_summarization_component.GeminiVideoSummarizationComponent._get_gemini_response", return_value=response):
+            with unittest.mock.patch("gemini_video_summarization_component.gemini_video_summarization_component.GeminiVideoSummarizationComponent._get_response", return_value=response):
                 return component.get_detections_from_video(job)
         
     def assert_detection_region(self, detection, frame_width, frame_height):    
