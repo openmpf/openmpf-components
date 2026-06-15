@@ -72,3 +72,4 @@ venv
 *.zip
 _*.py
 _*.txt
+_*.json

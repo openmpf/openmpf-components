@@ -1,29 +1,115 @@
 # syntax=docker/dockerfile:1
 
-FROM vllm/vllm-openai:gemma4-unified-cu129
+FROM vllm/vllm-openai:latest
 
 ENV HF_HOME=/root/.cache/huggingface
 
-ARG DEFAULT_VLLM_MODEL=google/gemma-4-E4B-it
+ARG DEFAULT_VLLM_MODEL=google/gemma-4-12B-it
 ARG DEFAULT_VLLM_DRAFT_MODEL=
+
+RUN pip install --upgrade transformers vllm vllm[audio]
+
+
+# vLLM 0.22 knows how to turn gemma4_assistant into gemma4_mtp, but
+# current Transformers loads google/gemma-4-*-it-assistant as
+# gemma4_unified_assistant. Normalize that config type before vLLM's override.
+RUN python3 - <<'PY_SHIM'
+from pathlib import Path
+import site
+
+site_packages = Path(site.getsitepackages()[0])
+shim = site_packages / "gemma4_unified_assistant_mtp_shim.py"
+shim.write_text('''\
+from transformers.models.gemma4_unified.configuration_gemma4_unified import Gemma4UnifiedConfig
+from vllm.config.speculative import SpeculativeConfig
+
+def _alias_token_index(token_name):
+    index_name = f"{token_name}_index"
+    id_name = f"{token_name}_id"
+    if not hasattr(Gemma4UnifiedConfig, index_name):
+        setattr(
+            Gemma4UnifiedConfig,
+            index_name,
+            property(lambda self, attr=id_name: getattr(self, attr)),
+        )
+
+for _token_name in ("image_token", "video_token", "audio_token"):
+    _alias_token_index(_token_name)
+
+_original_hf_config_override = SpeculativeConfig.hf_config_override
+
+def _gemma4_unified_assistant_hf_config_override(hf_config):
+    if getattr(hf_config, "model_type", None) == "gemma4_unified_assistant":
+        hf_config.model_type = "gemma4_assistant"
+    return _original_hf_config_override(hf_config)
+
+SpeculativeConfig.hf_config_override = staticmethod(
+    _gemma4_unified_assistant_hf_config_override
+)
+''')
+(site_packages / "gemma4_unified_assistant_mtp_shim.pth").write_text(
+    "import gemma4_unified_assistant_mtp_shim\n"
+)
+PY_SHIM
 
 ENV VLLM_MODEL=${DEFAULT_VLLM_MODEL}
 ENV VLLM_DRAFT_MODEL=${DEFAULT_VLLM_DRAFT_MODEL}
 ENV VLLM_HOST=0.0.0.0
-ENV VLLM_PORT=8001
+ENV VLLM_PORT=8000
 ENV VLLM_TENSOR_PARALLEL_SIZE=1
 ENV VLLM_DRAFT_TENSOR_PARALLEL_SIZE=1
 ENV VLLM_DTYPE=auto
-ENV VLLM_QUANTIZATION=fp8
+ENV MPF_VLLM_ATTENTION_BACKEND=TRITON_ATTN
+# FP8 Marlin currently fails during Gemma 4 multimodal video profiling.
+ENV VLLM_QUANTIZATION=
 ENV VLLM_KV_CACHE_DTYPE=auto
 ENV VLLM_MAX_MODEL_LEN=131072
 ENV VLLM_MAX_NUM_BATCHED_TOKENS=8192
 ENV VLLM_MAX_NUM_SEQS=3
 ENV VLLM_NUM_SPECULATIVE_TOKENS=1
+ENV VLLM_ENFORCE_EAGER=1
+ENV VLLM_SPECULATIVE_ENFORCE_EAGER=1
+# Optional JSON passed to vLLM --limit-mm-per-prompt. Leave empty to use vLLM defaults.
+ENV MPF_LIMIT_MM_PER_PROMPT=
 ENV VLLM_ENABLE_MTP=1
 
 EXPOSE 8000
 
 ENTRYPOINT []
-# CMD ["bash", "-lc", "rm -rf /root/.cache/huggingface/hub/.locks/models--google--gemma-4-e4b*"]
-CMD ["bash", "-lc", "pip install --upgrade --no-deps transformers && set -euo pipefail\n\ndraft_model=\"${VLLM_DRAFT_MODEL:-${VLLM_MODEL}-assistant}\"\necho \"Serving ${VLLM_MODEL}\"\nset -- vllm serve \"${VLLM_MODEL}\"\nset -- \"$@\" --host \"${VLLM_HOST}\"\nset -- \"$@\" --port \"${VLLM_PORT}\"\nset -- \"$@\" --tensor-parallel-size \"${VLLM_TENSOR_PARALLEL_SIZE}\"\nset -- \"$@\" --dtype \"${VLLM_DTYPE}\"\nset -- \"$@\" --kv_cache_dtype \"${VLLM_KV_CACHE_DTYPE}\"\nset -- \"$@\" --max-model-len \"${VLLM_MAX_MODEL_LEN}\"\nset -- \"$@\" --max-num-batched-tokens \"${VLLM_MAX_NUM_BATCHED_TOKENS}\"\n\nif [ -n \"${VLLM_MAX_NUM_SEQS}\" ]; then\n  set -- \"$@\" --max-num-seqs \"${VLLM_MAX_NUM_SEQS}\"\nfi\n\nif [ -n \"${VLLM_QUANTIZATION}\" ]; then\n  set -- \"$@\" --quantization \"${VLLM_QUANTIZATION}\"\nfi\n\nif [ \"${VLLM_ENABLE_MTP}\" = \"1\" ]; then\n  echo \"Using MTP draft model ${draft_model}\"\n  speculative_config=$(printf '{\"method\":\"mtp\",\"model\":\"%s\",\"num_speculative_tokens\":%s,\"draft_tensor_parallel_size\":%s,\"max_model_len\":%s}' \"${draft_model}\" \"${VLLM_NUM_SPECULATIVE_TOKENS}\" \"${VLLM_DRAFT_TENSOR_PARALLEL_SIZE}\" \"${VLLM_MAX_MODEL_LEN}\")\n  set -- \"$@\" --speculative-config \"${speculative_config}\"\nfi\n\nexec \"$@\"\n"]
+CMD bash -lc '\
+  set -euo pipefail && \
+  draft_model="${VLLM_DRAFT_MODEL:-${VLLM_MODEL}-assistant}" && \
+  echo "Serving ${VLLM_MODEL}" && \
+  set -- vllm serve "${VLLM_MODEL}" && \
+  set -- "$@" --host "${VLLM_HOST}" && \
+  set -- "$@" --port "${VLLM_PORT}" && \
+  set -- "$@" --tensor-parallel-size "${VLLM_TENSOR_PARALLEL_SIZE}" && \
+  set -- "$@" --dtype "${VLLM_DTYPE}" && \
+  if [ -n "${MPF_VLLM_ATTENTION_BACKEND}" ]; then \
+    set -- "$@" --attention-backend "${MPF_VLLM_ATTENTION_BACKEND}"; \
+  fi && \
+  set -- "$@" --kv_cache_dtype "${VLLM_KV_CACHE_DTYPE}" && \
+  set -- "$@" --max-model-len "${VLLM_MAX_MODEL_LEN}" && \
+  set -- "$@" --max-num-batched-tokens "${VLLM_MAX_NUM_BATCHED_TOKENS}" && \
+  if [ -n "${MPF_LIMIT_MM_PER_PROMPT}" ]; then \
+    set -- "$@" --limit-mm-per-prompt "${MPF_LIMIT_MM_PER_PROMPT}"; \
+  fi && \
+  if [ -n "${VLLM_MAX_NUM_SEQS}" ]; then \
+    set -- "$@" --max-num-seqs "${VLLM_MAX_NUM_SEQS}"; \
+  fi && \
+  if [ -n "${VLLM_QUANTIZATION}" ]; then \
+    set -- "$@" --quantization "${VLLM_QUANTIZATION}"; \
+  fi && \
+  if [ "${VLLM_ENFORCE_EAGER}" = "1" ]; then \
+    set -- "$@" --enforce-eager; \
+  fi && \
+  if [ "${VLLM_ENABLE_MTP}" = "1" ]; then \
+    echo "Using MTP draft model ${draft_model}"; \
+    speculative_enforce_eager=false; \
+    if [ "${VLLM_SPECULATIVE_ENFORCE_EAGER}" = "1" ]; then speculative_enforce_eager=true; fi; \
+    speculative_config=$(printf "{\"method\":\"mtp\",\"model\":\"%s\",\"num_speculative_tokens\":%s,\"draft_tensor_parallel_size\":%s,\"max_model_len\":%s,\"enforce_eager\":%s}" "${draft_model}" "${VLLM_NUM_SPECULATIVE_TOKENS}" "${VLLM_DRAFT_TENSOR_PARALLEL_SIZE}" "${VLLM_MAX_MODEL_LEN}" "${speculative_enforce_eager}"); \
+    set -- "$@" --speculative-config "${speculative_config}"; \
+  fi && \
+  unset VLLM_MODEL VLLM_DRAFT_MODEL VLLM_HOST VLLM_PORT VLLM_TENSOR_PARALLEL_SIZE VLLM_DRAFT_TENSOR_PARALLEL_SIZE VLLM_DTYPE VLLM_QUANTIZATION VLLM_KV_CACHE_DTYPE VLLM_MAX_MODEL_LEN VLLM_MAX_NUM_BATCHED_TOKENS VLLM_MAX_NUM_SEQS VLLM_NUM_SPECULATIVE_TOKENS VLLM_ENFORCE_EAGER VLLM_SPECULATIVE_ENFORCE_EAGER VLLM_ENABLE_MTP VLLM_BUILD_URL VLLM_IMAGE_TAG VLLM_BUILD_PIPELINE VLLM_BUILD_COMMIT && \
+  exec "$@"\
+'
