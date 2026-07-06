@@ -91,10 +91,9 @@ class GeminiVideoSummarizationComponent:
         logger.info('Received video job: %s', job.job_name)
 
         feed_forward_tracks = getattr(job, 'feed_forward_tracks', None) or []
-        if feed_forward_tracks and not self._has_speech_summarization_text_output(job):
+        if feed_forward_tracks:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
-                'Feed-forward tracks must come from media.output.TEXT with an algorithm containing SPEECHSUMMARIZATION.')
-
+                'Feed-forward tracks are not supported by this component.')
         if job.stop_frame < 0:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Job stop frame must be >= 0.')
@@ -1533,7 +1532,7 @@ class GeminiVideoSummarizationComponent:
             '-map',
             '0:a:0',
             '-acodec',
-            'pcm_s16le',
+            'pcm_f32le',
             '-ac',
             '1',
             '-ar',
@@ -1748,8 +1747,7 @@ class GeminiVideoSummarizationComponent:
                 speaker_timeline = self._build_feed_forward_speaker_timeline_prompt(feed_forward_speech_tracks)
                 if speaker_timeline:
                     request_content[1]["text"] += (
-                        "\n\nThis request includes a speaker timeline derived from OpenMPF feed-forward speech tracks. "
-                        "The timeline uses VOICED_SEGMENTS millisecond ranges to identify when each speaker is active. "
+                        "\n\nThis request includes a speaker timeline. "
                         "Use it only to keep speaker identities consistent while analyzing the provided video and audio. "
                         "It intentionally does not include transcript or translation text; use the audio itself for spoken content. "
                         "Do not use internal speaker IDs in the final summary; use the generated speaker labels or natural descriptions."
