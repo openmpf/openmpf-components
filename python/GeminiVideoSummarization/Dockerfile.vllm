@@ -3,6 +3,7 @@
 FROM vllm/vllm-openai:latest
 
 ENV HF_HOME=/root/.cache/huggingface
+ENV HF_HUB_OFFLINE=1
 
 ARG DEFAULT_VLLM_MODEL=google/gemma-4-12B-it
 ARG DEFAULT_VLLM_DRAFT_MODEL=
