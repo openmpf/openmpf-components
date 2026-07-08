@@ -10,7 +10,7 @@
         "description": "Gemini prompt response generation.",
         "actionType": "DETECTION",
         "trackType": "TEXT",
-        "mediaTypes":"VIDEO",
+        "mediaTypes": "VIDEO",
         "outputChangedCounter": 1,
         "requiresCollection": {
             "states": []
@@ -30,9 +30,9 @@
                 },
                 {
                     "name": "MODEL_NAME",
-                    "description": "The model to use for Gemini inference. Examples: 'gemini-1.5-flash', 'gemini-2.5-pro'.",
+                    "description": "The model to use for Gemini inference. Examples: 'gemma-4-12b', 'gemma-4-31b'.",
                     "type": "STRING",
-                    "defaultValue": "gemini-2.5-flash"
+                    "defaultValue": "gemma-4-12b"
                 },
                 {
                     "name": "GOOGLE_APPLICATION_CREDENTIALS",
@@ -114,70 +114,52 @@
                 },
                 {
                     "name": "PROCESS_FPS",
-                    "description": "Specifies the number of frames per second of video to process.",
+                    "description": "Specifies the target frames per second of video to supply to the model. The component never exceeds the source FPS. If this matches the source FPS, the component can avoid reencoding for compatible MP4 inputs.",
                     "type": "FLOAT",
                     "defaultValue": "1.0"
                 },
                 {
                     "name": "MOTION_EMPHASIS_SCORE_FPS",
-                    "description": "For local video processing, maximum FPS used when computing motion scores for high-motion frame insertion. PROCESS_FPS still controls regular output sampling.",
+                    "description": "Maximum FPS used when computing motion scores. PROCESS_FPS controls regular output sampling. The effective score FPS is at least PROCESS_FPS and at most the source FPS. Leave empty to use source FPS.",
                     "type": "FLOAT",
                     "defaultValue": "5.0"
                 },
                 {
                     "name": "MOTION_EMPHASIS_SCORE_WIDTH",
-                    "description": "Maximum frame width used for motion-score calculations. Frames wider than this are downscaled before grayscale differencing; selected output frames remain full resolution. Set to 0 to score at original size.",
+                    "description": "Maximum frame width used for motion-score calculations. Frames wider than this are downscaled only for grayscale differencing; the supplied model video remains full resolution. Set to 0 to score at original size.",
                     "type": "INT",
                     "defaultValue": "320"
                 },
                 {
                     "name": "MOTION_EMPHASIS_THRESHOLD",
-                    "description": "For local video processing, duplicate frames only when their motion score is at or above this threshold. Leave empty to use MOTION_EMPHASIS_PERCENTILE instead.",
+                    "description": "Motion score threshold used to identify motion-focus ranges. Leave empty to use MOTION_EMPHASIS_PERCENTILE instead.",
                     "type": "FLOAT",
                     "defaultValue": "5.0"
                 },
                 {
                     "name": "MOTION_EMPHASIS_PERCENTILE",
-                    "description": "For local video processing, frames with motion scores at or above this percentile are duplicated to make brief high-motion events more visible to the model. Ignored when MOTION_EMPHASIS_THRESHOLD is set.",
+                    "description": "Percentile used to choose the motion score threshold when MOTION_EMPHASIS_THRESHOLD is empty. Motion points at or above the computed threshold are summarized as motion-focus ranges in the prompt.",
                     "type": "FLOAT",
                     "defaultValue": "90.0"
                 },
                 {
-                    "name": "MOTION_EMPHASIS_DUPLICATES",
-                    "description": "For local video processing, the number of extra copies to add for each high-motion frame and its selected neighbors.",
-                    "type": "INT",
-                    "defaultValue": "1"
-                },
-                {
                     "name": "MOTION_EMPHASIS_NEIGHBOR_FRAMES",
-                    "description": "For local video processing, the number of frames before and after each high-motion frame that should also be duplicated.",
+                    "description": "Number of sampled-frame intervals to pad before and after each high-motion point when building motion-focus ranges. This does not duplicate frames.",
                     "type": "INT",
                     "defaultValue": "0"
                 },
                 {
-                    "name": "MOTION_EMPHASIS_FAST_OBJECT_MODE",
-                    "description": "When true, adds red-boxed and zoomed copies of localized high-speed motion regions to help models see very small fast-moving objects.",
-                    "type": "BOOLEAN",
-                    "defaultValue": "false"
-                },
-                {
-                    "name": "MOTION_EMPHASIS_PIXEL_THRESHOLD",
-                    "description": "Pixel-difference threshold used to find localized fast-motion regions when MOTION_EMPHASIS_FAST_OBJECT_MODE is true.",
+                    "name": "MOTION_FOCUS_MAX_RANGES",
+                    "description": "Maximum number of motion-focus ranges to include in the prompt. Set to 0 to disable motion-focus hints.",
                     "type": "INT",
-                    "defaultValue": "25"
-                },
-                {
-                    "name": "MOTION_EMPHASIS_MIN_AREA_RATIO",
-                    "description": "Minimum changed-region area as a fraction of the frame used by fast-object motion emphasis.",
-                    "type": "FLOAT",
-                    "defaultValue": "0.00005"
+                    "defaultValue": "40"
                 },
                 {
                     "name": "ENABLE_TIMELINE",
                     "description": "When set to 1, generate a timeline of events for the video. When set to 0, does not generate a timeline.",
                     "type": "INT",
                     "defaultValue": "1"
-                }                
+                }
             ]
         }
     },
@@ -200,17 +182,17 @@
     ],
     "pipelines": [
         {
-            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE OPENAI",
-            "description": "Runs Gemini video summarization using the OpenAI API.",
+            "name": "GEMMA VIDEO SUMMARIZATION PIPELINE OPENAI",
+            "description": "Runs Gemma video summarization using the OpenAI API.",
             "tasks": [
-                "GEMINI VIDEO SUMMARIZATION TASK"
+                "GEMMA VIDEO SUMMARIZATION TASK"
             ]
         },
         {
-            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE GOOGLE",
-            "description": "Runs Gemini video summarization using the Google API.",
+            "name": "GEMMA VIDEO SUMMARIZATION PIPELINE GOOGLE",
+            "description": "Runs Gemma video summarization using the Google API.",
             "tasks": [
-                "GEMINI VIDEO SUMMARIZATION TASK"
+                "GEMMA VIDEO SUMMARIZATION TASK"
             ]
         }
     ]
