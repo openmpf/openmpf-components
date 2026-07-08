@@ -24,19 +24,31 @@
             "properties": [
                 {
                     "name": "GENERATION_PROMPT_PATH",
-                    "description": "Path to a custom a file which contains the prompt that Gemini will use on the video.",
+                    "description": "Path to a custom prompt file.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "API",
+                    "description": "Backend API to use for model inference. OpenAI uses an OpenAI-compatible chat completion endpoint. Google uses Vertex AI/Gemini.",
+                    "type": "STRING",
+                    "defaultValue": "OpenAI"
+                },
+                {
+                    "name": "OPENAI_BASE_URL",
+                    "description": "Optional base URL for an OpenAI-compatible API service such as vLLM. Leave empty to use the OpenAI client default.",
                     "type": "STRING",
                     "defaultValue": ""
                 },
                 {
                     "name": "MODEL_NAME",
-                    "description": "The model to use for Gemini inference. Examples: 'gemma-4-12b', 'gemma-4-31b'.",
+                    "description": "The model to use for inference.",
                     "type": "STRING",
                     "defaultValue": "gemma-4-12b"
                 },
                 {
-                    "name": "GOOGLE_APPLICATION_CREDENTIALS",
-                    "description": "Path to a JSON file containing your GCP credentials for Vertex AI.",
+                    "name": "APPLICATION_CREDENTIALS",
+                    "description": "Path to a credential file or the name of an environment variable containing credentials.",
                     "type": "STRING",
                     "defaultValue": ""
                 },

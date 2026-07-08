@@ -66,24 +66,7 @@ _MISSING_CHAT_TEMPLATE_ERRORS = (
 
 class GeminiVideoSummarizationComponent:
 
-    def __init__(self, model: Gemma4ForConditionalGeneration=None, processor: Gemma4Processor=None, API="OpenAI", base_url=None, device=None):
-        self.model = model
-        self.processor = processor
-        self.device = device
-        self.base_url = base_url
-
-        if self.model is not None:
-            assert self.processor is not None, "If a model is provided, a tokenizer must also be provided."
-        if self.model is not None and self.device is None:
-            self.device = model.device
-
-        self.api = API
-        self.application_credentials = ''
-        self.project_id = ''
-        self.bucket_name = ''
-        self.label_prefix = ''
-        self.label_user = ''
-        self.label_purpose = ''
+    def __init__(self):
         self._last_preprocessed_frame_timestamps = []
         self._last_preprocessed_fps = None
 
@@ -98,16 +81,13 @@ class GeminiVideoSummarizationComponent:
             raise mpf.DetectionError.UNSUPPORTED_DATA_TYPE.exception(
                 'Job stop frame must be >= 0.')
 
-        config = JobConfig(job.job_properties, job.media_properties, model=self.model is not None)
+        has_local_model = getattr(self, "model", None) is not None
+        config = JobConfig(
+            job.job_properties,
+            job.media_properties,
+            model=has_local_model)
 
         tracks = []
-
-        self.application_credentials = config.application_credentials
-        self.project_id = config.project_id
-        self.bucket_name = config.bucket_name
-        self.label_prefix = config.label_prefix
-        self.label_user = config.label_user
-        self.label_purpose = config.label_purpose
 
         fps = config.process_fps
         enable_timeline=config.enable_timeline
@@ -129,8 +109,8 @@ class GeminiVideoSummarizationComponent:
 
         while max(attempts.values()) < max_attempts:
             error= None
-            if self.model is None: response = self._get_response(job, prompt, model_name, fps)
-            else: response = self._local_get_response(job, prompt)
+            if has_local_model: response = self._local_get_response(job, prompt)
+            else: response = self._get_response(job, prompt, model_name, fps, config)
 
             response = self._extract_json_object(response)
             response_json, error = self._check_response(attempts, max_attempts, response)
@@ -1664,13 +1644,30 @@ class GeminiVideoSummarizationComponent:
     def _is_enabled(value) -> bool:
         return str(value).strip().lower() not in ('0', 'false', 'no', 'off')
 
-    def _openai_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
+    @staticmethod
+    def _get_openai_api_key(application_credentials: str) -> str:
+        if application_credentials:
+            env_value = os.environ.get(application_credentials)
+            if env_value:
+                return env_value
+            if os.path.exists(application_credentials):
+                with open(application_credentials, 'r') as api_key_file:
+                    api_key = api_key_file.read().strip()
+                    if api_key:
+                        return api_key
+        return "Empty"
+
+    def _openai_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float, config=None) -> str:
         if not model_name:
             raise mpf.DetectionException(
                 "MODEL_NAME must be provided for OpenAI API requests.",
                 mpf.DetectionError.INVALID_PROPERTY
             )
-        api_key = os.environ.get(self.application_credentials, "Empty")
+        config = config or JobConfig(
+            job.job_properties,
+            job.media_properties,
+            model=getattr(self, "model", None) is not None)
+        api_key = self._get_openai_api_key(config.application_credentials)
 
         preprocessed_video = None
         
@@ -1686,11 +1683,11 @@ class GeminiVideoSummarizationComponent:
             timeout_seconds = float(mpf_util.get_property(
                 job.job_properties, "OPENAI_REQUEST_TIMEOUT_SECONDS", "600"))
             max_retries = int(mpf_util.get_property(
-                job.job_properties, "OPENAI_MAX_RETRIES", "2" if not self.base_url else "0"))
+                job.job_properties, "OPENAI_MAX_RETRIES", "2" if not config.base_url else "0"))
             
             client = OpenAI(
                 api_key=api_key,
-                base_url=self.base_url,
+                base_url=config.base_url or None,
                 timeout=timeout_seconds,
                 max_retries=max_retries)
             
@@ -1766,7 +1763,7 @@ class GeminiVideoSummarizationComponent:
                     }
                 ],
             }
-            default_json_response_format = "true" if not self.base_url else "false"
+            default_json_response_format = "true" if not config.base_url else "false"
             use_json_response_format = mpf_util.get_property(
                 job.job_properties,
                 "OPENAI_RESPONSE_FORMAT_JSON_OBJECT",
@@ -1799,10 +1796,14 @@ class GeminiVideoSummarizationComponent:
         finally:
             self._cleanup_preprocessed_video(preprocessed_video)
 
-    def _google_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float) -> str:
+    def _google_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float, config=None) -> str:
+        config = config or JobConfig(
+            job.job_properties,
+            job.media_properties,
+            model=getattr(self, "model", None) is not None)
         preprocessed_video = None
         try:
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.application_credentials
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.application_credentials
             if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
                 raise mpf.DetectionException(
                     f"Environment variable 'GOOGLE_APPLICATION_CREDENTIALS' is not set.",
@@ -1812,30 +1813,30 @@ class GeminiVideoSummarizationComponent:
 
             # Video segment storage information
             FILE_NAME = os.path.basename(preprocessed_video['path'])
-            STORAGE_PATH = self.label_user + "/" + FILE_NAME
+            STORAGE_PATH = config.label_user + "/" + FILE_NAME
 
             # Uploads file to GCP bucket
-            client = storage.Client(project=self.project_id)
-            bucket = client.bucket(self.bucket_name)
+            client = storage.Client(project=config.project_id)
+            bucket = client.bucket(config.bucket_name)
             blob = bucket.blob(STORAGE_PATH)
             blob.upload_from_filename(preprocessed_video['path'])
 
-            file_uri = f"gs://{self.bucket_name}/{STORAGE_PATH}"
+            file_uri = f"gs://{config.bucket_name}/{STORAGE_PATH}"
 
             # Generate Gemini response
             genai_client = genai.Client(
-                project=self.project_id,
+                project=config.project_id,
                 location="global",
                 enterprise=True
             )
 
             content_config = None
-            if self.label_user and self.label_prefix and self.label_purpose:
+            if config.label_user and config.label_prefix and config.label_purpose:
                 content_config = types.GenerateContentConfig(
                     labels={
-                        self.label_prefix + "user": self.label_user,
-                        self.label_prefix + "purpose": self.label_purpose,
-                        self.label_prefix + "modality": "video"
+                        config.label_prefix + "user": config.label_user,
+                        config.label_prefix + "purpose": config.label_purpose,
+                        config.label_prefix + "modality": "video"
                     }
                 )
 
@@ -1873,15 +1874,19 @@ class GeminiVideoSummarizationComponent:
         finally:
             self._cleanup_preprocessed_video(preprocessed_video)
 
-    def _get_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float):
+    def _get_response(self, job: mpf.VideoJob, prompt: str, model_name: str, fps: float, config=None):
+        config = config or JobConfig(
+            job.job_properties,
+            job.media_properties,
+            model=getattr(self, "model", None) is not None)
         try:
-            if self.api == "OpenAI":
-                return self._openai_response(job, prompt, model_name, fps)
-            elif self.api == "Google":
-                return self._google_response(job, prompt, model_name, fps)
+            if config.api == "OpenAI":
+                return self._openai_response(job, prompt, model_name, fps, config)
+            elif config.api == "Google":
+                return self._google_response(job, prompt, model_name, fps, config)
             else:
                 raise mpf.DetectionException(
-                    f"Unsupported API specified: {self.api}",
+                    f"Unsupported API specified: {config.api}",
                     mpf.DetectionError.INVALID_PROPERTY
                 )
 
@@ -1899,7 +1904,7 @@ class GeminiVideoSummarizationComponent:
         except Exception as e:
             logger.error(f"Error in _get_response: {e}")
             raise mpf.DetectionException(
-                f"{self.api} API call failed: {e}",
+                f"{config.api} API call failed: {e}",
                 mpf.DetectionError.DETECTION_FAILED
             )
 
@@ -1916,7 +1921,15 @@ def _read_file(path: str) -> str:
         ) from e
 
 class JobConfig:
-    def __init__(self, job_properties: Mapping[str, str], media_properties=None, model=False):
+    def __init__(
+            self,
+            job_properties: Mapping[str, str],
+            media_properties=None,
+            model=False):
+        self.api = self._get_prop(job_properties, "API", "OpenAI", ["OpenAI", "Google"])
+        self.base_url = self._get_prop(job_properties, "OPENAI_BASE_URL", "")
+        self.base_url = str(self.base_url).strip() or None
+
         self.generation_prompt_path = self._get_prop(job_properties, "GENERATION_PROMPT_PATH", "")
         self.enable_timeline = int(self._get_prop(job_properties, "ENABLE_TIMELINE", "1"))
 
@@ -1925,18 +1938,29 @@ class JobConfig:
         elif self.generation_prompt_path == "" and self.enable_timeline == 0:
             self.generation_prompt_path= os.path.join(os.path.dirname(__file__), 'data', 'default_prompt_no_tl.txt')
 
-        if not os.path.exists(self.generation_prompt_path):
+        self.generation_prompt_path = self._resolve_existing_path(self.generation_prompt_path)
+        if not self.generation_prompt_path:
             raise mpf.DetectionException(
                 "Invalid path provided for prompt file: ",
                 mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
             )
 
         self.application_credentials = self._get_prop(job_properties, "APPLICATION_CREDENTIALS", "")
-        if not os.path.exists(self.application_credentials) and not model:
-            raise mpf.DetectionException(
-                "Invalid path provided for GCP credential file: ",
-                mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
-            )
+        if self.api == "Google":
+            self.application_credentials = self._resolve_existing_path(self.application_credentials)
+            if not self.application_credentials and not model:
+                raise mpf.DetectionException(
+                    "Invalid path provided for GCP credential file: ",
+                    mpf.DetectionError.COULD_NOT_OPEN_DATAFILE
+                )
+        if (
+                self.api == "OpenAI"
+                and self.application_credentials
+                and not os.path.exists(self.application_credentials)
+                and not os.environ.get(self.application_credentials)):
+            logger.warning(
+                "APPLICATION_CREDENTIALS did not match an environment variable or file path; "
+                "using the OpenAI client dummy key fallback.")
 
         self.model_name = self._get_prop(job_properties, "MODEL_NAME", "")
         self.project_id = self._get_prop(job_properties, "PROJECT_ID", "")
@@ -1947,6 +1971,18 @@ class JobConfig:
         self.generation_max_attempts = self._get_prop(job_properties, "GENERATION_MAX_ATTEMPTS", "5")
         self.timeline_check_target_threshold = self._get_prop(job_properties, "TIMELINE_CHECK_TARGET_THRESHOLD", "10")
         self.process_fps = self._get_prop(job_properties, "PROCESS_FPS", 1.0)
+
+    @staticmethod
+    def _resolve_existing_path(path: str) -> str:
+        if not path:
+            return ""
+        if os.path.exists(path):
+            return path
+        if not os.path.isabs(path):
+            component_relative_path = os.path.join(os.path.dirname(__file__), path)
+            if os.path.exists(component_relative_path):
+                return component_relative_path
+        return ""
 
     @staticmethod
     def _get_prop(job_properties, key, default_value, accept_values=[]):

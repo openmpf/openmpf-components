@@ -8,8 +8,10 @@ These are the properties read directly by the current component code.
 
 | Property | Default | Description |
 | :--- | :--- | :--- |
-| `MODEL_NAME` | empty | Model name sent to the backend, such as a Gemini model name or an OpenAI/vLLM model id. Required for API calls. |
-| `APPLICATION_CREDENTIALS` | empty | Path to a credentials file. In Google mode this becomes `GOOGLE_APPLICATION_CREDENTIALS`. In the current OpenAI-compatible path this value is also used to look up an environment variable containing the API key, so confirm the deployed credential convention before production use. |
+| `API` | `OpenAI` | Backend API to use for model inference. Supported values are `OpenAI` and `Google`. |
+| `OPENAI_BASE_URL` | empty | Optional base URL for an OpenAI-compatible API service such as vLLM. Leave empty to use the OpenAI client default. |
+| `MODEL_NAME` | empty | Model name sent to the backend. Required for API calls. |
+| `APPLICATION_CREDENTIALS` | empty | Path to a credential file or the name of an environment variable containing credentials. |
 | `GENERATION_PROMPT_PATH` | `data/default_prompt.txt` or `data/default_prompt_no_tl.txt` | Optional path to a prompt file. If unset, the component selects the timeline or no-timeline default based on `ENABLE_TIMELINE`. |
 | `ENABLE_TIMELINE` | `1` | `1` asks the model for a summary and event timeline. `0` asks only for a summary. |
 | `GENERATION_MAX_ATTEMPTS` | `5` | Number of attempts for getting valid JSON and, when enabled, a valid timeline. |
@@ -82,6 +84,8 @@ gemini-video-summarization:
     - host_directory/prompt_file.txt:/opt/mpf/share/prompt_file.txt:ro # optional
     - shared_data:/opt/mpf/share
   environment:
+    - MPF_PROP_API=OpenAI
+    - MPF_PROP_OPENAI_BASE_URL=http://vllm:8000/v1
     - MPF_PROP_MODEL_NAME=<MODEL NAME>
     - MPF_PROP_APPLICATION_CREDENTIALS=/run/secrets/openai_api_key.txt
     - MPF_PROP_GENERATION_PROMPT_PATH=/opt/mpf/share/prompt_file.txt # optional
