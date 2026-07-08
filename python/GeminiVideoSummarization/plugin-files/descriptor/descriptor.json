@@ -200,8 +200,15 @@
     ],
     "pipelines": [
         {
-            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE",
-            "description": "Runs Gemini video summarization.",
+            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE OPENAI",
+            "description": "Runs Gemini video summarization using the OpenAI API.",
+            "tasks": [
+                "GEMINI VIDEO SUMMARIZATION TASK"
+            ]
+        },
+        {
+            "name": "GEMINI VIDEO SUMMARIZATION PIPELINE GOOGLE",
+            "description": "Runs Gemini video summarization using the Google API.",
             "tasks": [
                 "GEMINI VIDEO SUMMARIZATION TASK"
             ]
