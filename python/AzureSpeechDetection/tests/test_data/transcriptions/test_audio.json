@@ -1,13 +1,12 @@
 {
-    "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_audio.json",
+    "self": "http://localhost:10669/speechtotext/transcriptions/test_audio.json?api-version=2025-10-15",
     "model": {
-        "self": "http://localhost:10669/speechtotext/v3.0/models/base/modelhash"
+        "self": "http://localhost:10669/speechtotext/models/base/modelhash"
     },
     "links": {
-        "files": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_audio/files.json"
+        "files": "http://localhost:10669/speechtotext/transcriptions/test_audio/files.json?api-version=2025-10-15"
     },
     "properties": {
-        "diarizationEnabled": false,
         "wordLevelTimestampsEnabled": true,
         "channels": [
             0,
@@ -15,8 +14,12 @@
         ],
         "punctuationMode": "DictatedAndAutomatic",
         "profanityFilterMode": "None",
-        "duration": "PT5S",
-        "timeToLive": "PT2H"
+        "diarization": {
+            "enabled": false,
+            "maxSpeakers": 2
+        },
+        "timeToLiveHours": 6,
+        "durationMilliseconds": 5000
     },
     "lastActionDateTime": "2021-01-21T20:10:56Z",
     "status": "Succeeded",
