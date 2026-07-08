@@ -30,17 +30,24 @@ ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
 
-RUN pip3 install tenacity google-cloud-storage pytictoc google-genai
+RUN pip3 install --no-cache-dir \
+    tenacity \
+    numpy \
+    imageio-ffmpeg \
+    openai \
+    google-genai \
+    google-cloud-storage \
+    opencv-python-headless
         
 ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_gemini.py; fi
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_gemini_local.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Gemini Video Summarization" \
-      org.label-schema.schema-version="1.0" \
+      org.label-schema.schema-version="1.1" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"

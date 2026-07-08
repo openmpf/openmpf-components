@@ -29,22 +29,13 @@ import json
 import os
 import sys
 
-from google import genai
-from google.genai import types
-from google.genai.types import Part
-from google.cloud import storage
-from google.genai.errors import ClientError
-
-
 def main():
     parser = argparse.ArgumentParser(description='Sends image and prompt to Gemini Client for processing.')
 
-    parser.add_argument("--model", "-m", type=str, default="gemini-2.5-flash", help="The name of the Gemini model to use.")
+    parser.add_argument("--model", "-m", type=str, default="google/gemma-4-12B-it", help="The name of the Gemini model to use.")
     parser.add_argument("--data_uri", "-d", type=str, required=True, help="Path to the media file to process with Gemini.")
     parser.add_argument("--prompt", "-p", type=str, help="The prompt you want to use with the video.")
-    parser.add_argument("--google_application_credientials", "-c", type=str, required=True, help="The JSON file to your credentials to use Vertex AI.")
-    parser.add_argument("--project_id", "-i", type=str, required=True, help="Name of your GCP project.")
-    parser.add_argument("--bucket_name", "-b", type=str, required=True, help="Name of the GCP bucket.")
+    parser.add_argument("--key_var", "-c", type=str, required=True, help="The variable with the API key in it")
     parser.add_argument("--label_prefix", "-l", type=str, required=True, help="Label prefix to use when uploading the video to GCP.")
     parser.add_argument("--label_user", "-u", type=str, required=True, help="User of whom is accessing the GCP resources.")
     parser.add_argument("--label_purpose", "-r", type=str, required=True, help="Purpose of accessing the GCP resources.")
@@ -55,14 +46,13 @@ def main():
     args = parser.parse_args()
 
     try:
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = args.google_application_credientials
-
         # GCP resources
         USER = args.label_user
         PURPOSE = args.label_purpose
         LABEL_PREFIX = args.label_prefix
         PROJECT_ID = args.project_id
         BUCKET_NAME = args.bucket_name
+        KEY_VAR = args.key_var
 
         PROMPT = args.prompt
         MODEL = args.model
@@ -70,36 +60,10 @@ def main():
         # Video segment storage information
         FILE_PATH = args.data_uri
         FILE_NAME = os.path.basename(FILE_PATH)
-        STORAGE_PATH = USER + "/" + FILE_NAME
 
         SEGMENT_START = int(float(args.segment_start))
         SEGMENT_STOP = int(float(args.segment_stop))
         FPS = float(args.fps)
-
-        # Automatically uses ADC to authenticate
-        client = storage.Client(
-            project=PROJECT_ID
-        )
-
-        # Uploads file to GCP bucket
-        bucket = client.bucket(BUCKET_NAME)
-        blob = bucket.blob(STORAGE_PATH)
-
-        # There is no way to set a time-to-live (TTL) for a file in Google Storage.
-        # The file will be deleted manually at the end of this script.
-        # If you want to set a TTL, you can use the `lifecycle` configuration in the bucket settings.
-        # See: https://cloud.google.com/storage/docs/lifecycle
-        # For example, you can set a rule to delete files older than 30 days.
-        blob.upload_from_filename(FILE_PATH)
-
-        file_uri = f"gs://{BUCKET_NAME}/{STORAGE_PATH}"
-
-        # Automatically uses ADC to authenticate
-        client = genai.Client(
-            project=PROJECT_ID,
-            location="global",
-            vertexai=True
-        )
 
         content_config = None
         if(USER != "" and LABEL_PREFIX != "" and PURPOSE != ""):

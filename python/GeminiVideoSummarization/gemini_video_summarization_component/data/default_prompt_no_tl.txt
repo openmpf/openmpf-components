@@ -14,7 +14,6 @@ Step 2: If audio has been provided with the video, describe things such as:
 - Details of anything that may assist the summary in Step 1
 - Details and topics about any conversations
 - Quotes for any important information conveyed in the conversations
-- Any notable sounds, noises, etc. (ex. wind, animal noises, explosions, etc.)
 
 If there is no audio, mention it at the end of the summary.
 
