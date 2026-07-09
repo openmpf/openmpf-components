@@ -50,9 +50,6 @@ from google.genai.errors import ClientError
 
 from openai import OpenAI
 
-import torch
-from transformers.models.gemma4.processing_gemma4 import Gemma4Processor
-from transformers.models.gemma4.modeling_gemma4 import Gemma4ForConditionalGeneration
 
 logger = logging.getLogger('GeminiVideoSummarizationComponent')
 
@@ -546,12 +543,9 @@ class GeminiVideoSummarizationComponent:
 
         num_frames = min(num_frames, available_frame_count)
         while num_frames > 1:
-            indices = torch.arange(
-                0,
-                available_frame_count,
-                available_frame_count / num_frames
-            ).int()
-            if len(indices) <= num_frames and int(indices.max()) < available_frame_count:
+            step = available_frame_count / num_frames
+            indices = [int(index * step) for index in range(num_frames)]
+            if len(indices) <= num_frames and max(indices) < available_frame_count:
                 return num_frames
             num_frames -= 1
 
@@ -664,6 +658,7 @@ class GeminiVideoSummarizationComponent:
 
             inputs = self.processor(**processor_kwargs).to(self.device)
 
+            import torch
             with torch.no_grad():
                 output_ids = self.model.generate(**inputs, max_new_tokens=1024)
 

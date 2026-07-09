@@ -177,7 +177,7 @@
     },
     "actions": [
         {
-            "name": "GEMINI VIDEO SUMMARIZATION ACTION",
+            "name": "GEMMA VIDEO SUMMARIZATION ACTION",
             "description": "Runs Gemini with a prompt for the provided video.",
             "algorithm": "GeminiVideo",
             "properties": []
@@ -185,10 +185,10 @@
     ],
     "tasks": [
         {
-            "name": "GEMINI VIDEO SUMMARIZATION TASK",
+            "name": "GEMMA VIDEO SUMMARIZATION TASK",
             "description": "Runs Gemini video summarization.",
             "actions": [
-                "GEMINI VIDEO SUMMARIZATION ACTION"
+                "GEMMA VIDEO SUMMARIZATION ACTION"
             ]
         }
     ],
