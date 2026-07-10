@@ -24,10 +24,10 @@
 # limitations under the License.                                            #
 #############################################################################
 
-import sys
-import os
-import logging
 import json
+import logging
+import os
+import sys
 from pathlib import Path
 
 import unittest
@@ -37,27 +37,24 @@ import unittest.mock
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from gemini_video_summarization_component.gemini_video_summarization_component import GeminiVideoSummarizationComponent
 
-import unittest
 import mpf_component_api as mpf
-from transformers import AutoProcessor, AutoModelForCausalLM
-import torch
 
 logging.basicConfig(level=logging.ERROR)
-USE_MOCKS = True
-TEST_DATA = Path("data")
+TEST_DATA = Path(__file__).resolve().parent / "data"
+RUN_VLLM_TESTS = os.environ.get("RUN_VLLM_TESTS", "false").lower() == "true"
+OPENAI_BASE_URL = os.environ.get(
+    "GEMINI_TEST_OPENAI_BASE_URL",
+    "http://gemini-video-summarization-server:8000/v1")
+OPENAI_MODEL_NAME = os.environ.get(
+    "GEMINI_TEST_MODEL_NAME",
+    "google/gemma-4-12B-it")
 
-# Replace with your own desired model name
-MODEL_NAME = "gemini-2.5-flash"
-OPENAI_MODEL_NAME = "o4-mini"
-
-# Replace with your own path to the Google Application Credentials JSON file
-GOOGLE_APPLICATION_CREDENTIALS="../application_default_credentials.json"
-OPENAI_APPLICATION_CREDENTIALS="../openai_api_key.txt"
-
-job_properties=dict(
-    APPLICATION_CREDENTIALS=None,
-    GENERATION_PROMPT_PATH="../gemini_video_summarization_component/data/default_prompt.txt"
-)
+job_properties = {
+    "API": "OpenAI",
+    "OPENAI_BASE_URL": OPENAI_BASE_URL,
+    "MODEL_NAME": OPENAI_MODEL_NAME,
+    "GENERATION_MAX_ATTEMPTS": "1",
+}
 
 CAT_TIMELINE = {
     "video_summary": "A cat is sitting on a cobblestone street, looking around as people walk by.",
@@ -257,116 +254,13 @@ DRONE_VIDEO_PROPERTIES = {
 
 class TestGemini(unittest.TestCase):
 
-    def test_local_chat_template_falls_back_when_processor_template_missing(self):
-        class FakeProcessor:
-            def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
-                raise ValueError(
-                    "Cannot use chat template functions because tokenizer.chat_template "
-                    "is not set and no template argument was passed!"
-                )
-
-        component = GeminiVideoSummarizationComponent(
-            model=object(),
-            processor=FakeProcessor(),
-            device="cpu"
-        )
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "video", "video": "/tmp/video.mp4"},
-                    {"type": "text", "text": "Summarize."}
-                ]
-            }
-        ]
-
-        self.assertEqual(
-            "<bos><|turn>user\n\n\n<|video|>\n\nSummarize.<turn|>\n<|turn>model\n",
-            component._apply_local_chat_template(messages)
-        )
-
-    def test_local_num_frames_avoids_torchvision_endpoint_index(self):
-        self.assertEqual(
-            29,
-            GeminiVideoSummarizationComponent._avoid_torchvision_endpoint_frame_index(290, 30)
-        )
-        self.assertEqual(
-            32,
-            GeminiVideoSummarizationComponent._avoid_torchvision_endpoint_frame_index(290, 32)
-        )
-
-    def test_local_model_uses_preprocessed_frame_count_for_num_frames(self):
-        response = json.dumps(MISSILE_TIMELINE)
-
-        class FakeInputs(dict):
-            def __init__(self):
-                super().__init__(input_ids=[[1, 2]])
-
-            @property
-            def input_ids(self):
-                return self["input_ids"]
-
-            def to(self, device):
-                return self
-
-        class FakeModel:
-            def generate(self, **kwargs):
-                return [[1, 2, 3]]
-
-        class FakeVideoProcessor:
-            num_frames = 32
-
-        class FakeProcessor:
-            video_processor = FakeVideoProcessor()
-
-            def apply_chat_template(self, messages, tokenize=False, add_generation_prompt=True):
-                return "<|video|> Summarize."
-
-            def __call__(self, **kwargs):
-                self.call_kwargs = kwargs
-                return FakeInputs()
-
-            def batch_decode(self, generated_ids, skip_special_tokens=True):
-                return [response]
-
-        processor = FakeProcessor()
-        component = GeminiVideoSummarizationComponent(
-            model=FakeModel(),
-            processor=processor,
-            device="cpu"
-        )
-        job = mpf.VideoJob(
-            "short local model job",
-            str(TEST_DATA / "falling-missile-cropped-speedup-trimmed 2.mp4"),
-            0,
-            29,
-            {},
-            MISSILE_VIDEO_PROPERTIES
-        )
-
-        self.assertEqual(response, component._local_get_response(job, "Summarize."))
-        self.assertEqual(32, processor.call_kwargs["num_frames"])
-
     def run_patched_job(self, component, job, response):
-        if not USE_MOCKS:
+        patch_path = (
+            "gemini_video_summarization_component.gemini_video_summarization_component."
+            "GeminiVideoSummarizationComponent._openai_response"
+        )
+        with unittest.mock.patch(patch_path, return_value=response):
             return component.get_detections_from_video(job)
-        
-        if USE_MOCKS:
-            if component.model is not None:
-                response_method = "_local_get_response"
-            elif component.api == "OpenAI":
-                response_method = "_openai_response"
-            elif component.api == "Google":
-                response_method = "_google_response"
-            else:
-                response_method = "_get_response"
-
-            patch_path = (
-                "gemini_video_summarization_component.gemini_video_summarization_component."
-                f"GeminiVideoSummarizationComponent.{response_method}"
-            )
-            with unittest.mock.patch(patch_path, return_value=response):
-                return component.get_detections_from_video(job)
     
     def assert_detection_region(self, detection, frame_width, frame_height):    
         self.assertEqual(0, detection.x_left_upper)
@@ -387,13 +281,12 @@ class TestGemini(unittest.TestCase):
         self.assert_detection_region(track.frame_locations[middle_frame], frame_width, frame_height)
 
     def test_openai_api_routes_to_openai_response(self):
-        component = GeminiVideoSummarizationComponent(API="OpenAI")
+        component = GeminiVideoSummarizationComponent()
 
         job = mpf.VideoJob('openai cat job', str(TEST_DATA / 'cat.mp4'), 0, 170,
             {
-                "APPLICATION_CREDENTIALS": OPENAI_APPLICATION_CREDENTIALS,
+                **job_properties,
                 "MODEL_NAME": OPENAI_MODEL_NAME,
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
             CAT_VIDEO_PROPERTIES)
@@ -418,13 +311,12 @@ class TestGemini(unittest.TestCase):
         self.assert_first_middle_last_detections(results[0], frame_width, frame_height)
 
     def test_openai_api_invalid_json_response(self):
-        component = GeminiVideoSummarizationComponent(API="OpenAI")
+        component = GeminiVideoSummarizationComponent()
 
         job = mpf.VideoJob('openai invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
             {
-                "APPLICATION_CREDENTIALS": OPENAI_APPLICATION_CREDENTIALS,
+                **job_properties,
                 "MODEL_NAME": OPENAI_MODEL_NAME,
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
             CAT_VIDEO_PROPERTIES)
@@ -436,9 +328,8 @@ class TestGemini(unittest.TestCase):
         self.assertIn("not valid JSON", str(cm.exception))
 
     def test_multiple_videos(self):
-        component = GeminiVideoSummarizationComponent(API="Google")
+        component = GeminiVideoSummarizationComponent()
         job_props = job_properties.copy()
-        job_props["APPLICATION_CREDENTIALS"] = GOOGLE_APPLICATION_CREDENTIALS
         
         job = mpf.VideoJob('valid cat job', str(TEST_DATA / 'cat.mp4'), 0, 170, job_props, CAT_VIDEO_PROPERTIES)
         frame_width = int(job.media_properties['FRAME_WIDTH'])
@@ -526,12 +417,11 @@ class TestGemini(unittest.TestCase):
         self.assert_first_middle_last_detections(results[1], frame_width, frame_height)
 
     def test_invalid_timeline(self):
-        component = GeminiVideoSummarizationComponent(API="Google")
+        component = GeminiVideoSummarizationComponent()
 
         job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000,
             { 
-                "APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                **job_properties,
                 "GENERATION_MAX_ATTEMPTS" : "1",
             }, 
             CAT_VIDEO_PROPERTIES)
@@ -545,8 +435,7 @@ class TestGemini(unittest.TestCase):
         # test disabling time check
         job = mpf.VideoJob('invalid cat job', str(TEST_DATA / 'cat.mp4'), 0, 15000, 
             {
-                "GOOGLE_APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                **job_properties,
                 "GENERATION_MAX_ATTEMPTS" : "1",
                 "TIMELINE_CHECK_TARGET_THRESHOLD" : "-1"
             },
@@ -557,12 +446,11 @@ class TestGemini(unittest.TestCase):
         self.assertIn("cat", results[0].detection_properties["TEXT"])
 
     def test_invalid_json_response(self):
-        component = GeminiVideoSummarizationComponent(API="Google")
+        component = GeminiVideoSummarizationComponent()
 
         job = mpf.VideoJob('invalid cat job JSON', str(TEST_DATA / 'cat.mp4'), 0, 100,
             {
-                "APPLICATION_CREDENTIALS": GOOGLE_APPLICATION_CREDENTIALS,
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
+                **job_properties,
                 "GENERATION_MAX_ATTEMPTS" : "1",
             },
             CAT_VIDEO_PROPERTIES)
@@ -574,12 +462,11 @@ class TestGemini(unittest.TestCase):
         self.assertIn("not valid JSON", str(cm.exception))
 
     def test_empty_response(self):
-        component = GeminiVideoSummarizationComponent(API="Google")
+        component = GeminiVideoSummarizationComponent()
 
         job = mpf.VideoJob('empty cat job', str(TEST_DATA / 'cat.mp4'), 0,  170,
             {
-                "GENERATION_PROMPT_PATH":"../gemini_video_summarization_component/data/default_prompt.txt",
-                "GENERATION_MAX_ATTEMPTS" : "1",
+                **job_properties,
             },
             CAT_VIDEO_PROPERTIES)
 
@@ -588,6 +475,34 @@ class TestGemini(unittest.TestCase):
 
         self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
         self.assertIn("Empty response", str(cm.exception))
+
+
+    @unittest.skipUnless(RUN_VLLM_TESTS, "RUN_VLLM_TESTS is disabled")
+    def test_vllm_openai_compatible_api(self):
+        component = GeminiVideoSummarizationComponent()
+        integration_properties = {
+            **job_properties,
+            "ENABLE_AUDIO": "0",
+            "ENABLE_TIMELINE": "0",
+            "GENERATION_MAX_ATTEMPTS": "2",
+            "OPENAI_REQUEST_TIMEOUT_SECONDS": "600",
+            "OPENAI_RESPONSE_FORMAT_JSON_OBJECT": "false",
+        }
+        job = mpf.VideoJob(
+            "vllm cat job",
+            str(TEST_DATA / "cat.mp4"),
+            0,
+            170,
+            integration_properties,
+            CAT_VIDEO_PROPERTIES)
+
+        results = component.get_detections_from_video(job)
+
+        self.assertEqual(1, len(results))
+        self.assertEqual(
+            "TRUE",
+            results[0].detection_properties["SEGMENT SUMMARY"])
+        self.assertTrue(results[0].detection_properties["TEXT"].strip())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -96,3 +96,9 @@ gemini-video-summarization:
 ```
 
 `MODEL_NAME` should match the model exposed by the OpenAI-compatible service. For a local vLLM server, run vLLM separately and configure this component deployment to use that service as the OpenAI base URL.
+
+## Tests
+
+`RUN_TESTS=true` runs the OpenAI-compatible unit suite during the component image build. These tests use a mocked response client, following the `LlmSpeechSummarization` build-time test pattern, so normal CI builds do not require a GPU.
+
+The `vllm-tests` Docker target runs only the live integration test with `RUN_VLLM_TESTS=true`, which sends one real video request to an OpenAI-compatible endpoint. In `openmpf-docker`, `docker-compose.components.test.yml` provides a separate `gemini-video-summarization-vllm-tests` service that waits for `gemini-video-summarization-server` to become healthy before running this target.

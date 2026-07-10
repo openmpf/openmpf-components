@@ -28,7 +28,7 @@
 
 ARG BUILD_REGISTRY
 ARG BUILD_TAG=latest
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG}
+FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS component
 
 RUN pip3 install --no-cache-dir \
     tenacity \
@@ -43,7 +43,7 @@ ARG RUN_TESTS=false
 
 RUN --mount=target=.,readwrite \
     install-component.sh; \
-    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_gemini_local.py; fi
+    if [ "${RUN_TESTS,,}" == true ]; then python tests/test_gemini.py; fi
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF Gemini Video Summarization" \
@@ -51,3 +51,17 @@ LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.url="https://openmpf.github.io" \
       org.label-schema.vcs-url="https://github.com/openmpf/openmpf-components" \
       org.label-schema.vendor="MITRE"
+
+
+FROM component AS vllm-tests
+ARG RUN_TESTS=false
+ENV RUN_TESTS=${RUN_TESTS}
+
+WORKDIR /opt/gemini-tests
+COPY tests/test_gemini.py ./
+COPY tests/data/cat.mp4 data/cat.mp4
+
+ENTRYPOINT ["/bin/bash", "-lc", "if [ \"${RUN_TESTS,,}\" == \"true\" ]; then exec /opt/mpf/plugin-venv/bin/python3 -m unittest -v test_gemini.TestGemini.test_vllm_openai_compatible_api; fi"]
+
+
+FROM component AS final
