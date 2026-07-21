@@ -46,7 +46,7 @@ USE_MOCKS = True
 APPLICATION_CREDENTIALS = ''
 
 # Replace with your own desired model name
-MODEL_NAME = "gemma-3-27b-it"
+MODEL_NAME = "google/gemma-4-12B-it"
 
 class TestGemini(unittest.TestCase):
     def run_patched_job(self, component, job, side_effect_function):
@@ -529,7 +529,7 @@ class TestApiBackends(unittest.TestCase):
             openai_request_timeout_seconds=600.0, openai_max_retries=0,
             openai_response_format_json_object=False,
             enable_json_prompt_format=False, openai_max_tokens=None,
-            openai_temperature=None, model_name="gemma-3-27b-it")
+            openai_temperature=None, model_name="google/gemma-4-12B-it")
         client = MagicMock()
         client.chat.completions.create.return_value.choices = [
             Mock(message=Mock(content="A dog is sitting outside."))]
@@ -540,7 +540,7 @@ class TestApiBackends(unittest.TestCase):
                 config, b"jpeg image bytes", "Describe this image.")
         self.assertEqual(response, "A dog is sitting outside.")
         request = client.chat.completions.create.call_args.kwargs
-        self.assertEqual(request["model"], "gemma-3-27b-it")
+        self.assertEqual(request["model"], "google/gemma-4-12B-it")
         image_url = request["messages"][0]["content"][1]["image_url"]["url"]
         self.assertTrue(image_url.startswith("data:image/jpeg;base64,"))
 
@@ -549,7 +549,7 @@ class TestApiBackends(unittest.TestCase):
         config = Mock(
             application_credentials="/tmp/google-credentials.json",
             project_id="test-project", label_user="", label_prefix="",
-            label_purpose="", model_name="gemma-3-27b-it")
+            label_purpose="", model_name="google/gemma-4-12B-it")
         client = MagicMock()
         client.models.generate_content.return_value.text = "A dog is visible."
         with unittest.mock.patch(
@@ -559,7 +559,7 @@ class TestApiBackends(unittest.TestCase):
                 config, b"jpeg image bytes", "Describe this image.")
         self.assertEqual(response, "A dog is visible.")
         request = client.models.generate_content.call_args.kwargs
-        self.assertEqual(request["model"], "gemma-3-27b-it")
+        self.assertEqual(request["model"], "google/gemma-4-12B-it")
 
     def test_json_response_parser(self):
         expected = {"description": "A dog."}

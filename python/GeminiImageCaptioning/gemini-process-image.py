@@ -55,7 +55,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Sends an image and prompt to an OpenAI-compatible or Google API.")
     parser.add_argument("--api", choices=("OpenAI", "Google"), default="OpenAI")
-    parser.add_argument("--model", "-m", default="gemma-3-27b-it")
+    parser.add_argument("--model", "-m", default="google/gemma-4-12B-it")
     parser.add_argument("--base-url", default="")
     parser.add_argument("--application-credentials", default="")
     parser.add_argument("--project-id", default="")

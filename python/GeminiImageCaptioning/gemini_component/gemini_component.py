@@ -713,7 +713,7 @@ class JobConfig:
         self.enable_json_prompt_format = self._get_prop(job_properties, "ENABLE_JSON_PROMPT_FORMAT", False)
         
         self.classification = self._get_prop(job_properties, "CLASSIFICATION", "")
-        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "gemma-3-27b-it")
+        self.model_name = self._get_prop(job_properties, "MODEL_NAME", "google/gemma-4-12B-it")
         self.generation_max_attempts = self._get_prop(job_properties, "GENERATION_MAX_ATTEMPTS", 5)
 
         generate_frame_rate_cap = self._get_prop(job_properties, "GENERATE_FRAME_RATE_CAP", 1.0)

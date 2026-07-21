@@ -103,7 +103,7 @@
                     "name": "MODEL_NAME",
                     "description": "The model exposed by the selected backend.",
                     "type": "STRING",
-                    "defaultValue": "gemma-3-27b-it"
+                    "defaultValue": "google/gemma-4-12B-it"
                 },
                 {
                     "name": "GENERATION_MAX_ATTEMPTS",

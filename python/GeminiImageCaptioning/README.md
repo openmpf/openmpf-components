@@ -18,7 +18,7 @@ This component sends images and sampled video frames with configurable prompts t
 | `JSON_PROMPT_CONFIGURATION_PATH` | bundled file | Path to a JSON file containing prompts that request JSON responses. |
 | `ENABLE_JSON_PROMPT_FORMAT` | `false` | Use the JSON prompt configuration and parse the response into detection properties. |
 | `GENERATE_FRAME_RATE_CAP` | `1.0` | Maximum number of frames processed per second of native video. Values less than or equal to zero process every frame. |
-| `MODEL_NAME` | `gemma-3-27b-it` | Model exposed by the selected backend. |
+| `MODEL_NAME` | `google/gemma-4-12B-it` | Model exposed by the selected backend. |
 | `GENERATION_MAX_ATTEMPTS` | `5` | Maximum attempts to obtain valid JSON output. |
 | `OPENAI_REQUEST_TIMEOUT_SECONDS` | `600` | Timeout for OpenAI-compatible chat completion requests. |
 | `OPENAI_MAX_RETRIES` | `0` with a base URL, otherwise `2` | Retry count used by the OpenAI client. |
