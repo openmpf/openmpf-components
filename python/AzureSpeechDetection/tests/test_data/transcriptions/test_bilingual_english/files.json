@@ -1,7 +1,7 @@
 {
     "values": [
         {
-            "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_bilingual_english/files/hash0.json",
+            "self": "http://localhost:10669/speechtotext/transcriptions/test_bilingual_english/files/hash0.json?api-version=2025-10-15",
             "name": "report.json",
             "kind": "TranscriptionReport",
             "properties": {
@@ -13,7 +13,7 @@
             }
         },
         {
-            "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_bilingual_english/files/hash1.json",
+            "self": "http://localhost:10669/speechtotext/transcriptions/test_bilingual_english/files/hash1.json?api-version=2025-10-15",
             "name": "contenturl_0.json",
             "kind": "Transcription",
             "properties": {
@@ -21,7 +21,7 @@
             },
             "createdDateTime": "2021-01-22T16:45:45Z",
             "links": {
-                "contentUrl": "http://localhost:10669/speechtotext/v3.0/outputs/test_bilingual_english.json"
+                "contentUrl": "http://localhost:10669/speechtotext/outputs/test_bilingual_english.json"
             }
         }
     ]

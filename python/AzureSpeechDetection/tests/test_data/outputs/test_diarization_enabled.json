@@ -1,5 +1,5 @@
 {
-    "source": "http://localhost:10669/speechtotext/v3.0/recordings/poverty.mp3",
+    "source": "http://localhost:10669/speechtotext/recordings/poverty.mp3",
     "timestamp": "2021-01-22T17:01:42Z",
     "durationInTicks": 600000000,
     "duration": "PT1M",

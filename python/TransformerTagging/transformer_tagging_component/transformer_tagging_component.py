@@ -255,7 +255,7 @@ class Corpus:
     def __init__(self, corpus_file_name: str, model: SentenceTransformer):
         self.json = self._load_json(corpus_file_name)
         start = time.time()
-        self.embed = model.encode(self.json["text"], convert_to_tensor=True, show_progress_bar=False)
+        self.embed = model.encode(self.json["text"].tolist(), convert_to_tensor=True, show_progress_bar=False)
         elapsed = time.time() - start
         logger.info(f"Successfully encoded corpus in {elapsed} seconds.")
 

@@ -1,0 +1,7 @@
+```json
+{
+  "breed": "Collie",
+  "color": "Black and white",
+  "size": "Large"
+}
+```

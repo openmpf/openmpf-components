@@ -1,13 +1,12 @@
 {
-    "self": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_missing_audio.json",
+    "self": "http://localhost:10669/speechtotext/transcriptions/test_missing_audio.json?api-version=2025-10-15",
     "model": {
-        "self": "http://localhost:10669/speechtotext/v3.0/models/base/modelhash"
+        "self": "http://localhost:10669/speechtotext/models/base/modelhash"
     },
     "links": {
-        "files": "http://localhost:10669/speechtotext/v3.0/transcriptions/test_missing_audio/files.json"
+        "files": "http://localhost:10669/speechtotext/transcriptions/test_missing_audio/files.json?api-version=2025-10-15"
     },
     "properties": {
-        "diarizationEnabled": false,
         "wordLevelTimestampsEnabled": true,
         "channels": [
             0,
@@ -15,8 +14,12 @@
         ],
         "punctuationMode": "DictatedAndAutomatic",
         "profanityFilterMode": "None",
-        "duration": "PT1M",
-        "timeToLive": "PT2H"
+        "diarization": {
+            "enabled": false,
+            "maxSpeakers": 2
+        },
+        "timeToLiveHours": 6,
+        "durationMilliseconds": 60000
     },
     "lastActionDateTime": "2021-01-22T17:02:44Z",
     "status": "Succeeded",

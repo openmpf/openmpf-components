@@ -26,23 +26,26 @@
 
 from __future__ import annotations
 
-import bisect
 import json
 import logging
 import pathlib
-import re
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Callable, Dict, List, Literal, Mapping, Match, NamedTuple, NoReturn, \
+from typing import Callable, Dict, List, Mapping, NamedTuple, NoReturn, \
     Optional, Sequence, TypedDict, TypeVar, Union
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from nlp_text_splitter import TextSplitterModel, TextSplitter
+from nlp_text_splitter.newline_behavior import (
+    NewLineBehavior,
+    NO_SPACE_LANGS,
+    ChineseAndJapaneseCodePoints,
+)
 
 from . import convert_language_code
 
@@ -156,11 +159,6 @@ class SplitTextResult(NamedTuple):
 class UnsupportedSourceLanguage(Exception):
     pass
 
-NO_SPACE_LANGS = ('JA',  # Japanese
-                  'YUE',  # Cantonese (Traditional)
-                  'ZH-HANS',  # Chinese Simplified
-                  'ZH-HANT')  # Chinese Traditional
-
 
 class TranslationClient:
     # ACS limits the number of characters that can be translated in a single /translate call.
@@ -183,7 +181,8 @@ class TranslationClient:
         # each request.
         self._to_lang_word_separator = '' if self._to_language in NO_SPACE_LANGS else ' '
 
-        self._newline_behavior = NewLineBehavior.get(job_properties)
+        behavior = job_properties.get('STRIP_NEW_LINE_BEHAVIOR')
+        self._newline_behavior = NewLineBehavior.get(behavior)
 
         language_ff_prop_str = job_properties.get(
                 'LANGUAGE_FEED_FORWARD_PROP', 'ISO_LANGUAGE,DECODED_LANGUAGE,LANGUAGE')
@@ -450,7 +449,7 @@ class TranslationClient:
 
 class SentenceSplitter:
     """
-    Class to divide large sections of text at sentence breaks using WtP and spaCy.
+    Class to divide large sections of text at sentence breaks using WtP, SaT, and spaCy.
     It is only used when the text to translate exceeds
     the translation endpoint's character limit.
     """
@@ -461,7 +460,7 @@ class SentenceSplitter:
         self._num_boundary_chars =  mpf_util.get_property(job_properties,
                                                           "SENTENCE_SPLITTER_CHAR_COUNT",
                                                           500)
-        nlp_model_name = mpf_util.get_property(job_properties, "SENTENCE_MODEL", "wtp-bert-mini")
+        nlp_model_name = mpf_util.get_property(job_properties, "SENTENCE_MODEL", "sat-3l-sm")
         self._incl_input_lang = mpf_util.get_property(job_properties,
                                                       "SENTENCE_SPLITTER_INCLUDE_INPUT_LANG",
                                                       True)
@@ -470,6 +469,10 @@ class SentenceSplitter:
                                                      "SENTENCE_MODEL_WTP_DEFAULT_ADAPTOR_LANGUAGE",
                                                      "en")
         nlp_model_setting = mpf_util.get_property(job_properties, "SENTENCE_MODEL_CPU_ONLY", True)
+
+        self._sentence_splitter_mode = mpf_util.get_property(job_properties,
+                                                            "SENTENCE_SPLITTER_MODE",
+                                                            "DEFAULT")
 
         if not nlp_model_setting:
             nlp_model_setting = "cuda"
@@ -483,7 +486,7 @@ class SentenceSplitter:
         """
         Splits up the given text in to chunks that are under TranslationClient.DETECT_MAX_CHARS.
         Each chunk will contain one or more complete sentences as reported
-        by the (WtP or spaCy) sentence splitter.
+        by the (WtP, SaT, or spaCy) sentence splitter.
         """
         azure_char_count = get_azure_char_count(text)
         if azure_char_count <= TranslationClient.DETECT_MAX_CHARS:
@@ -500,14 +503,18 @@ class SentenceSplitter:
                 self._num_boundary_chars,
                 get_azure_char_count,
                 self._sentence_model,
-                from_lang)
+                from_lang,
+                split_mode=self._sentence_splitter_mode,
+                newline_behavior='NONE') # This component already uses a newline filtering step.
         else:
             divided_text_list = TextSplitter.split(
                 text,
                 TranslationClient.DETECT_MAX_CHARS,
                 self._num_boundary_chars,
                 get_azure_char_count,
-                self._sentence_model)
+                self._sentence_model,
+                split_mode=self._sentence_splitter_mode,
+                newline_behavior='NONE') # This component already uses a newline filtering step.
 
         chunks = list(divided_text_list)
 
@@ -618,105 +625,6 @@ def get_required_property(property_name: str, job_properties: Mapping[str, str])
     else:
         raise mpf.DetectionError.MISSING_PROPERTY.exception(
             f'The "{property_name}" property must be provided as a job property.')
-
-
-class NewLineBehavior:
-    """
-    The Azure translation service treats newlines as a separator between sentences. This results in
-    incorrect translations. We can't simply replace newlines with spaces because not all languages
-    put spaces between words. When testing with Chinese, spaces resulted in completely different
-    translations.
-    """
-    @classmethod
-    def get(cls, job_properties: Mapping[str, str]) -> Callable[[str, Optional[str]], str]:
-        behavior = job_properties.get('STRIP_NEW_LINE_BEHAVIOR') or 'GUESS'
-        if behavior == 'GUESS':
-            return lambda s, l: cls._replace_new_lines(s, cls._guess_lang_separator(s, l))
-        elif behavior == 'REMOVE':
-            return lambda s, _: cls._replace_new_lines(s, '')
-        elif behavior == 'SPACE':
-            return lambda s, _: cls._replace_new_lines(s, ' ')
-        elif behavior == 'NONE':
-            return lambda s, _: s
-        else:
-            raise mpf.DetectionError.INVALID_PROPERTY.exception(
-                f'"{behavior}" is not a valid value for the "STRIP_NEW_LINE_BEHAVIOR" property. '
-                'Valid value are GUESS, REMOVE, SPACE, NONE.')
-
-
-    REPLACE_NEW_LINE_REGEX = re.compile(r'''
-        \s? # Include preceding whitespace character if present
-        (?<!\n) # Make sure previous character isn't a newline
-        \n
-        (?!\n) # Make sure next character isn't a newline
-        \s? # Include next character if it is whitespace
-        ''', flags=re.MULTILINE | re.IGNORECASE | re.UNICODE | re.DOTALL | re.VERBOSE)
-
-    @classmethod
-    def _replace_new_lines(cls, text: str, replacement: str) -> str:
-
-        def do_replacement(match: Match[str]) -> str:
-            match_text = match.group(0)
-            if match_text == '\n':
-                # Surrounding characters are not whitespace.
-                return replacement
-            else:
-                # There is already whitespace next to newline character, so it can just be removed.
-                return match_text.replace('\n', '', 1)
-
-        return cls.REPLACE_NEW_LINE_REGEX.sub(do_replacement, text)
-
-    @staticmethod
-    def _guess_lang_separator(text: str, language: Optional[str]) -> Literal['', ' ']:
-        if language:
-            if language.upper() in NO_SPACE_LANGS:
-                return ''
-            else:
-                return ' '
-        else:
-            first_alpha_letter = next((ch for ch in text if ch.isalpha()), 'a')
-            if ChineseAndJapaneseCodePoints.check_char(first_alpha_letter):
-                return ''
-            else:
-                return ' '
-
-
-class ChineseAndJapaneseCodePoints:
-    # From http://www.unicode.org/charts/
-    RANGES = sorted((
-        range(0x2e80, 0x2fe0),
-        range(0x2ff0, 0x3130),
-        range(0x3190, 0x3300),
-        range(0x3400, 0x4dc0),
-        range(0x4e00, 0xa4d0),
-        range(0xf900, 0xfb00),
-        range(0xfe10, 0xfe20),
-        range(0xfe30, 0xfe70),
-        range(0xff00, 0xffa0),
-        range(0x16f00, 0x16fa0),
-        range(0x16fe0, 0x18d09),
-        range(0x1b000, 0x1b300),
-        range(0x1f200, 0x1f300),
-        range(0x20000, 0x2a6de),
-        range(0x2a700, 0x2ebe1),
-        range(0x2f800, 0x2fa20),
-        range(0x30000, 0x3134b)
-    ), key=lambda r: r.start)
-
-    RANGE_BEGINS = [r.start for r in RANGES]
-
-    @classmethod
-    def check_char(cls, char: str) -> bool:
-        """
-        Determine whether or not the given character is in the Unicode code point ranges assigned
-        to Chinese and Japanese.
-        """
-        code_point = ord(char[0])
-        if code_point < cls.RANGE_BEGINS[0]:
-            return False
-        else:
-            idx = bisect.bisect_right(cls.RANGE_BEGINS, code_point)
-            return code_point in cls.RANGES[idx - 1]
 
 
 class AcsResponses:

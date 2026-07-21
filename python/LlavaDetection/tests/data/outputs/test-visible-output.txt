@@ -1,0 +1,69 @@
+```json
+{
+  "visible_person": true,
+  "person": {
+    "Type": "unsure",
+    "clothing": {
+      "headwear": [
+        {
+          "type": "hoodie",
+          "color": "black",
+          "location": "head",
+          "description": "A black hood that is pulled up."
+        }
+      ],
+      "top_layer": {
+        "type": "jacket",
+        "color": "black",
+        "location": "torso",
+        "description": "A dark colored jacket covering the torso."
+      },
+      "lower_layer": {
+        "type": "unsure",
+        "color": "dark",
+        "location": "pants",
+        "description": "Dark-colored pants that are only partially visible."
+      }
+    },
+    "estimated_age_range": "adult",
+    "estimated_gender": "male",
+    "estimated_race": "unsure",
+    "accessories": [],
+    "visible_glasses": false,
+    "glasses": {},
+    "visible_object_in_hand": false,
+    "object_in_hand": {},
+    "person_wearing_shoe": true,
+    "shoe": {
+      "type": "sneaker",
+      "color": "black",
+      "description": "Black sneaker on the foot."
+    },
+    "visible_head_hair": false,
+    "head_features": {
+      "head_hair_color": "dark",
+      "bald": true,
+      "visible_head_cover": true,
+      "head_cover_type": "hoodie",
+      "visible_tattoo": false,
+      "tattoo_features": {}
+    },
+    "visible_face": false,
+    "visible_eye": false,
+    "face_features": {
+      "visible_eye": false,
+      "eye_color": "unsure",
+      "visible_facial_hair": false,
+      "facial_hair_color": "unsure",
+      "facial_features": {},
+      "emotion_of_person": "unsure"
+    },
+    "action_performed": "walking",
+    "background": {
+      "describe": "The person is in a building with an indoor surface visible behind them.",
+      "color": "unspecified",
+      "type": "indoors"
+    }
+  }
+}
+```

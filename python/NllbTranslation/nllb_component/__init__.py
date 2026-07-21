@@ -24,4 +24,4 @@
 # limitations under the License.                                            #
 #############################################################################
 
-from .nllb_translation_component import NllbTranslationComponent
+from .nllb_translation_component import NllbTranslationComponent, JobConfig
