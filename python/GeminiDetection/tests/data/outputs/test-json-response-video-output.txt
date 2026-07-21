@@ -1,7 +1,0 @@
-```json
-{
-  "breed": "Collie",
-  "color": "black and white",
-  "size": "medium to large"
-}
-```
