@@ -57,3 +57,17 @@ The prompt configuration maps one or more classes to detection-property names an
 # Outputs
 
 Responses are added to the `detection_properties` of the associated image location. In regular prompt mode, the property name comes from `detectionProperty`. In JSON prompt mode, nested response fields are flattened into Gemini-prefixed detection properties.
+
+# Local vLLM Servers
+
+Two GPU server Dockerfiles provide OpenAI-compatible endpoints for image requests. They are independent of the component image built from `Dockerfile`.
+
+`Dockerfile.vllm` serves `google/gemma-4-12B-it` on port 8000 and supports optional MTP speculative decoding. Set `VLLM_ENABLE_MTP=1` to enable MTP. The default draft model appends `-assistant` to `VLLM_MODEL`; use `VLLM_DRAFT_MODEL` to override it. Mount a populated Hugging Face cache or set `HF_HUB_OFFLINE=0` when model downloads are allowed.
+
+Build it with `docker build -f Dockerfile.vllm -t gemini-image-captioning-vllm .` and publish port 8000 when running it.
+
+`Dockerfile.vllm-diffusiongemma` serves `google/diffusiongemma-26B-A4B-it` on port 8001 using the DiffusionGemma vLLM compatibility shim. Its multimodal request limit allows one image and no video or audio inputs.
+
+Build it with `docker build -f Dockerfile.vllm-diffusiongemma -t gemini-image-captioning-diffusiongemma .` and publish port 8001 when running it.
+
+Configure component jobs with `API=OpenAI`, a matching `MODEL_NAME`, and `OPENAI_BASE_URL=http://server-host:8000/v1` or `http://server-host:8001/v1`.

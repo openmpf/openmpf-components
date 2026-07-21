@@ -1,0 +1,111 @@
+# syntax=docker/dockerfile:1
+# check=skip=JSONArgsRecommended
+
+FROM vllm/vllm-openai:latest
+
+RUN pip install --upgrade transformers vllm
+
+# Latest vLLM still falls back to its generic Transformers backend for
+# DiffusionGemma and requires decoder forward signatures to expose input_ids.
+RUN python3 - <<'PY_SHIM'
+from pathlib import Path
+import site
+
+site_packages = Path(site.getsitepackages()[0])
+shim = site_packages / "diffusiongemma_vllm_shim.py"
+shim.write_text('''\
+from transformers.models.diffusion_gemma import configuration_diffusion_gemma as _diffusion_gemma_config
+from transformers.models.diffusion_gemma import modeling_diffusion_gemma as _diffusion_gemma
+
+def _top_k_experts_alias(self):
+    return getattr(self, "top_k_experts", None)
+
+if not hasattr(_diffusion_gemma_config.DiffusionGemmaTextConfig, "num_experts_per_tok"):
+    _diffusion_gemma_config.DiffusionGemmaTextConfig.num_experts_per_tok = property(_top_k_experts_alias)
+if not hasattr(_diffusion_gemma_config.DiffusionGemmaTextConfig, "top_k"):
+    _diffusion_gemma_config.DiffusionGemmaTextConfig.top_k = property(_top_k_experts_alias)
+
+_original_forward = _diffusion_gemma.DiffusionGemmaDecoderModel.forward
+
+def _vllm_compatible_decoder_forward(
+    self,
+    input_ids=None,
+    inputs_embeds=None,
+    position_ids=None,
+    past_key_values=None,
+    self_conditioning_logits=None,
+    decoder_attention_mask=None,
+    decoder_position_ids=None,
+    decoder_input_ids=None,
+    **kwargs,
+):
+    if decoder_input_ids is None:
+        decoder_input_ids = input_ids
+    if decoder_position_ids is None:
+        decoder_position_ids = position_ids
+    return _original_forward(
+        self,
+        decoder_input_ids=decoder_input_ids,
+        past_key_values=past_key_values,
+        self_conditioning_logits=self_conditioning_logits,
+        decoder_attention_mask=decoder_attention_mask,
+        decoder_position_ids=decoder_position_ids,
+        **kwargs,
+    )
+
+_diffusion_gemma.DiffusionGemmaDecoderModel.forward = _vllm_compatible_decoder_forward
+''')
+(site_packages / "diffusiongemma_vllm_shim.pth").write_text("import diffusiongemma_vllm_shim\n")
+PY_SHIM
+
+ARG DEFAULT_MPF_VLLM_MODEL=google/diffusiongemma-26B-A4B-it
+
+ENV HF_HOME=/root/.cache/huggingface
+
+ENV MPF_VLLM_MODEL=${DEFAULT_MPF_VLLM_MODEL}
+ENV MPF_VLLM_HOST=0.0.0.0
+ENV MPF_VLLM_PORT=8001
+ENV MPF_VLLM_TENSOR_PARALLEL_SIZE=1
+ENV MPF_VLLM_DTYPE=auto
+ENV MPF_VLLM_LOAD_FORMAT=auto
+ENV MPF_VLLM_QUANTIZATION=fp8
+ENV MPF_VLLM_KV_CACHE_DTYPE=auto
+ENV MPF_VLLM_MAX_MODEL_LEN=8192
+ENV MPF_VLLM_MAX_NUM_BATCHED_TOKENS=2048
+ENV MPF_VLLM_MAX_NUM_SEQS=1
+ENV MPF_VLLM_GPU_MEMORY_UTILIZATION=0.90
+ENV MPF_VLLM_CPU_OFFLOAD_GB=20
+ENV MPF_VLLM_ENFORCE_EAGER=0
+ENV MPF_LIMIT_MM_PER_PROMPT='{"image":1}'
+
+EXPOSE 8001
+
+ENTRYPOINT []
+CMD bash -lc '\
+  set -euo pipefail && \
+  unset VLLM_BUILD_URL VLLM_IMAGE_TAG VLLM_BUILD_PIPELINE VLLM_BUILD_COMMIT && \
+  echo "Serving ${MPF_VLLM_MODEL}" && \
+  set -- vllm serve "${MPF_VLLM_MODEL}" && \
+  set -- "$@" --host "${MPF_VLLM_HOST}" && \
+  set -- "$@" --port "${MPF_VLLM_PORT}" && \
+  set -- "$@" --tensor-parallel-size "${MPF_VLLM_TENSOR_PARALLEL_SIZE}" && \
+  set -- "$@" --dtype "${MPF_VLLM_DTYPE}" && \
+  set -- "$@" --load-format "${MPF_VLLM_LOAD_FORMAT}" && \
+  set -- "$@" --kv-cache-dtype "${MPF_VLLM_KV_CACHE_DTYPE}" && \
+  set -- "$@" --max-model-len "${MPF_VLLM_MAX_MODEL_LEN}" && \
+  set -- "$@" --max-num-batched-tokens "${MPF_VLLM_MAX_NUM_BATCHED_TOKENS}" && \
+  set -- "$@" --max-num-seqs "${MPF_VLLM_MAX_NUM_SEQS}" && \
+  set -- "$@" --gpu-memory-utilization "${MPF_VLLM_GPU_MEMORY_UTILIZATION}" && \
+  set -- "$@" --cpu-offload-gb "${MPF_VLLM_CPU_OFFLOAD_GB}" && \
+  if [ -n "${MPF_LIMIT_MM_PER_PROMPT}" ]; then \
+    set -- "$@" --limit-mm-per-prompt "${MPF_LIMIT_MM_PER_PROMPT}"; \
+  fi && \
+  if [ -n "${MPF_VLLM_QUANTIZATION}" ]; then \
+    set -- "$@" --quantization "${MPF_VLLM_QUANTIZATION}"; \
+  fi && \
+  if [ "${MPF_VLLM_ENFORCE_EAGER}" = "1" ]; then \
+    set -- "$@" --enforce-eager; \
+  fi && \
+  printf "vLLM command:" && printf " %q" "$@" && printf "\\n" && \
+  exec "$@"\
+'
