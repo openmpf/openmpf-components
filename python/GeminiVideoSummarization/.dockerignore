@@ -1,0 +1,12 @@
+.venv/
+.vscode/
+**/__pycache__/
+*.egg-info/
+tests/*
+!tests/test_gemini.py
+!tests/data/
+tests/data/*
+!tests/data/NOTICE
+!tests/data/cat.mp4
+!tests/data/dog.mp4
+!tests/data/short.mp4

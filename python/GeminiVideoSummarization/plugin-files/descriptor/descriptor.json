@@ -1,0 +1,211 @@
+{
+    "componentName": "GeminiVideoSummarization",
+    "componentVersion": "9.0",
+    "middlewareVersion": "9.0",
+    "sourceLanguage": "python",
+    "batchLibrary": "GeminiVideoSummarization",
+    "environmentVariables": [],
+    "algorithm": {
+        "name": "GeminiVideo",
+        "description": "Gemini prompt response generation.",
+        "actionType": "DETECTION",
+        "trackType": "TEXT",
+        "mediaTypes": "VIDEO",
+        "outputChangedCounter": 1,
+        "requiresCollection": {
+            "states": []
+        },
+        "providesCollection": {
+            "states": [
+                "DETECTION",
+                "DETECTION_TEXT",
+                "DETECTION_TEXT_GEMINI_VIDEO"
+            ],
+            "properties": [
+                {
+                    "name": "GENERATION_PROMPT_PATH",
+                    "description": "Path to a custom prompt file.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "API",
+                    "description": "Backend API to use for model inference. OpenAI uses an OpenAI-compatible chat completion endpoint. Google uses Vertex AI/Gemini.",
+                    "type": "STRING",
+                    "defaultValue": "OpenAI"
+                },
+                {
+                    "name": "OPENAI_BASE_URL",
+                    "description": "Optional base URL for an OpenAI-compatible API service such as vLLM. Leave empty to use the OpenAI client default.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "MODEL_NAME",
+                    "description": "The model to use for inference.",
+                    "type": "STRING",
+                    "defaultValue": "gemma-4-12b"
+                },
+                {
+                    "name": "APPLICATION_CREDENTIALS",
+                    "description": "Path to a credential file or the name of an environment variable containing credentials.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "PROJECT_ID",
+                    "description": "The project identifier to access Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "BUCKET_NAME",
+                    "description": "The name of the bucket to store data for the project.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_PREFIX",
+                    "description": "A prefix for labels.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_USER",
+                    "description": "The user accessing the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "LABEL_PURPOSE",
+                    "description": "The purpose of using the Vertex AI.",
+                    "type": "STRING",
+                    "defaultValue": ""
+                },
+                {
+                    "name": "GENERATION_MAX_ATTEMPTS",
+                    "description": "Two kinds of checks are performed on the model response: 1) response is not empty and has valid JSON in the correct format, and 2) the response timeline falls within the video segment length determined by the model. Each check has a separate counter. This value specifies the maximum number of attempts for each check. Each failed check results in another attempt to regenerate the response.",
+                    "type": "INT",
+                    "defaultValue": "5"
+                },
+                {
+                    "name": "TIMELINE_CHECK_TARGET_THRESHOLD",
+                    "description": "Specifies the number of seconds that video events can occur before or after a segments' bounds. If exceeded, another attempt will be made to generate the output. Set to -1 to disable check.",
+                    "type": "INT",
+                    "defaultValue": "10"
+                },
+                {
+                    "name": "TARGET_SEGMENT_LENGTH",
+                    "description": "Default segment length is 120 seconds. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "120"
+                },
+                {
+                    "name": "VFR_TARGET_SEGMENT_LENGTH",
+                    "description": "Default segment length is 120 seconds. Set to -1 to disable segmenting the video.",
+                    "type": "INT",
+                    "defaultValue": "120"
+                },
+                {
+                    "name": "SEGMENT_LENGTH_SPECIFICATION",
+                    "description": "The value for determining how to interpret TARGET_SEGMENT_LENGTH, VFR_TARGET_SEGMENT_LENGTH, MIN_SEGMENT_LENGTH, and VFR_MIN_SEGMENT_LENGTH. The value has to be SECONDS for this component.",
+                    "type": "STRING",
+                    "defaultValue": "SECONDS"
+                },
+                {
+                    "name": "MERGE_TRACKS",
+                    "description": "In the context of videos, when set to true, attempt to merge tracks from the entire video.",
+                    "type": "BOOLEAN",
+                    "defaultValue": "false"
+                },
+                {
+                    "name": "QUALITY_SELECTION_PROPERTY",
+                    "description": "The detection property to be used to rank the quality of a track and the quality of the detections in a track. This property would be used, for example, to select the exemplar detection for a track.",
+                    "type": "STRING",
+                    "defaultValue": "EXEMPLAR"
+                },
+                {
+                    "name": "PROCESS_FPS",
+                    "description": "Specifies the target frames per second of video to supply to the model. The component never exceeds the source FPS. If this matches the source FPS, the component can avoid reencoding for compatible MP4 inputs.",
+                    "type": "FLOAT",
+                    "defaultValue": "1.0"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_SCORE_FPS",
+                    "description": "Maximum FPS used when computing motion scores. PROCESS_FPS controls regular output sampling. The effective score FPS is at least PROCESS_FPS and at most the source FPS. Leave empty to use source FPS.",
+                    "type": "FLOAT",
+                    "defaultValue": "5.0"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_SCORE_WIDTH",
+                    "description": "Maximum frame width used for motion-score calculations. Frames wider than this are downscaled only for grayscale differencing; the supplied model video remains full resolution. Set to 0 to score at original size.",
+                    "type": "INT",
+                    "defaultValue": "320"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_THRESHOLD",
+                    "description": "Motion score threshold used to identify motion-focus ranges. Leave empty to use MOTION_EMPHASIS_PERCENTILE instead.",
+                    "type": "FLOAT",
+                    "defaultValue": "5.0"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_PERCENTILE",
+                    "description": "Percentile used to choose the motion score threshold when MOTION_EMPHASIS_THRESHOLD is empty. Motion points at or above the computed threshold are summarized as motion-focus ranges in the prompt.",
+                    "type": "FLOAT",
+                    "defaultValue": "90.0"
+                },
+                {
+                    "name": "MOTION_EMPHASIS_NEIGHBOR_FRAMES",
+                    "description": "Number of sampled-frame intervals to pad before and after each high-motion point when building motion-focus ranges. This does not duplicate frames.",
+                    "type": "INT",
+                    "defaultValue": "0"
+                },
+                {
+                    "name": "MOTION_FOCUS_MAX_RANGES",
+                    "description": "Maximum number of motion-focus ranges to include in the prompt. Set to 0 to disable motion-focus hints.",
+                    "type": "INT",
+                    "defaultValue": "40"
+                },
+                {
+                    "name": "ENABLE_TIMELINE",
+                    "description": "When set to 1, generate a timeline of events for the video. When set to 0, does not generate a timeline.",
+                    "type": "INT",
+                    "defaultValue": "1"
+                }
+            ]
+        }
+    },
+    "actions": [
+        {
+            "name": "GEMMA VIDEO SUMMARIZATION ACTION",
+            "description": "Runs Gemini with a prompt for the provided video.",
+            "algorithm": "GeminiVideo",
+            "properties": []
+        }
+    ],
+    "tasks": [
+        {
+            "name": "GEMMA VIDEO SUMMARIZATION TASK",
+            "description": "Runs Gemini video summarization.",
+            "actions": [
+                "GEMMA VIDEO SUMMARIZATION ACTION"
+            ]
+        }
+    ],
+    "pipelines": [
+        {
+            "name": "GEMMA VIDEO SUMMARIZATION PIPELINE OPENAI",
+            "description": "Runs Gemma video summarization using the OpenAI API.",
+            "tasks": [
+                "GEMMA VIDEO SUMMARIZATION TASK"
+            ]
+        },
+        {
+            "name": "GEMMA VIDEO SUMMARIZATION PIPELINE GOOGLE",
+            "description": "Runs Gemma video summarization using the Google API.",
+            "tasks": [
+                "GEMMA VIDEO SUMMARIZATION TASK"
+            ]
+        }
+    ]
+}
