@@ -51,8 +51,9 @@ RUN pip install -U "huggingface_hub[cli]" ctranslate2 sentencepiece; \
     --local-dir /models/$MODEL_NAME \
     --revision $MODEL_REVISION; \
     rm -rf /models/$MODEL_NAME/.[^.]*; \
-    wget https://huggingface.co/OpenNMT/nllb-200-onmt/resolve/065b96d3e3c453f4433f2a83456b8b864e8a09d6/flores200_sacrebleu_tokenizer_spm.model \
-        -O /models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model;
+    hf download OpenNMT/nllb-200-onmt flores200_sacrebleu_tokenizer_spm.model \
+    --revision 065b96d3e3c453f4433f2a83456b8b864e8a09d6 \
+    --local-dir /models/OpenNMT;
 
 FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
 
@@ -76,5 +77,17 @@ LABEL org.label-schema.license="Apache 2.0" \
 FROM cpu_component AS gpu_component
 
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# CTranslate2 4.x is built against CUDA 12 and dlopen's libcublas.so.12 at
+# inference time. The rest of the venv ships torch's CUDA 13 cuBLAS
+# (libcublas.so.13), so GPU translation otherwise fails with
+# "Library libcublas.so.12 is not found or cannot be loaded". Install the CUDA 12
+# cuBLAS runtime and register it with the dynamic loader. cuBLAS alone is
+# sufficient for NLLB translation; cuDNN is not needed and is omitted so it does
+# not clash with torch's CUDA 13 cuDNN.
+RUN "$COMPONENT_VIRTUALENV/bin/pip" install --no-cache-dir nvidia-cublas-cu12 \
+    && echo "$COMPONENT_VIRTUALENV/lib/python3.12/site-packages/nvidia/cublas/lib" \
+        > /etc/ld.so.conf.d/ctranslate2-cublas.conf \
+    && ldconfig
 
 FROM ${BUILD_TYPE}_component

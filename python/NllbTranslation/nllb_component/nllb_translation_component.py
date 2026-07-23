@@ -24,6 +24,7 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import ctypes
 import logging
 import regex as re
 import time
@@ -33,11 +34,11 @@ import mpf_component_api as mpf
 import mpf_component_util as mpf_util
 
 from typing import Dict, Optional, Sequence, Mapping, TypeVar
+from .nllb_utils import NllbLanguageMapper
+from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
 # from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 import ctranslate2
 import sentencepiece as spm
-from .nllb_utils import NllbLanguageMapper
-from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
 
 logger = logging.getLogger('NllbTranslationComponent')
 
@@ -132,15 +133,16 @@ class NllbTranslationComponent:
                     model_name = config.nllb_model
             
             model_path = '/models/' + model_name
+            device = self._resolve_device()
             # TODO check params, functions
             if os.path.isdir(model_path) and os.path.isfile(os.path.join(model_path, "config.json")):
                 # model is stored locally; we do not need to load the tokenizer here
-                logger.info(f"Loading model from local directory: {model_path}")
-                self._model = ctranslate2.Translator(model_path, device="auto")
+                logger.info(f"Loading model from local directory: {model_path} (device={device})")
+                self._model = ctranslate2.Translator(model_path, device=device)
             else:
                 # model is not stored locally, download and save
-                logger.info(f"Downloading model from Hugging Face: {model_name}")
-                self._model = ctranslate2.Translator(model_path, device="auto")
+                logger.info(f"Downloading model from Hugging Face: {model_name} (device={device})")
+                self._model = ctranslate2.Translator(model_path, device=device)
                 logger.debug(f"Saving model in {model_path}")
                 self._model.save_pretrained(model_path)
     
@@ -148,6 +150,37 @@ class NllbTranslationComponent:
             logger.exception(
                 f'Failed to complete job due to the following exception:')
             raise
+
+    @staticmethod
+    def _resolve_device() -> str:
+        """Choose the CTranslate2 device.
+
+        Use CUDA only when a GPU is visible *and* the CUDA runtime library the
+        engine needs (cuBLAS) can actually be loaded. This avoids the runtime
+        failure "Library libcublas.so.12 is not found or cannot be loaded" that
+        occurs when a GPU is exposed to the container (e.g. ``--gpus all``) but
+        the CUDA runtime is not installed in the image. Otherwise fall back to
+        CPU.
+        """
+        try:
+            if ctranslate2.get_cuda_device_count() <= 0:
+                return "cpu"
+        except Exception:
+            return "cpu"
+
+        # ctranslate2 dlopen's cuBLAS from the default loader path; probe the
+        # same way so our choice matches what the engine can actually load.
+        for lib in ("libcublas.so.12", "libcublas.so"):
+            try:
+                ctypes.CDLL(lib)
+                return "cuda"
+            except OSError:
+                continue
+
+        logger.warning(
+            "A CUDA device is visible but the CUDA runtime (libcublas) could "
+            "not be loaded; falling back to CPU for NLLB translation.")
+        return "cpu"
 
     def _check_model(self, config: Dict[str, str]) -> None:
         # TODO: this doesn't do much, we need to see if there's a way to verify which model is loaded
