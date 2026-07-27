@@ -138,6 +138,31 @@ set `RUN_AXIS_B=0` to skip).
   - `meta.*.json` — run metadata/timing
   - `sample.{src,ref,idx}` — the exact sampled test set (reproducible via SEED)
 
+## Engine vs quantization decomposition (optional)
+
+The main pipeline compares **HF-fp16** vs **CT2-int8**, which entangles two
+variables (the inference engine *and* the precision). To separate them, add a
+**CT2-fp16** system and run the focused decomposition tool. It scores three
+systems — HF-fp16, CT2-fp16, CT2-int8 — and reports two clean contrasts:
+*engine* (HF-fp16 vs CT2-fp16, same precision) and *quantization* (CT2-fp16 vs
+CT2-int8, same engine), plus per-system throughput.
+
+```bash
+./convert_ct2.sh                      # facebook/nllb-200-3.3B -> models/nllb-3.3B-ct2-{float16,int8}
+                                      #   (host venv; needs ctranslate2 + internet; ~13 GB download once)
+PAIR="pt-en|tmx/en-pt.tmx|pt|por|Latn" N=1000 ./run_decomp.sh
+#   -> results/decomp/<pair>/decomp.SUMMARY.md
+```
+
+Both CT2 models are converted from the *same* `facebook/nllb-200-3.3B`
+checkpoint, so CT2-fp16-vs-CT2-int8 is a pure quantization measurement (and it
+sidesteps "was the HF int8 built from the same checkpoint?"). All three systems
+run per-line/beam 4, so throughput is single-sentence latency (batched
+throughput widens CTranslate2's lead further). `N` defaults smaller (1000)
+because HF-fp16 per-line is the slow one; the deltas we care about are small and
+resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
+(now in `requirements.txt`).
+
 ## Files in this folder
 
 | File | Role |
@@ -147,6 +172,8 @@ set `RUN_AXIS_B=0` to skip).
 | `nllb_eval_driver.py` | runs **inside** an image; 1 translation per input line (Axis A) |
 | `mt_eval.py` | scoring: `compare` (2 systems + COMET + bootstrap) / `score` (1 system) |
 | `summarize.py` | builds `results/SUMMARY.md` across pairs |
+| `convert_ct2.sh` | convert facebook/nllb-200-3.3B → CT2 fp16 + int8 models |
+| `run_decomp.sh` / `decomp_report.py` | engine-vs-quantization 3-system decomposition |
 | `make_sample.py` | optional: sample from moses parallel files instead of TMX |
 | `setup_venv.sh` / `preflight.sh` / `requirements.txt` | env setup + readiness check |
 

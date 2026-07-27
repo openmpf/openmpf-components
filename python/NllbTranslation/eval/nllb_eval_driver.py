@@ -16,7 +16,7 @@ Language-pair-agnostic: pass ISO 639-3 language + ISO 15924 script for source
 and target.
 
 Invoked (from the host) roughly as:
-    docker run --rm --gpus device=0 -v /home/mpf/src/mt-eval:/eval \
+    docker run --rm --gpus device=0 -v /home/regexer/src/mt-eval:/eval \
         --entrypoint /opt/mpf/plugin-venv/bin/python \
         openmpf_nllb_translation:develop \
         /eval/nllb_eval_driver.py \
@@ -137,24 +137,31 @@ def _progress(written, start, total, t_start):
 
 
 def run_per_line(component, lines, done, total, props, args, out, t_start):
+    chars = 0
     for i in range(done, total):
-        out.write(translate_one(component, lines[i], props, args.input) + "\n")
+        t = translate_one(component, lines[i], props, args.input)
+        out.write(t + "\n")
         out.flush()
+        chars += len(t)
         n = i + 1
         if n % args.progress_every == 0 or n == total:
             _progress(n, done, total, t_start)
+    return chars
 
 
 def run_batched(component, lines, done, total, props, args, out, t_start):
     if done >= total:
-        return
+        return 0
     written = done
+    chars = [0]
 
     # Warm up on the first pending line via the component: this loads the
     # tokenizer with the correct src_lang and gives a faithful first output.
-    out.write(translate_one(component, lines[done], props, args.input) + "\n")
+    _warm = translate_one(component, lines[done], props, args.input)
+    out.write(_warm + "\n")
     out.flush()
     written += 1
+    chars[0] += len(_warm)
 
     batcher = HFBatcher(component, props, args.batch_token_cap)
     buf = []
@@ -167,6 +174,7 @@ def run_batched(component, lines, done, total, props, args, out, t_start):
         for t in batcher.translate_batch(buf):
             out.write(t + "\n")
             written += 1
+            chars[0] += len(t)
         buf.clear()
         out.flush()
         n_flushes[0] += 1
@@ -178,21 +186,20 @@ def run_batched(component, lines, done, total, props, args, out, t_start):
         line = lines[i]
         if not batcher.should_translate(line):
             flush()
-            out.write(_clean(line) + "\n")
-            out.flush()
-            written += 1
+            _t = _clean(line)
+            out.write(_t + "\n"); out.flush(); written += 1; chars[0] += len(_t)
         elif batcher.is_simple(line):
             buf.append(line)
             if len(buf) >= args.batch:
                 flush()
         else:  # long sentence: let the component sentence-split it exactly
             flush()
-            out.write(translate_one(component, line, props, args.input) + "\n")
-            out.flush()
-            written += 1
+            _t = translate_one(component, line, props, args.input)
+            out.write(_t + "\n"); out.flush(); written += 1; chars[0] += len(_t)
     flush()
     if written != total:
         _progress(written, done, total, t_start)
+    return chars[0]
 
 
 def main():
@@ -257,12 +264,16 @@ def main():
     with open(args.output, mode, encoding="utf-8") as out:
         if use_batch:
             log(f"batched HF decode: batch={args.batch}, token_cap={args.batch_token_cap}")
-            run_batched(component, lines, done, total, props, args, out, t_start)
+            out_chars = run_batched(component, lines, done, total, props, args, out, t_start)
         else:
-            run_per_line(component, lines, done, total, props, args, out, t_start)
+            out_chars = run_per_line(component, lines, done, total, props, args, out, t_start)
 
     elapsed = time.time() - t_start
-    log(f"done: {total} lines in {elapsed/60:.1f} min")
+    lines_this_run = total - done
+    sps = round(lines_this_run / elapsed, 3) if elapsed > 0 else 0
+    cps = round((out_chars or 0) / elapsed, 1) if elapsed > 0 else 0
+    log(f"done: {total} lines in {elapsed/60:.1f} min "
+        f"({sps} sent/s, {cps} out-chars/s)")
 
     if args.meta_out:
         meta = {
@@ -275,7 +286,12 @@ def main():
             "num_beams_requested": args.num_beams,
             "job_properties": props,
             "n_lines": total,
+            "lines_this_run": lines_this_run,
             "elapsed_sec": round(elapsed, 1),
+            "sentences_per_sec": sps,
+            "output_chars": out_chars,
+            "chars_per_sec": cps,
+            "batch": args.batch,
         }
         with open(args.meta_out, "w", encoding="utf-8") as f:
             json.dump(meta, f, indent=2, ensure_ascii=False)
