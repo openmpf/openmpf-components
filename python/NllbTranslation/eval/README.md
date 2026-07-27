@@ -102,9 +102,26 @@ RUN_AXIS_B=0 ./run_pipeline.sh    # Axis A only (skips the slow as-deployed blob
 ```
 
 Knobs (env vars): `N` (sentences/pair, default 5000), `SEED`, `GPU`
-(`'"device=1"'`), `FP16_IMAGE` / `INT8_IMAGE`, `FP16_BATCH`, `BOOTSTRAP`,
-`RUN_AXIS_B`. It is **resumable** — re-running skips finished stages and
-generation resumes from where it stopped.
+(`'"device=1"'`), `COMET_DEVICE`, `FP16_IMAGE` / `INT8_IMAGE`, `FP16_BATCH`,
+`BOOTSTRAP`, `RUN_AXIS_B`. It is **resumable** — re-running skips finished
+stages and generation resumes from where it stopped.
+
+### GPU selection (two separate mechanisms)
+
+Translation runs in Docker and picks its GPU via `--gpus` (the `GPU` var).
+COMET scoring runs on the **host** (local venv) and picks its GPU via
+`CUDA_VISIBLE_DEVICES` — it ignores `--gpus`. To avoid surprises, `GPU` now
+drives **both**: the COMET device defaults to the same index parsed from `GPU`.
+Override independently if needed:
+
+```bash
+GPU='"device=2"' ./run_pipeline.sh              # translate AND score on GPU 2
+COMET_DEVICE=cpu GPU='"device=2"' ./run_pipeline.sh   # translate on 2, COMET on CPU
+COMET_DEVICE=3   GPU='"device=2"' ./run_pipeline.sh   # translate on 2, COMET on GPU 3
+```
+
+If you're only re-running scoring (generation already done) and just need COMET
+off the busy card, this is enough — the finished translation stages are skipped.
 
 Rough timing (RTX-class GPU, 5000 sentences): int8 ~20–25 min/pair;
 fp16 Axis A ~1.5–2 h/pair; fp16 Axis B blob ~2–3 h/pair (the long pole —

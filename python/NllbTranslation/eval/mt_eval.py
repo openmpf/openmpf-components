@@ -150,17 +150,22 @@ def comet_available():
         return False
 
 
-def comet_score(srcs, hyps, refs, model_name):
-    """Return (system_score, [segment_scores]) using a COMET model."""
+def comet_score(srcs, hyps, refs, model_name, gpus=None):
+    """Return (system_score, [segment_scores]) using a COMET model.
+
+    gpus: 0 forces CPU; >=1 uses that many GPUs (which device is chosen by
+    CUDA_VISIBLE_DEVICES). None = auto (1 if a GPU is visible, else CPU).
+    """
     from comet import download_model, load_from_checkpoint
     ckpt = download_model(model_name)
     model = load_from_checkpoint(ckpt)
     data = [{"src": s, "mt": h, "ref": r} for s, h, r in zip(srcs, hyps, refs)]
-    try:
-        import torch
-        gpus = 1 if torch.cuda.is_available() else 0
-    except Exception:
-        gpus = 0
+    if gpus is None:
+        try:
+            import torch
+            gpus = 1 if torch.cuda.is_available() else 0
+        except Exception:
+            gpus = 0
     out = model.predict(data, batch_size=64, gpus=gpus, progress_bar=True)
     return float(out["system_score"]), [float(x) for x in out["scores"]]
 
@@ -330,7 +335,7 @@ def cmd_score(args):
                              "(pip install unbabel-comet)")
         else:
             srcs = read_lines(args.source)
-            sysc, _ = comet_score(srcs, hyps, refs, args.comet_model)
+            sysc, _ = comet_score(srcs, hyps, refs, args.comet_model, args.comet_gpus)
             rows.append({"metric": "COMET", "score": sysc * 100,
                          "detail": f"{args.comet_model} (x100)", "signature": ""})
 
@@ -390,8 +395,8 @@ def cmd_compare(args):
             raise SystemExit("error: --comet needs the 'unbabel-comet' package "
                              "(pip install unbabel-comet)")
         srcs = read_lines(args.source)
-        sysc_a, comet_seg_a = comet_score(srcs, hyp_a, refs, args.comet_model)
-        sysc_b, comet_seg_b = comet_score(srcs, hyp_b, refs, args.comet_model)
+        sysc_a, comet_seg_a = comet_score(srcs, hyp_a, refs, args.comet_model, args.comet_gpus)
+        sysc_b, comet_seg_b = comet_score(srcs, hyp_b, refs, args.comet_model, args.comet_gpus)
         rows_a.append({"metric": "COMET", "score": sysc_a * 100,
                        "detail": args.comet_model, "signature": ""})
         rows_b.append({"metric": "COMET", "score": sysc_b * 100,
@@ -468,6 +473,9 @@ def add_common(p):
     p.add_argument("-t", "--tokenize", default=None, help="sacrebleu BLEU tokenizer")
     p.add_argument("--comet", action="store_true", help="also compute COMET")
     p.add_argument("--comet-model", default="Unbabel/wmt22-comet-da")
+    p.add_argument("--comet-gpus", type=int, default=None,
+                   help="GPUs for COMET: 0=CPU, 1=GPU (which device via "
+                        "CUDA_VISIBLE_DEVICES). Default: auto-detect.")
     p.add_argument("--max-ter-tokens", type=int, default=250)
     p.add_argument("--force-ter", action="store_true")
 

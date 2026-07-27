@@ -41,6 +41,15 @@ FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:develop}
 RUN_AXIS_B=${RUN_AXIS_B:-1}           # 0 = skip slow as-deployed blob runs
 BOOTSTRAP=${BOOTSTRAP:-1000}
 FP16_BATCH=${FP16_BATCH:-16}          # lower if the GPU has <16 GB
+
+# COMET scoring runs on the HOST (not in Docker), so it selects its GPU via
+# CUDA_VISIBLE_DEVICES, NOT the --gpus flag above. Default it to the same GPU
+# index as $GPU so one setting covers both. Override with COMET_DEVICE=<idx>
+# or COMET_DEVICE=cpu.
+_gpu_idx=$(printf '%s' "$GPU" | grep -oE '[0-9]+' | head -1)
+COMET_DEVICE=${COMET_DEVICE:-${_gpu_idx:-0}}
+if [ "$COMET_DEVICE" = "cpu" ]; then COMET_VISIBLE=""; COMET_GPUS=0
+else COMET_VISIBLE="$COMET_DEVICE"; COMET_GPUS=1; fi
 # ---------------------------------------------------------------------------
 
 RUNLOG="$EVAL/results/pipeline.$(date +%Y%m%d_%H%M%S).log"
@@ -125,10 +134,11 @@ run_pair() {
   fi
 
   if [ "$(nlines "$H/hyp.fp16.en")" -ge "$NL" ] && [ "$(nlines "$H/hyp.int8.en")" -ge "$NL" ]; then
-    log "$name: scoring Axis A (COMET + bootstrap $BOOTSTRAP)..."
-    $PY mt_eval.py compare \
+    log "$name: scoring Axis A (COMET on device '$COMET_DEVICE' + bootstrap $BOOTSTRAP)..."
+    CUDA_VISIBLE_DEVICES="$COMET_VISIBLE" $PY mt_eval.py compare \
       --hyp fp16="$H/hyp.fp16.en" --hyp int8="$H/hyp.int8.en" \
-      -r "$H/sample.ref" -s "$H/sample.src" --comet --bootstrap "$BOOTSTRAP" \
+      -r "$H/sample.ref" -s "$H/sample.src" --comet --comet-gpus "$COMET_GPUS" \
+      --bootstrap "$BOOTSTRAP" \
       --per-segment "$H/axisA.segments.csv" --csv "$H/axisA.metrics.csv" \
       > "$H/axisA.report.txt" 2>>"$RUNLOG"
     log "$name: Axis A report -> $H/axisA.report.txt"
@@ -146,7 +156,7 @@ run_pair() {
   log "$name: DONE"
 }
 
-log "PIPELINE START (pairs=${#PAIRS[@]}, N=$N, RUN_AXIS_B=$RUN_AXIS_B, images=$FP16_IMAGE / $INT8_IMAGE)"
+log "PIPELINE START (pairs=${#PAIRS[@]}, N=$N, RUN_AXIS_B=$RUN_AXIS_B, translate GPU=$GPU, COMET device=$COMET_DEVICE)"
 WANT="${1:-}"
 for entry in "${PAIRS[@]}"; do
   IFS='|' read -r name tmx tsrc nsrc nscript <<< "$entry"

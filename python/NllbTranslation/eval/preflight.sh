@@ -2,9 +2,10 @@
 # Readiness check — run before a big overnight job. No model loads, fast.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-DEFAULT_BUILD_TAG="develop"
-INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:ctranslate2}
-FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$DEFAULT_BUILD_TAG}
+INT8_IMAGE_TAG="ctranslate2"
+FP16_IMAGE_TAG="nllb-200-3.3B"
+INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
+FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
 ok(){ echo "  [OK] $*"; }; bad(){ echo "  [!!] $*"; FAIL=1; }
 FAIL=0
 echo "== preflight =="
