@@ -1,1 +1,13 @@
-sacrebleu>=2.0
+# Host-side scoring venv (pip-installable; internet required on the enclave).
+# Pinned to the versions this eval was validated with.
+sacrebleu==2.6.0
+numpy==1.26.4
+unbabel-comet==2.2.7
+setuptools<81          # torchmetrics (a COMET dep) still imports pkg_resources, dropped in setuptools>=81
+
+# NOTE: unbabel-comet pulls in torch + pytorch-lightning automatically.
+# The default PyPI torch wheel works on most NVIDIA GPUs. If COMET reports the
+# GPU as unavailable (very new GPUs, e.g. Blackwell/sm_120, need a newer CUDA
+# build), install a matching torch FIRST, e.g.:
+#     ./venv/bin/pip install torch --index-url https://download.pytorch.org/whl/cu124
+# COMET also runs on CPU (slower) if no compatible GPU torch is available.
