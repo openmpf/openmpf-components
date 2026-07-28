@@ -18,8 +18,12 @@ if [ ! -x "$CONV" ]; then
   exit 1
 fi
 
+# int8_float16 matches the production OpenNMT int8 model (int8 weights + fp16
+# compute = the fast, slightly-lossy config). Plain `int8` defaults to
+# int8_float32 (accurate but no tensor-core speedup) — NOT what we deploy.
+QUANTS=(${QUANTS:-float16 int8_float16})
 mkdir -p "$OUT"
-for q in float16 int8; do
+for q in "${QUANTS[@]}"; do
   d="$OUT/nllb-3.3B-ct2-$q"
   if [ -f "$d/model.bin" ]; then
     echo "already converted: $d"

@@ -28,16 +28,24 @@ PY=./venv/bin/python3
 # Target is always English (eng_Latn). See README for the code lookup.
 PAIRS=(
   "pt-en|tmx/en-pt.tmx|pt|por|Latn"        # Portuguese -> English
-  "ar-en|tmx/ar-en.tmx|ar|arb|Arab"        # Arabic  -> English
-  "zh-en|tmx/en-zh_cn.tmx|zh_cn|zho|Hans"  # Mandarin (Simplified) -> English
+  "ar-en|tmx/ar-en.tmx|ar|arb|Arab"        # Arabic   -> English
+  "zh-en|tmx/en-zh_cn.tmx|zh_cn|zho|Hans"  # Chinese (Simplified) -> English
+  "bn-en|tmx/bn-en.tmx|bn|ben|Beng"        # Bangla   -> English
+  "de-en|tmx/de-en.tmx|de|deu|Latn"        # German   -> English
+  "en-fa|tmx/en-fa.tmx|fa|per|Arab"        # Persian  -> English
+  "en-fr|tmx/en-fr.tmx|fr|fra|Latn"        # French   -> English
+  "en-ru|tmx/en-ru.tmx|ru|rus|Cyrl"        # Russian  -> English
+  "en-uk|tmx/en-uk.tmx|uk|ukr|Cyrl"        # Ukrainian -> English
   # "de-en|tmx/de-en.tmx|de|deu|Latn"      # example: add your own
 )
 
 N=${N:-5000}                          # sentences per pair
 SEED=${SEED:-42}
 GPU=${GPU:-'"device=0"'}              # e.g. '"device=1"' for another GPU
-INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:ctranslate2}
-FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:develop}
+INT8_IMAGE_TAG="ctranslate2"
+FP16_IMAGE_TAG="nllb-200-3.3B"
+INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
+FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
 RUN_AXIS_B=${RUN_AXIS_B:-1}           # 0 = skip slow as-deployed blob runs
 BOOTSTRAP=${BOOTSTRAP:-1000}
 FP16_BATCH=${FP16_BATCH:-16}          # lower if the GPU has <16 GB

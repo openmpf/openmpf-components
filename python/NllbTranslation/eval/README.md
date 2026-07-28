@@ -156,7 +156,23 @@ PAIR="pt-en|tmx/en-pt.tmx|pt|por|Latn" N=1000 ./run_decomp.sh
 
 Both CT2 models are converted from the *same* `facebook/nllb-200-3.3B`
 checkpoint, so CT2-fp16-vs-CT2-int8 is a pure quantization measurement (and it
-sidesteps "was the HF int8 built from the same checkpoint?"). All three systems
+sidesteps "was the HF int8 built from the same checkpoint?").
+
+> **The CT2 systems bypass the OpenMPF component.** The ctranslate2 component
+> ignores the job's `NLLB_MODEL` (it loads its default baked model once at
+> construction and never reloads by name — the code says `# TODO: this doesn't
+> do much`), so it can't evaluate a *converted* model. `run_decomp.sh` therefore
+> drives CTranslate2 directly via **`ct2_driver.py`** (same FLORES-SPM
+> tokenization as the component). Each system's `meta.*.json` records the
+> `actual_compute_type` it loaded, so the model actually used is verifiable.
+
+> **int8 mode matters.** `convert_ct2.sh` uses `--quantization int8_float16`
+> (int8 weights + fp16 compute) to match the production `OpenNMT/…ct2-int8`
+> model. Plain `--quantization int8` loads as `int8_float32` — int8 storage but
+> *float32 math*, which is essentially lossless AND gets no tensor-core speedup,
+> so it will (misleadingly) show zero quality and zero speed difference vs fp16.
+> Verify with: `Translator(dir, device='cuda').compute_type` → should be
+> `int8_float16`. All three systems
 run per-line/beam 4, so throughput is single-sentence latency (batched
 throughput widens CTranslate2's lead further). `N` defaults smaller (1000)
 because HF-fp16 per-line is the slow one; the deltas we care about are small and
@@ -172,7 +188,8 @@ resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
 | `nllb_eval_driver.py` | runs **inside** an image; 1 translation per input line (Axis A) |
 | `mt_eval.py` | scoring: `compare` (2 systems + COMET + bootstrap) / `score` (1 system) |
 | `summarize.py` | builds `results/SUMMARY.md` across pairs |
-| `convert_ct2.sh` | convert facebook/nllb-200-3.3B → CT2 fp16 + int8 models |
+| `convert_ct2.sh` | convert facebook/nllb-200-3.3B → CT2 fp16 + int8_float16 models |
+| `ct2_driver.py` | standalone CTranslate2 driver (loads a specific model; component can't) |
 | `run_decomp.sh` / `decomp_report.py` | engine-vs-quantization 3-system decomposition |
 | `make_sample.py` | optional: sample from moses parallel files instead of TMX |
 | `setup_venv.sh` / `preflight.sh` / `requirements.txt` | env setup + readiness check |

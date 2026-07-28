@@ -22,11 +22,13 @@ PAIR=${PAIR:-"pt-en|tmx/en-pt.tmx|pt|por|Latn"}
 N=${N:-1000}                          # smaller than the quality pipeline: HF-fp16 per-line is slow
 SEED=${SEED:-42}
 GPU=${GPU:-'"device=0"'}
-FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:develop}
-INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:ctranslate2}
+INT8_IMAGE_TAG="ctranslate2"
+FP16_IMAGE_TAG="nllb-200-3.3B"
+FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
+INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
 BOOTSTRAP=${BOOTSTRAP:-1000}
-CT2_FP16=${CT2_FP16:-nllb-3.3B-ct2-float16}   # dir name under ./models
-CT2_INT8=${CT2_INT8:-nllb-3.3B-ct2-int8}
+CT2_FP16=${CT2_FP16:-nllb-3.3B-ct2-float16}          # dir name under ./models
+CT2_INT8=${CT2_INT8:-nllb-3.3B-ct2-int8_float16}     # int8_float16 = production-matching fast int8
 # COMET on host -> CUDA_VISIBLE_DEVICES (see run_pipeline.sh notes)
 _gpu_idx=$(printf '%s' "$GPU" | grep -oE '[0-9]+' | head -1)
 COMET_DEVICE=${COMET_DEVICE:-${_gpu_idx:-0}}
@@ -70,9 +72,29 @@ gen_component() {  # label image extra_mount extra_prop
   log "$label -> $(nlines "$H/hyp.$label.en")/$NL  ($(${PY} -c "import json;print(json.load(open('$H/meta.$label.json'))['sentences_per_sec'])" 2>/dev/null) sent/s)"
 }
 
+# CT2 systems: the component IGNORES NLLB_MODEL (loads its default and never
+# reloads), so drive ctranslate2 directly with the standalone ct2_driver, which
+# loads the mounted model and records the actual compute_type for verification.
+gen_ct2() {  # label model_dir
+  local label=$1 model=$2
+  if [ "$(nlines "$H/hyp.$label.en")" -ge "$NL" ]; then log "$label already done"; return; fi
+  log "generating $label via ct2_driver (model=$model)..."
+  docker run --rm --gpus "$GPU" -v "$EVAL":/eval -v "$EVAL/models/$model:/models/$model" \
+    --entrypoint /opt/mpf/plugin-venv/bin/python "$INT8_IMAGE" \
+    /eval/ct2_driver.py --model "/models/$model" \
+      --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.$label.en \
+      --source-lang "$nsrc" --source-script "$nscript" --beam 4 \
+      --resume --progress-every 200 --meta-out /eval/$RREL/meta.$label.json \
+    >>"$LOG" 2>&1
+  local ct sp
+  ct=$($PY -c "import json;print(json.load(open('$H/meta.$label.json'))['actual_compute_type'])" 2>/dev/null)
+  sp=$($PY -c "import json;print(json.load(open('$H/meta.$label.json'))['sentences_per_sec'])" 2>/dev/null)
+  log "$label -> $(nlines "$H/hyp.$label.en")/$NL  (compute_type=$ct, $sp sent/s)"
+}
+
 gen_component hf-fp16  "$FP16_IMAGE" "" ""
-gen_component ct2-fp16 "$INT8_IMAGE" "$EVAL/models/$CT2_FP16:/models/$CT2_FP16" "NLLB_MODEL=$CT2_FP16"
-gen_component ct2-int8 "$INT8_IMAGE" "$EVAL/models/$CT2_INT8:/models/$CT2_INT8" "NLLB_MODEL=$CT2_INT8"
+gen_ct2 ct2-fp16 "$CT2_FP16"
+gen_ct2 ct2-int8 "$CT2_INT8"
 
 # --- scoring: two contrasts ----------------------------------------------
 score_pair() {  # a b tag
