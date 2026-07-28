@@ -32,7 +32,7 @@ PAIRS=(
   "zh-en|tmx/en-zh_cn.tmx|zh_cn|zho|Hans"  # Chinese (Simplified) -> English
   "bn-en|tmx/bn-en.tmx|bn|ben|Beng"        # Bangla   -> English
   "de-en|tmx/de-en.tmx|de|deu|Latn"        # German   -> English
-  "en-fa|tmx/en-fa.tmx|fa|per|Arab"        # Persian  -> English
+  "en-fa|tmx/en-fa.tmx|fa|pes|Arab"        # Persian (Western) -> English
   "en-fr|tmx/en-fr.tmx|fr|fra|Latn"        # French   -> English
   "en-ru|tmx/en-ru.tmx|ru|rus|Cyrl"        # Russian  -> English
   "en-uk|tmx/en-uk.tmx|uk|ukr|Cyrl"        # Ukrainian -> English
