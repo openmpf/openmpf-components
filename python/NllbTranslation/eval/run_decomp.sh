@@ -24,8 +24,8 @@ SEED=${SEED:-42}
 GPU=${GPU:-'"device=0"'}
 INT8_IMAGE_TAG="ctranslate2"
 FP16_IMAGE_TAG="nllb-200-3.3B"
-FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
-INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
+FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
+INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
 BOOTSTRAP=${BOOTSTRAP:-1000}
 CT2_FP16=${CT2_FP16:-nllb-3.3B-ct2-float16}          # dir name under ./models
 CT2_INT8=${CT2_INT8:-nllb-3.3B-ct2-int8_float16}     # int8_float16 = production-matching fast int8
@@ -47,6 +47,16 @@ log "DECOMP pair=$name ($nsrc"_"$nscript->eng_Latn) N=$N"
 for d in "$CT2_FP16" "$CT2_INT8"; do
   [ -f "models/$d/model.bin" ] || { log "MISSING models/$d/model.bin — run ./convert_ct2.sh first"; exit 1; }
 done
+
+# ct2_driver.py imports ctranslate2, which only exists in the CTranslate2 image.
+# Check up front: otherwise a wrong INT8_IMAGE fails with ModuleNotFoundError
+# only AFTER the slow HF-fp16 stage has already run.
+if ! docker run --rm --entrypoint /opt/mpf/plugin-venv/bin/python "$INT8_IMAGE" \
+       -c 'import ctranslate2' >/dev/null 2>&1; then
+  log "INT8_IMAGE ($INT8_IMAGE) has no 'ctranslate2' module — ct2_driver.py cannot run in it."
+  log "  Point INT8_IMAGE at a CTranslate2-based image (default: openmpf_nllb_translation:$INT8_IMAGE_TAG)."
+  exit 1
+fi
 
 # sample
 if [ ! -s "$H/sample.src" ]; then
