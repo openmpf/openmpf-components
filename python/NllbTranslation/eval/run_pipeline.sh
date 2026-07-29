@@ -27,15 +27,15 @@ PY=./venv/bin/python3
 #   nllb_src_script NLLB/FLORES-200 script part    (Arab, Hans, Latn, Cyrl ...)
 # Target is always English (eng_Latn). See README for the code lookup.
 PAIRS=(
+  "ar-en|tmx/ar-en.tmx|ar|arb|Arab"        # Arabic     -> English
+  "bn-en|tmx/bn-en.tmx|bn|ben|Beng"        # Bangla     -> English
+  "de-en|tmx/de-en.tmx|de|deu|Latn"        # German     -> English
+  "fa-en|tmx/en-fa.tmx|fa|pes|Arab"        # Persian (Western) -> English
+  "fr-en|tmx/en-fr.tmx|fr|fra|Latn"        # French     -> English
   "pt-en|tmx/en-pt.tmx|pt|por|Latn"        # Portuguese -> English
-  "ar-en|tmx/ar-en.tmx|ar|arb|Arab"        # Arabic   -> English
+  "ru-en|tmx/en-ru.tmx|ru|rus|Cyrl"        # Russian    -> English
+  "uk-en|tmx/en-uk.tmx|uk|ukr|Cyrl"        # Ukrainian  -> English
   "zh-en|tmx/en-zh_cn.tmx|zh_cn|zho|Hans"  # Chinese (Simplified) -> English
-  "bn-en|tmx/bn-en.tmx|bn|ben|Beng"        # Bangla   -> English
-  "de-en|tmx/de-en.tmx|de|deu|Latn"        # German   -> English
-  "en-fa|tmx/en-fa.tmx|fa|pes|Arab"        # Persian (Western) -> English
-  "en-fr|tmx/en-fr.tmx|fr|fra|Latn"        # French   -> English
-  "en-ru|tmx/en-ru.tmx|ru|rus|Cyrl"        # Russian  -> English
-  "en-uk|tmx/en-uk.tmx|uk|ukr|Cyrl"        # Ukrainian -> English
 )
 
 N=${N:-5000}                          # sentences per pair
