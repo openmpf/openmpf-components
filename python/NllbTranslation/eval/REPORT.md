@@ -4,7 +4,7 @@
 translation quality vs the fp16 original (`facebook/nllb-200-3.3B`, PyTorch), as deployed in the
 OpenMPF NllbTranslation component?
 
-**Data:** OPUS TED2020 → English. Seven source languages, 5,000 sentence pairs each (fixed random
+**Data:** OPUS TED2020 → English. Nine source languages, 5,000 sentence pairs each (fixed random
 sample, seed 42), gold sentence-aligned references from TMX.
 
 | Pair | Source | NLLB code | Corpus (TU) |
@@ -16,11 +16,13 @@ sample, seed 42), gold sentence-aligned references from TMX.
 | de-en | German | deu_Latn | 289k |
 | en-fr | French | fra_Latn | 400k |
 | en-uk | Ukrainian | ukr_Cyrl | 203k |
+| en-ru | Russian | rus_Cyrl | 380k |
+| en-fa | Persian (Western) | pes_Arab | 297k |
 
 **Setup:** 2026-07-25 → 2026-07-28, RTX 5070 Ti (16 GB). sacrebleu 2.6.0; COMET
 `Unbabel/wmt22-comet-da`. Three experiments:
 
-- **Axis A — intrinsic** (all 7 pairs): per-sentence, beam 4 on both, sentence-splitting
+- **Axis A — intrinsic** (all 9 pairs): per-sentence, beam 4 on both, sentence-splitting
   neutralized. Isolates the deployed-model variable.
 - **Axis B — as-deployed** (pt/ar/zh): whole file through each branch's own shipped pipeline
   (document-level).
@@ -31,10 +33,10 @@ sample, seed 42), gold sentence-aligned references from TMX.
 
 ## Bottom line
 
-1. **Intrinsic quality: int8 is equivalent to fp16 in all seven languages.** Every per-sentence
+1. **Intrinsic quality: int8 is equivalent to fp16 in all nine languages.** Every per-sentence
    delta is ≤0.34 BLEU and ≤0.15 COMET on 0–100 scales, and they point in *both* directions
-   (int8 significantly ahead on Chinese, significantly but trivially behind on pt/de/fr, tied
-   elsewhere). No language shows meaningful degradation.
+   (int8 significantly ahead on Chinese, significantly but trivially behind on pt/de/fr, and
+   statistically tied on the other five). No language shows meaningful degradation.
 2. **The residual sub-BLEU wobble is the *engine*, not the quantization.** Holding the engine
    fixed, int8-vs-fp16 is statistically indistinguishable — ΔBLEU −0.04 (p=0.83), ΔchrF +0.04
    (p=0.80), ΔCOMET −0.00 (p=0.96). Quantization costs nothing.
@@ -62,18 +64,25 @@ bootstrap, 1,000 resamples. 5,000 segments per pair.
 | de-en | 39.04 | 38.70 | **−0.34** (p<0.001) | −0.15 (p=0.026) | 85.94 | 85.87 | −0.07 (p=0.016) | 75% |
 | en-fr | 42.61 | 42.32 | **−0.29** (p<0.001) | −0.18 (p=0.002) | 86.13 | 86.09 | −0.04 (n.s.) | 75% |
 | en-uk | 33.47 | 33.35 | −0.11 (n.s.) | −0.02 (n.s.) | 83.17 | 83.15 | −0.02 (n.s.) | 70% |
+| en-ru | 30.47 | 30.42 | −0.05 (n.s.) | +0.00 (n.s.) | 82.15 | 82.11 | −0.04 (n.s.) | 68% |
+| en-fa | 36.17 | 36.19 | +0.02 (n.s.) | −0.02 (n.s.) | 84.90 | 84.93 | +0.02 (n.s.) | 70% |
 
-(TER, where the length guard allowed it: zh 70.14→66.51 **int8 better by 3.6**, bn 56.46→56.27
-int8 better, fr 43.89→44.10 and uk 54.00→54.09 fp16 marginally better. pt/ar/de skipped — a
-segment exceeded the TER length guard.)
+(TER, where the length guard allowed it: zh 70.14→66.51 **int8 better by 3.6**, bn 56.46→56.27 and
+fa 52.75→52.68 int8 better, fr 43.89→44.10 and uk 54.00→54.09 fp16 marginally better.
+pt/ar/de/ru skipped — a segment exceeded the TER length guard.)
 
 **Reading it.** The largest delta anywhere is 0.34 BLEU (de-en) — well inside the range where two
 systems are considered equivalent, and an order of magnitude below the between-language spread
 (BLEU 24–46). The deltas also *disagree in sign*: int8 wins zh clearly (+0.73 BLEU, +0.15 COMET,
-−3.6 TER — all significant), loses pt/de/fr by ~0.2–0.3, and ties ar/bn/uk. With 5,000 paired
-segments the bootstrap resolves differences this small as "significant," but statistical
-significance here is not practical significance: a 0.3-BLEU / 0.07-COMET shift is not visible in
-output quality.
+−3.6 TER — all significant), loses pt/de/fr by ~0.2–0.3, and is statistically tied on
+ar/bn/uk/ru/fa. With 5,000 paired segments the bootstrap resolves differences this small as
+"significant," but statistical significance here is not practical significance: a 0.3-BLEU /
+0.07-COMET shift is not visible in output quality.
+
+The two languages added last (Russian, Persian) are the strongest single data points for
+equivalence: **every metric is non-significant on both**, with ΔBLEU of −0.05 and +0.02 and
+p-values from 0.21 to 1.00. They also widen the script coverage to a second Cyrillic and a second
+Arabic-script language without changing the picture.
 
 The identical-output rate (58–78%) tracks language difficulty — the harder the language, the more
 the two decoders diverge — but where they diverge, quality is a wash.
@@ -124,15 +133,15 @@ from leaving the PyTorch/Transformers generation loop. **CT2-fp16 is a viable "f
 6× speedup, no quantization at all — if quantization ever needs to be taken off the table.
 
 For reference, the main pipeline's own timings (fp16 batched at 16 vs int8 per-line) show int8
-**3.4–4.7× faster** per pair — int8 3.32–3.47 sent/s, fp16 0.74–0.98 sent/s — across the five pairs
-whose run metadata records per-second throughput (pt, bn, de, fr, uk). int8 wins by that margin
-*despite* running unbatched, consistent with the controlled figures above.
+**3.3–4.7× faster** per pair — int8 3.32–3.66 sent/s, fp16 0.74–1.11 sent/s — across the seven
+pairs whose run metadata records per-second throughput (pt, bn, de, fr, uk, ru, fa). int8 wins by
+that margin *despite* running unbatched, consistent with the controlled figures above.
 
 ## Axis B — as-deployed (each branch exactly as shipped)
 
 Whole 5,000-sentence file as one document through each branch's own pipeline (fp16: greedy +
 `sat-3l-sm` token-based splitter; int8: beam 4 + `wtp-bert-mini` **character-based** splitter).
-Run on pt/ar/zh only.
+Run on pt/ar/zh only — the other six pairs were Axis A only (`RUN_AXIS_B=0`).
 
 | Pair | BLEU fp16 | BLEU int8 | ΔBLEU | length ratio fp16 | length ratio int8 |
 |---|---|---|---|---|---|
@@ -157,9 +166,9 @@ under-generation appears only in document mode, pinning the blame on the splitte
 
 ## Recommendation
 
-1. **Ship int8.** Confirmed across seven languages: intrinsic quality is equivalent to fp16, for
-   ~6× throughput and ~⅓ the memory. Strong, multi-language, significance-tested backing, with the
-   quantization variable now isolated and shown to be a no-op.
+1. **Ship int8.** Confirmed across nine languages and five scripts: intrinsic quality is equivalent
+   to fp16, for ~6× throughput and ~⅓ the memory. Strong, multi-language, significance-tested
+   backing, with the quantization variable now isolated and shown to be a no-op.
 2. **Port `develop`'s token-based splitter (`sat-3l-sm` + `NLLB_TRANSLATION_TOKEN_LIMIT` logic) to
    the ctranslate2 branch — a priority.** It is the *entire* as-deployed gap, and it is severe
    for CJK/dense scripts. **As shipped today, the int8 as-deployed pipeline is not fit for Chinese.**
@@ -181,7 +190,7 @@ under-generation appears only in document mode, pinning the blame on the splitte
   statistically significant even at the engine level on pt-en (n=1,000).
 - **Decomposition scope:** run on pt-en only, n=1,000. The quantization no-op result is
   well-supported there (p≥0.80 on every metric) but has not been replicated per language; the
-  seven-language Axis A evidence is what covers language breadth.
+  nine-language Axis A evidence is what covers language breadth.
 - **Bangla corpus is small:** the bn-en TMX holds only 10,260 units, so the 5,000-sentence sample
   is ~49% of the available corpus. The paired comparison is unaffected, but the bn sample is less
   independent of the corpus than the others.
@@ -193,18 +202,20 @@ under-generation appears only in document mode, pinning the blame on the splitte
 - **pt-en Axis A was re-run** on a TMX-derived sample (BLEU 46.04/45.87, Δ−0.18) replacing an
   earlier Moses-derived sample (46.47/46.23, Δ−0.24). Both agree: negligible, int8 marginally
   behind.
+- **en-ru's fp16 leg was resumed**, not run in one pass: the first attempt died at 3,992/5,000 on a
+  CUDA "unknown error" and `--resume` completed the remaining 1,008 lines. The hypotheses are
+  complete and the scoring is over all 5,000 segments, but the recorded fp16 throughput for that
+  pair covers only the resumed portion and is excluded from the timing ranges below.
+- **en-fa needed a language-code fix first.** The initial run was skipped by the fail-fast smoke
+  test because the configured code was `per_Arab` — `per` is the ISO 639-2/B bibliographic
+  abbreviation, and FLORES-200 uses ISO 639-3. Verified against the NLLB tokenizer:
+  `per_Arab` → UNK (id 3), **`pes_Arab` → id 256053**. Corrected to `pes` and re-run clean.
 
 ## Not yet run
 
-- **en-fa (Persian):** skipped by the pipeline's fail-fast smoke test — the configured code was
-  `per_Arab`, which is not a FLORES-200 code (`per` is ISO 639-2/B; the model needs ISO 639-3).
-  Verified against the NLLB tokenizer: `per_Arab` → UNK, **`pes_Arab` → id 256053**. `run_pipeline.sh`
-  is now fixed to `pes`; the pair is ready to run (`./run_pipeline.sh en-fa`).
-- **en-ru (Russian):** int8 completed 5,000/5,000; the fp16 leg died at 3,992/5,000 on a CUDA
-  "unknown error", so scoring was skipped. The driver's `--resume` will pick up where it stopped
-  (`./run_pipeline.sh en-ru`).
-- **Axis B for bn/de/fr/uk** — the multi-language run used `RUN_AXIS_B=0`. The splitter finding is
-  already established on pt/ar/zh; extending it is optional.
+- **Axis B for bn/de/fr/uk/ru/fa** — those runs used `RUN_AXIS_B=0`. The splitter finding is
+  already established on pt/ar/zh; extending it is optional, though a dense-script pair would
+  strengthen the zh result.
 - **Decomposition for languages other than pt-en** (`run_decomp.sh`, needs the converted
   `float16` + `int8_float16` models from `convert_ct2.sh`).
 
@@ -216,4 +227,4 @@ under-generation appears only in document mode, pinning the blame on the splitte
 `results/decomp/pt-en/`: `decomp.SUMMARY.md`, `decomp.{engine,quant}.report.txt`,
 `hyp.{hf-fp16,ct2-fp16,ct2-int8}.en`. Pipeline: `run_pipeline.sh` and `run_decomp.sh` (+
 `tmx_sample.py`, `mt_eval.py`, `nllb_eval_driver.py`, `ct2_driver.py`, `convert_ct2.sh`,
-`summarize.py`, `decomp_report.py`). Timing: int8 23–25 min/pair, fp16 1.4–2.1 h/pair.
+`summarize.py`, `decomp_report.py`). Timing: int8 23–25 min/pair, fp16 1.3–2.1 h/pair.
