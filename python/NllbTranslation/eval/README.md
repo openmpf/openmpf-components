@@ -78,9 +78,18 @@ name | tmx_path | tmx_src_lang | nllb_src_lang | nllb_src_script
 | German | deu_Latn | deu | Latn |
 | Italian | ita_Latn | ita | Latn |
 | Russian | rus_Cyrl | rus | Cyrl |
+| Ukrainian | ukr_Cyrl | ukr | Cyrl |
 | Japanese | jpn_Jpan | jpn | Jpan |
 | Korean | kor_Hang | kor | Hang |
 | Hindi | hin_Deva | hin | Deva |
+| Bangla | ben_Beng | ben | Beng |
+| Persian, Western (Iran) | pes_Arab | pes | Arab |
+| Persian, Dari (Afghanistan) | prs_Arab | prs | Arab |
+
+**Use ISO 639-3, not 639-2/B.** FLORES-200 codes are ISO 639-3. The familiar
+bibliographic abbreviations are *not* accepted: Persian is `pes` (or `prs`),
+**not** `per` — `per_Arab` resolves to the unknown token and the job fails with
+"Source language (per) is empty or unsupported".
 
 **Watch the variant:** an OPUS "zh" file may be Mandarin *or* Cantonese, and
 Simplified *or* Traditional — they need different codes. Inspect the text if

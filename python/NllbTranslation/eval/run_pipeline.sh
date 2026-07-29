@@ -33,10 +33,6 @@ PAIRS=(
   "bn-en|tmx/bn-en.tmx|bn|ben|Beng"        # Bangla   -> English
   "de-en|tmx/de-en.tmx|de|deu|Latn"        # German   -> English
   "en-fa|tmx/en-fa.tmx|fa|pes|Arab"        # Persian (Western) -> English
-  "en-fr|tmx/en-fr.tmx|fr|fra|Latn"        # French   -> English
-  "en-ru|tmx/en-ru.tmx|ru|rus|Cyrl"        # Russian  -> English
-  "en-uk|tmx/en-uk.tmx|uk|ukr|Cyrl"        # Ukrainian -> English
-  # "de-en|tmx/de-en.tmx|de|deu|Latn"      # example: add your own
 )
 
 N=${N:-5000}                          # sentences per pair
