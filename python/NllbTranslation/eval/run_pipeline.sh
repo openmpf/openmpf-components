@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ===========================================================================
 # End-to-end MT quality eval pipeline for multiple language pairs.
-# Sample from TMX -> generate Axis A (per-sentence, fp16 & int8) and Axis B
+# Sample from TMX -> generate Axis A (per-sentence, CT2 & HF) and Axis B
 # (as-deployed blob) -> score (BLEU/chrF/chrF++/TER + COMET + paired bootstrap)
 # -> per-pair reports + combined SUMMARY. Sequential (shared GPU), resumable.
 #
@@ -41,13 +41,19 @@ PAIRS=(
 N=${N:-5000}                          # sentences per pair
 SEED=${SEED:-42}
 GPU=${GPU:-'"device=0"'}              # e.g. '"device=1"' for another GPU
-INT8_IMAGE_TAG="ctranslate2"
-FP16_IMAGE_TAG="nllb-200-3.3B"
-INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
-FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
+# The two systems under comparison are an ENGINE contrast, not a precision one:
+#   CT2 = the CTranslate2-branch image. Its precision follows the image's BUILD_TYPE
+#         (gpu -> float16, cpu -> int8_float32), so it is NOT necessarily int8.
+#   HF  = the develop/Transformers image (facebook/nllb-200-3.3B, fp16).
+# These were called INT8/FP16 back when the CTranslate2 branch shipped an int8 model.
+# The old names are still accepted so existing invocations keep working.
+CT2_IMAGE_TAG="ctranslate2"
+HF_IMAGE_TAG="nllb-200-3.3B"
+CT2_IMAGE=${CT2_IMAGE:-${INT8_IMAGE:-openmpf_nllb_translation:$CT2_IMAGE_TAG}}
+HF_IMAGE=${HF_IMAGE:-${FP16_IMAGE:-openmpf_nllb_translation:$HF_IMAGE_TAG}}
 RUN_AXIS_B=${RUN_AXIS_B:-1}           # 0 = skip slow as-deployed blob runs
 BOOTSTRAP=${BOOTSTRAP:-1000}
-FP16_BATCH=${FP16_BATCH:-16}          # lower if the GPU has <16 GB
+HF_BATCH=${HF_BATCH:-${FP16_BATCH:-16}}   # lower if the GPU has <16 GB
 
 # COMET scoring runs on the HOST (not in Docker), so it selects its GPU via
 # CUDA_VISIBLE_DEVICES, NOT the --gpus flag above. Default it to the same GPU
@@ -93,41 +99,41 @@ run_pair() {
   log "$name: sample has $NL lines"
   [ "$NL" -gt 0 ] || { log "$name: empty sample, skipping"; return; }
 
-  log "$name: smoke test (int8, 3 lines) to validate lang code '$nsrc"_"$nscript'"
-  driver_run "$INT8_IMAGE" -- \
-    --input /eval/$RREL/sample.src --output /eval/$RREL/smoke.int8.en \
+  log "$name: smoke test (CT2, 3 lines) to validate lang code '$nsrc"_"$nscript'"
+  driver_run "$CT2_IMAGE" -- \
+    --input /eval/$RREL/sample.src --output /eval/$RREL/smoke.ct2.en \
     --source-lang "$nsrc" --source-script "$nscript" --num-beams 4 --limit 3 >>"$RUNLOG" 2>&1
-  if [ "$(nlines "$H/smoke.int8.en")" -lt 3 ]; then
+  if [ "$(nlines "$H/smoke.ct2.en")" -lt 3 ]; then
     log "$name: SMOKE FAILED (lang code likely rejected) — skipping pair"; return
   fi
-  rm -f "$H/smoke.int8.en"; log "$name: smoke OK"
+  rm -f "$H/smoke.ct2.en"; log "$name: smoke OK"
 
-  if [ "$(nlines "$H/hyp.int8.en")" -ge "$NL" ]; then
-    log "$name: Axis A int8 already complete"
+  if [ "$(nlines "$H/hyp.ct2.en")" -ge "$NL" ]; then
+    log "$name: Axis A CT2 already complete"
   else
-    log "$name: Axis A int8 generating..."
-    driver_run "$INT8_IMAGE" -- \
-      --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.int8.en \
+    log "$name: Axis A CT2 generating..."
+    driver_run "$CT2_IMAGE" -- \
+      --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.ct2.en \
       --source-lang "$nsrc" --source-script "$nscript" --num-beams 4 \
-      --resume --progress-every 500 --meta-out /eval/$RREL/meta.int8.json >>"$RUNLOG" 2>&1
-    log "$name: Axis A int8 -> $(nlines "$H/hyp.int8.en")/$NL"
+      --resume --progress-every 500 --meta-out /eval/$RREL/meta.ct2.json >>"$RUNLOG" 2>&1
+    log "$name: Axis A CT2 -> $(nlines "$H/hyp.ct2.en")/$NL"
   fi
 
-  if [ "$(nlines "$H/hyp.fp16.en")" -ge "$NL" ]; then
-    log "$name: Axis A fp16 already complete"
+  if [ "$(nlines "$H/hyp.hf.en")" -ge "$NL" ]; then
+    log "$name: Axis A HF already complete"
   else
-    log "$name: Axis A fp16 generating (batch $FP16_BATCH, OOM-safe)..."
-    driver_run "$FP16_IMAGE" -e PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256 -- \
-      --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.fp16.en \
+    log "$name: Axis A HF generating (batch $HF_BATCH, OOM-safe)..."
+    driver_run "$HF_IMAGE" -e PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256 -- \
+      --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.hf.en \
       --source-lang "$nsrc" --source-script "$nscript" --num-beams 4 \
-      --batch "$FP16_BATCH" --gpu-empty-cache-every 5 --prop DIFFICULT_LANGUAGE_TOKEN_LIMIT=0 \
-      --resume --progress-every 500 --meta-out /eval/$RREL/meta.fp16.json >>"$RUNLOG" 2>&1
-    log "$name: Axis A fp16 -> $(nlines "$H/hyp.fp16.en")/$NL"
+      --batch "$HF_BATCH" --gpu-empty-cache-every 5 --prop DIFFICULT_LANGUAGE_TOKEN_LIMIT=0 \
+      --resume --progress-every 500 --meta-out /eval/$RREL/meta.hf.json >>"$RUNLOG" 2>&1
+    log "$name: Axis A HF -> $(nlines "$H/hyp.hf.en")/$NL"
   fi
 
   if [ "$RUN_AXIS_B" = "1" ]; then
-    for m in int8 fp16; do
-      local img=$INT8_IMAGE; [ "$m" = fp16 ] && img=$FP16_IMAGE
+    for m in ct2 hf; do
+      local img=$CT2_IMAGE; [ "$m" = hf ] && img=$HF_IMAGE
       if [ -s "$H/asdeployed.$m.json" ] && grep -q TRANSLATION "$H/asdeployed.$m.json" 2>/dev/null; then
         log "$name: Axis B $m blob already done"
       else
@@ -140,10 +146,10 @@ run_pair() {
     log "$name: RUN_AXIS_B=0, skipping as-deployed blobs"
   fi
 
-  if [ "$(nlines "$H/hyp.fp16.en")" -ge "$NL" ] && [ "$(nlines "$H/hyp.int8.en")" -ge "$NL" ]; then
+  if [ "$(nlines "$H/hyp.hf.en")" -ge "$NL" ] && [ "$(nlines "$H/hyp.ct2.en")" -ge "$NL" ]; then
     log "$name: scoring Axis A (COMET on device '$COMET_DEVICE' + bootstrap $BOOTSTRAP)..."
     CUDA_VISIBLE_DEVICES="$COMET_VISIBLE" $PY mt_eval.py compare \
-      --hyp fp16="$H/hyp.fp16.en" --hyp int8="$H/hyp.int8.en" \
+      --hyp hf="$H/hyp.hf.en" --hyp ct2="$H/hyp.ct2.en" \
       -r "$H/sample.ref" -s "$H/sample.src" --comet --comet-gpus "$COMET_GPUS" \
       --bootstrap "$BOOTSTRAP" \
       --per-segment "$H/axisA.segments.csv" --csv "$H/axisA.metrics.csv" \
@@ -154,7 +160,7 @@ run_pair() {
   fi
 
   if [ "$RUN_AXIS_B" = "1" ]; then
-    for m in fp16 int8; do
+    for m in hf ct2; do
       [ -s "$H/asdeployed.$m.json" ] && $PY mt_eval.py score "$H/asdeployed.$m.json" \
         -r "$H/sample.ref" --csv "$H/axisB.$m.csv" > "$H/axisB.$m.report.txt" 2>>"$RUNLOG"
     done

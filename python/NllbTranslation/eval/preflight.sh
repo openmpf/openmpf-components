@@ -2,10 +2,12 @@
 # Readiness check — run before a big overnight job. No model loads, fast.
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
-INT8_IMAGE_TAG="ctranslate2"
-FP16_IMAGE_TAG="nllb-200-3.3B"
-INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
-FP16_IMAGE=${FP16_IMAGE:-openmpf_nllb_translation:$FP16_IMAGE_TAG}
+# CT2 = CTranslate2-branch image, HF = develop/Transformers image. Old INT8_/FP16_
+# names still accepted; see run_pipeline.sh.
+CT2_IMAGE_TAG="ctranslate2"
+HF_IMAGE_TAG="nllb-200-3.3B"
+CT2_IMAGE=${CT2_IMAGE:-${INT8_IMAGE:-openmpf_nllb_translation:$CT2_IMAGE_TAG}}
+HF_IMAGE=${HF_IMAGE:-${FP16_IMAGE:-openmpf_nllb_translation:$HF_IMAGE_TAG}}
 ok(){ echo "  [OK] $*"; }; bad(){ echo "  [!!] $*"; FAIL=1; }
 FAIL=0
 echo "== preflight =="
@@ -14,7 +16,7 @@ command -v docker >/dev/null 2>&1 && ok "docker: $(docker --version)" || bad "do
 command -v nvidia-smi >/dev/null 2>&1 && ok "GPU: $(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader | head -1)" \
   || bad "nvidia-smi not found (need NVIDIA runtime + GPU)"
 
-for img in "$FP16_IMAGE" "$INT8_IMAGE"; do
+for img in "$HF_IMAGE" "$CT2_IMAGE"; do
   docker image inspect "$img" >/dev/null 2>&1 && ok "image present: $img" \
     || bad "image MISSING: $img  (build it — see README)"
 done

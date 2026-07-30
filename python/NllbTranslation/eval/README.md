@@ -17,11 +17,16 @@ Two axes per pair:
 ## Prerequisites (an OpenMPF dev environment already has all of these)
 
 1. **Docker + NVIDIA container runtime + a CUDA GPU.** fp16 needs ~16 GB VRAM at
-   batch 16; lower `FP16_BATCH` for smaller cards. int8 needs ~4–6 GB.
+   batch 16; lower `HF_BATCH` for smaller cards. The CT2 image needs ~4-7 GB at int8 and
+   ~7-14 GB at float16.
 2. **The two OpenMPF NllbTranslation images** (this is the only non-pip
    dependency):
-   - `openmpf_nllb_translation:develop`  — facebook/nllb-200-3.3B (fp16, PyTorch)
-   - `openmpf_nllb_translation:ctranslate2` — OpenNMT/nllb-200-3.3B-ct2-int8 (int8)
+   - `openmpf_nllb_translation:develop`  — facebook/nllb-200-3.3B (fp16, PyTorch). Referred to
+     below as **HF**.
+   - `openmpf_nllb_translation:ctranslate2` — the CTranslate2-branch build. Referred to below as
+     **CT2**. Its precision depends on the image's `BUILD_TYPE`: `gpu` converts the checkpoint to
+     `float16`, `cpu` to `int8`. It is **not** necessarily an int8 model — older revisions of this
+     harness called it "int8" because the branch once shipped `OpenNMT/nllb-200-3.3B-ct2-int8`.
 
    Build them from the `openmpf-components` repo (models download from HF at
    build time — internet required):
@@ -35,10 +40,11 @@ Two axes per pair:
    ```
    If your enclave tags them differently, point the pipeline at your tags:
    ```bash
-   FP16_IMAGE=my/nllb:fp16 INT8_IMAGE=my/nllb:int8 ./run_pipeline.sh
+   HF_IMAGE=my/nllb:hf CT2_IMAGE=my/nllb:ct2 ./run_pipeline.sh
+   # (the former FP16_IMAGE / INT8_IMAGE names are still accepted)
    ```
-   (You can compare any two image variants, not just fp16 vs int8 — whichever
-   two you set as FP16_IMAGE / INT8_IMAGE.)
+   (You can compare any two image variants — whichever two you set as
+   HF_IMAGE / CT2_IMAGE.)
 3. **Python 3 + internet** for the scoring venv (`./setup_venv.sh`).
 
 ## Setup
@@ -111,7 +117,7 @@ RUN_AXIS_B=0 ./run_pipeline.sh    # Axis A only (skips the slow as-deployed blob
 ```
 
 Knobs (env vars): `N` (sentences/pair, default 5000), `SEED`, `GPU`
-(`'"device=1"'`), `COMET_DEVICE`, `FP16_IMAGE` / `INT8_IMAGE`, `FP16_BATCH`,
+(`'"device=1"'`), `COMET_DEVICE`, `HF_IMAGE` / `CT2_IMAGE`, `HF_BATCH`,
 `BOOTSTRAP`, `RUN_AXIS_B`. It is **resumable** — re-running skips finished
 stages and generation resumes from where it stopped.
 
@@ -140,10 +146,11 @@ set `RUN_AXIS_B=0` to skip).
 
 - `results/SUMMARY.md` — combined fp16-vs-int8 table across all pairs.
 - `results/<pair>/`
-  - `hyp.fp16.en`, `hyp.int8.en` — aligned per-sentence hypotheses
+  - `hyp.hf.en`, `hyp.ct2.en` — aligned per-sentence hypotheses
+    (runs made before the HF/CT2 rename use `hyp.fp16.en` / `hyp.int8.en`)
   - `axisA.report.txt` — metrics table + bootstrap significance
   - `axisA.segments.csv` — per-sentence scores incl. COMET (for error analysis)
-  - `asdeployed.{fp16,int8}.json`, `axisB.*.report.txt` — as-deployed axis
+  - `asdeployed.{hf,ct2}.json`, `axisB.*.report.txt` — as-deployed axis
   - `meta.*.json` — run metadata/timing
   - `sample.{src,ref,idx}` — the exact sampled test set (reproducible via SEED)
 
@@ -208,7 +215,7 @@ resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
 - **fp16 OOM:** batched fp16 fragments GPU memory on long runs. The pipeline
   already sets `PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256`, `--batch 16`,
   and periodic cache clearing. Do **not** use `expandable_segments:True` under
-  WSL2 (its virtual-memory APIs fail there). Lower `FP16_BATCH` on smaller GPUs.
+  WSL2 (its virtual-memory APIs fail there). Lower `HF_BATCH` on smaller GPUs.
 - **Arabic** is NLLB's flagged "difficult" language; the pipeline passes
   `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` on the fp16 Axis A run so both images
   segment it identically (keeps Axis A a fair comparison).
