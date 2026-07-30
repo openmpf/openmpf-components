@@ -882,6 +882,136 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
                 mpf.GenericJob('Restore', 'test.pdf', restore, {},
                                mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))))
 
+    # ---- job properties added for the CTranslate2 engine ------------------------
+    # These are tested by asserting the value REACHES CTranslate2, not by diffing
+    # translations. Output-diffing is unreliable here for two independent reasons:
+    # easy input does not discriminate (beam 1 and beam 4 agree on short sentences),
+    # and the gpu/cpu builds legitimately word things differently. Checking the call
+    # is deterministic on both.
+
+    class _RecordingTranslator:
+        """Forwards to the real Translator while recording translate_batch kwargs."""
+
+        def __init__(self, inner):
+            self._inner = inner
+            self.calls = []
+
+        def translate_batch(self, *args, **kwargs):
+            self.calls.append(kwargs)
+            return self._inner.translate_batch(*args, **kwargs)
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+    def _record_translate_batch(self, props, text=None):
+        job = mpf.GenericJob('Test Generic', 'test.pdf', props, {},
+                             mpf.GenericTrack(-1, dict(TEXT=text or self.SAMPLE_0)))
+        original = self.component._model
+        spy = self._RecordingTranslator(original)
+        self.component._model = spy
+        try:
+            self.component.get_detections_from_generic(job)
+        finally:
+            self.component._model = original
+        self.assertTrue(spy.calls, 'translate_batch was never called')
+        return spy.calls[-1]
+
+    def _decode_props(self, **overrides):
+        props = dict(self.defaultProps)
+        props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+        props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        props.update(overrides)
+        return props
+
+    def test_decode_properties_reach_ctranslate2(self):
+        kwargs = self._record_translate_batch(self._decode_props(
+            NLLB_BEAM_SIZE='2',
+            NLLB_MAX_BATCH_SIZE='512',
+            NLLB_BATCH_TYPE='examples',
+            NLLB_LENGTH_PENALTY='1.5'))
+        self.assertEqual(2, kwargs['beam_size'])
+        self.assertEqual(512, kwargs['max_batch_size'])
+        self.assertEqual('examples', kwargs['batch_type'])
+        self.assertEqual(1.5, kwargs['length_penalty'])
+
+    def test_decode_property_defaults_reach_ctranslate2(self):
+        # Guards the defaults themselves, so a job that sets nothing still gets the
+        # decoding the evaluation measured (beam 4 in particular).
+        kwargs = self._record_translate_batch(self._decode_props())
+        self.assertEqual(4, kwargs['beam_size'])
+        self.assertEqual(2024, kwargs['max_batch_size'])
+        self.assertEqual('tokens', kwargs['batch_type'])
+        self.assertEqual(1.0, kwargs['length_penalty'])
+
+    def test_max_decoding_length_follows_the_token_limit(self):
+        # The chunk limit doubles as CTranslate2's max_decoding_length; if these ever
+        # drift apart the model could be allowed to emit more than a chunk's budget.
+        kwargs = self._record_translate_batch(self._decode_props(
+            USE_NLLB_TOKEN_LENGTH='TRUE', NLLB_TRANSLATION_TOKEN_LIMIT='321'))
+        self.assertEqual(321, kwargs['max_decoding_length'])
+
+    def test_nllb_tokenizer_property_selects_the_backend(self):
+        from nllb_component import tokenizers
+        for requested, expected in ((tokenizers.HUGGINGFACE, tokenizers.HUGGINGFACE),
+                                    (tokenizers.SENTENCEPIECE, tokenizers.SENTENCEPIECE),
+                                    ('nonsense', tokenizers.SENTENCEPIECE)):
+            with self.subTest(requested=requested):
+                job = mpf.GenericJob(
+                    'Test Generic', 'test.pdf',
+                    self._decode_props(NLLB_TOKENIZER=requested), {},
+                    mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0)))
+                try:
+                    self.component.get_detections_from_generic(job)
+                except mpf.DetectionException as e:
+                    self.skipTest(f'backend {requested} unavailable: {e}')
+                self.assertEqual(expected, self.component._tokenizer.name)
+        # leave the shared component on the default backend
+        self.component.get_detections_from_generic(mpf.GenericJob(
+            'Restore', 'test.pdf', self._decode_props(), {},
+            mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))))
+
+    def test_threading_properties_are_parsed_and_reported_when_unappliable(self):
+        # Threading is fixed when the Translator is constructed, so a job asking for
+        # different values cannot be honoured. It must say so rather than silently
+        # ignoring the request -- that silence is exactly how the NLLB_MODEL bug hid.
+        config = JobConfig(self._decode_props(NLLB_INTER_THREADS='3',
+                                              NLLB_INTRA_THREADS='7'), ff_props={})
+        self.assertEqual(3, config.nllb_inter_threads)
+        self.assertEqual(7, config.nllb_intra_threads)
+
+        with self.assertLogs('NllbTranslationComponent', level='WARNING') as logs:
+            self.component._check_model(config)
+        self.assertTrue(any('INTRA_THREADS' in line for line in logs.output),
+                        f'no threading warning logged: {logs.output}')
+
+    def test_job_config_defaults_match_the_descriptor(self):
+        # The descriptor is the documented contract. If a JobConfig default drifts from
+        # its defaultValue, the documentation is silently wrong for anyone who does not
+        # set the property explicitly.
+        minimal = {'DEFAULT_SOURCE_LANGUAGE': 'deu', 'DEFAULT_SOURCE_SCRIPT': 'Latn'}
+        config = JobConfig(minimal, ff_props={})
+        documented = {p['name']: p['defaultValue'] for p in self.descriptorProperties}
+        attr_for = {
+            'NLLB_MODEL': 'nllb_model',
+            'NLLB_TOKENIZER': 'nllb_tokenizer',
+            'NLLB_BEAM_SIZE': 'nllb_beam_size',
+            'NLLB_MAX_BATCH_SIZE': 'nllb_max_batch_size',
+            'NLLB_BATCH_TYPE': 'nllb_batch_type',
+            'NLLB_LENGTH_PENALTY': 'nllb_length_penalty',
+            'NLLB_INTER_THREADS': 'nllb_inter_threads',
+            'NLLB_INTRA_THREADS': 'nllb_intra_threads',
+            'NLLB_TRANSLATION_TOKEN_LIMIT': 'nllb_token_limit',
+            'NLLB_TRANSLATION_TOKEN_SOFT_LIMIT': 'nllb_token_soft_limit',
+            'SENTENCE_SPLITTER_CHAR_COUNT': 'nllb_character_limit',
+            'DIFFICULT_LANGUAGE_TOKEN_LIMIT': 'difficult_language_token_limit',
+        }
+        for prop, attr in attr_for.items():
+            with self.subTest(property=prop):
+                self.assertIn(prop, documented, f'{prop} is not in descriptor.json')
+                actual = getattr(config, attr)
+                # Compare in the type the component actually uses.
+                self.assertEqual(type(actual)(documented[prop]), actual)
+
     def test_should_translate(self):
 
         with self.subTest('OK to translate'):

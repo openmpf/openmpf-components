@@ -74,7 +74,7 @@ What the merge landed, and what it left:
 | 4 — model lifecycle bug | **fixed and verified**; `NLLB_MODEL` now takes effect |
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
-| 7 — tests | **done** — 32 tests green on both builds (1 gated golden test) |
+| 7 — tests | **done** — 38 tests green on both builds (1 gated golden test) |
 | 8 — validation | not started |
 
 ---
@@ -478,6 +478,20 @@ names by string needs updating.
       Original 7.2 text: Assert both backends produce CT2-compatible token strings and
       round-trip a fixed corpus. Encode the two known divergences (trailing whitespace, unknown-char
       surface form) as *expected*, so they do not read as regressions.
+- [x] **7.4 Behaviour tests for the new job properties — done.** Every property added in Phases
+      1/2/5 is now covered, by asserting the value **reaches CTranslate2** rather than by diffing
+      translations. Output-diffing is unreliable here for two independent reasons — easy input does
+      not discriminate (beam 1 and beam 4 agree on short sentences), and the gpu/cpu builds word
+      things differently — so a `_RecordingTranslator` proxy captures `translate_batch` kwargs
+      instead. Deterministic on both builds. Covers `NLLB_BEAM_SIZE`, `NLLB_MAX_BATCH_SIZE`,
+      `NLLB_BATCH_TYPE`, `NLLB_LENGTH_PENALTY` (set *and* default), `max_decoding_length` tracking
+      the token limit, `NLLB_TOKENIZER` backend selection including fallback, and the threading
+      warning.
+      **Plus a descriptor-drift guard:** `JobConfig`'s defaults are compared against
+      `descriptor.json`'s `defaultValue` for all 12 documented properties. A drift there makes the
+      documentation silently wrong for anyone who does not set the property. Verified non-vacuous:
+      changing a default to 8 fails with `4 != 8`, and removing `length_penalty` from the
+      `translate_batch` call errors the plumbing test.
 - [x] **7.3 Model-swap test — done, and verified to actually catch the bug.** Two tests: a
       job-level `NLLB_MODEL` must change `_current_model_name` and still translate, and an unknown
       name must raise `COULD_NOT_READ_DATAFILE` leaving `_current_model_name` as `None`. Confirmed
