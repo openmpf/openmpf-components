@@ -1,71 +1,85 @@
-# NLLB-200-3.3B: fp16 vs int8 Translation Quality Evaluation
+# NLLB-200-3.3B on CTranslate2: Quality and Throughput Evaluation
 
-**Question:** Does int8 quantization (`OpenNMT/nllb-200-3.3B-ct2-int8`, CTranslate2) degrade
-translation quality vs the fp16 original (`facebook/nllb-200-3.3B`, PyTorch), as deployed in the
-OpenMPF NllbTranslation component?
+**Question (as originally posed):** Does int8 quantization (`OpenNMT/nllb-200-3.3B-ct2-int8`,
+CTranslate2) degrade translation quality vs the fp16 original (`facebook/nllb-200-3.3B`, PyTorch),
+as deployed in the OpenMPF NllbTranslation component?
+
+**Answer:** No — quantization is a no-op for quality, established across nine languages. But the
+evaluation reframed the question twice. The throughput win belongs to the *engine*, not the
+quantization; and on H100 int8 is actually *slower* than fp16, which inverts the deployment
+recommendation.
 
 **Data:** OPUS TED2020 → English. Nine source languages, 5,000 sentence pairs each (fixed random
 sample, seed 42), gold sentence-aligned references from TMX.
 
 | Pair | Source | NLLB code | Corpus (TU) |
 |---|---|---|---|
-| pt-en | Portuguese | por_Latn | 320k |
 | ar-en | Arabic (MSA) | arb_Arab | 398k |
-| zh-en | Mandarin (Simplified) | zho_Hans | 393k |
 | bn-en | Bangla | ben_Beng | 10k |
 | de-en | German | deu_Latn | 289k |
-| en-fr | French | fra_Latn | 400k |
-| en-uk | Ukrainian | ukr_Cyrl | 203k |
-| en-ru | Russian | rus_Cyrl | 380k |
-| en-fa | Persian (Western) | pes_Arab | 297k |
+| fa-en | Persian (Western) | pes_Arab | 297k |
+| fr-en | French | fra_Latn | 400k |
+| pt-en | Portuguese | por_Latn | 320k |
+| ru-en | Russian | rus_Cyrl | 380k |
+| uk-en | Ukrainian | ukr_Cyrl | 203k |
+| zh-en | Mandarin (Simplified) | zho_Hans | 393k |
 
-**Setup:** 2026-07-25 → 2026-07-28, RTX 5070 Ti (16 GB). sacrebleu 2.6.0; COMET
-`Unbabel/wmt22-comet-da`. Three experiments:
+**Setup:** sacrebleu 2.6.0; COMET `Unbabel/wmt22-comet-da`. Two hardware platforms:
 
-- **Axis A — intrinsic** (all 9 pairs): per-sentence, beam 4 on both, sentence-splitting
+- **RTX 5070 Ti (16 GB)**, 2026-07-25 → 07-28 — the original run. Artifacts in `results/`.
+- **H100**, 2026-07-29 — full re-run, all nine pairs, both axes, plus the decomposition on every
+  pair. Artifacts committed in `pipeline-results/` (hypothesis and sample files excluded for size).
+
+Three experiments:
+
+- **Axis A — intrinsic** (9 pairs × 5,000 sentences): per-sentence, beam 4 on both, sentence-splitting
   neutralized. Isolates the deployed-model variable.
-- **Axis B — as-deployed** (pt/ar/zh): whole file through each branch's own shipped pipeline
+- **Axis B — as-deployed** (9 pairs, H100): whole file through each branch's own shipped pipeline
   (document-level).
-- **Engine-vs-quantization decomposition** (pt-en, 1,000 sentences): splits Axis A's single
+- **Engine-vs-quantization decomposition** (9 pairs × 1,000 sentences, H100): splits Axis A's single
   contrast into its two confounded halves — inference *engine* and *numeric precision*.
 
 ---
 
 ## Bottom line
 
-1. **Intrinsic quality: int8 is equivalent to fp16 in all nine languages.** Every per-sentence
-   delta is ≤0.34 BLEU and ≤0.15 COMET on 0–100 scales, and they point in *both* directions
-   (int8 significantly ahead on Chinese, significantly but trivially behind on pt/de/fr, and
-   statistically tied on the other five). No language shows meaningful degradation.
-2. **The residual sub-BLEU wobble is the *engine*, not the quantization.** Holding the engine
-   fixed, int8-vs-fp16 is statistically indistinguishable — ΔBLEU −0.04 (p=0.83), ΔchrF +0.04
-   (p=0.80), ΔCOMET −0.00 (p=0.96). Quantization costs nothing.
-3. **The ~6× speedup is also the *engine*, not int8.** CTranslate2-fp16 is 6.3× faster than
-   Transformers-fp16 at identical quality; int8 adds only ~5% on top of that. int8's real payoff
-   is **memory** (~⅓), not throughput.
-4. **As-deployed: int8 lags, and the gap scales with script density** — modest for pt/ar
-   (~1.4–2 BLEU), **catastrophic for Chinese (−8.6 BLEU)**. This is **not quantization**; it is the
-   int8 branch's older *character-based* sentence splitter under-generating on dense text. It is
-   fixable, and fixing it is a priority.
+1. **Intrinsic quality: int8 is equivalent to fp16 in all nine languages.** Every per-sentence delta
+   is ≤0.34 BLEU and ≤0.15 COMET on 0–100 scales, with signs pointing both ways.
+2. **Quantization is a no-op for quality — now established per-language, not just once.** With the
+   engine held fixed, Δ(int8 − fp16) is non-significant on **all nine pairs**: BLEU p = 0.33–0.96,
+   COMET p = 0.21–0.98. Precision can be chosen purely on speed and memory grounds.
+3. **The throughput win is the *engine*, and its size is hardware-dependent.** CTranslate2-fp16 over
+   Transformers-fp16 is **~2.3× on H100** but **6.3× on the RTX 5070 Ti**. Quoting "~6×" without
+   naming the GPU overstates it for server hardware.
+4. **On H100, int8 is *slower* than fp16 — on all nine pairs** (0.80–0.98× CT2-fp16; ~8.5% slower on
+   average, 20% slower on Chinese). Combined with (2), int8's only remaining advantage is footprint.
+   **On GPU, prefer fp16.**
+5. **As-deployed segmentation is broken in *both* branches, on different languages.** int8's
+   character splitter is catastrophic on Chinese (−10.0 BLEU, length ratio 0.551), but `develop`
+   under-generates on Bangla (0.692) and Persian (0.764), where int8 wins by ~7 BLEU. Neither
+   pipeline is fit for dense scripts as shipped, and "port `develop`'s splitter" is no longer a
+   complete fix.
+6. **Axis A is hardware-independent.** The H100 run reproduced the RTX 5070 Ti Axis A scores to three
+   decimals on all nine pairs — the quality conclusions do not depend on the GPU.
 
 ---
 
 ## Axis A — intrinsic quality (controlled, the fair comparison)
 
 Per-sentence, beam 4 on both, splitter neutralized. Δ = int8 − fp16. Significance = paired
-bootstrap, 1,000 resamples. 5,000 segments per pair.
+bootstrap, 1,000 resamples. 5,000 segments per pair. **Identical on both hardware platforms.**
 
 | Pair | BLEU fp16 | BLEU int8 | ΔBLEU (sig) | ΔchrF (sig) | COMET fp16 | COMET int8 | ΔCOMET (sig) | Identical outputs |
 |---|---|---|---|---|---|---|---|---|
-| pt-en | 46.04 | 45.87 | −0.18 (p=0.048) | −0.08 (n.s.) | 87.54 | 87.50 | −0.04 (n.s.) | 78% |
 | ar-en | 40.71 | 40.83 | +0.12 (n.s.) | +0.05 (n.s.) | 84.88 | 84.90 | +0.02 (n.s.) | 71% |
-| zh-en | 24.38 | 25.11 | **+0.73** (p<0.001) | +0.19 (p=0.07) | 81.44 | 81.59 | **+0.15** (p<0.001) | 58% |
 | bn-en | 33.24 | 33.15 | −0.10 (n.s.) | −0.08 (n.s.) | 85.75 | 85.74 | −0.01 (n.s.) | 66% |
 | de-en | 39.04 | 38.70 | **−0.34** (p<0.001) | −0.15 (p=0.026) | 85.94 | 85.87 | −0.07 (p=0.016) | 75% |
-| en-fr | 42.61 | 42.32 | **−0.29** (p<0.001) | −0.18 (p=0.002) | 86.13 | 86.09 | −0.04 (n.s.) | 75% |
-| en-uk | 33.47 | 33.35 | −0.11 (n.s.) | −0.02 (n.s.) | 83.17 | 83.15 | −0.02 (n.s.) | 70% |
-| en-ru | 30.47 | 30.42 | −0.05 (n.s.) | +0.00 (n.s.) | 82.15 | 82.11 | −0.04 (n.s.) | 68% |
-| en-fa | 36.17 | 36.19 | +0.02 (n.s.) | −0.02 (n.s.) | 84.90 | 84.93 | +0.02 (n.s.) | 70% |
+| fa-en | 36.17 | 36.19 | +0.02 (n.s.) | −0.02 (n.s.) | 84.90 | 84.93 | +0.02 (n.s.) | 70% |
+| fr-en | 42.61 | 42.32 | **−0.29** (p<0.001) | −0.18 (p=0.002) | 86.13 | 86.09 | −0.04 (n.s.) | 75% |
+| pt-en | 46.04 | 45.87 | −0.18 (p=0.048) | −0.08 (n.s.) | 87.54 | 87.50 | −0.04 (n.s.) | 78% |
+| ru-en | 30.47 | 30.42 | −0.05 (n.s.) | +0.00 (n.s.) | 82.15 | 82.11 | −0.04 (n.s.) | 68% |
+| uk-en | 33.47 | 33.35 | −0.11 (n.s.) | −0.02 (n.s.) | 83.17 | 83.15 | −0.02 (n.s.) | 70% |
+| zh-en | 24.38 | 25.11 | **+0.73** (p<0.001) | +0.19 (p=0.07) | 81.44 | 81.59 | **+0.15** (p<0.001) | 58% |
 
 (TER, where the length guard allowed it: zh 70.14→66.51 **int8 better by 3.6**, bn 56.46→56.27 and
 fa 52.75→52.68 int8 better, fr 43.89→44.10 and uk 54.00→54.09 fp16 marginally better.
@@ -73,19 +87,19 @@ pt/ar/de/ru skipped — a segment exceeded the TER length guard.)
 
 **Reading it.** The largest delta anywhere is 0.34 BLEU (de-en) — well inside the range where two
 systems are considered equivalent, and an order of magnitude below the between-language spread
-(BLEU 24–46). The deltas also *disagree in sign*: int8 wins zh clearly (+0.73 BLEU, +0.15 COMET,
-−3.6 TER — all significant), loses pt/de/fr by ~0.2–0.3, and is statistically tied on
-ar/bn/uk/ru/fa. With 5,000 paired segments the bootstrap resolves differences this small as
-"significant," but statistical significance here is not practical significance: a 0.3-BLEU /
-0.07-COMET shift is not visible in output quality.
+(BLEU 24–46). The deltas *disagree in sign*: int8 wins zh clearly (+0.73 BLEU, +0.15 COMET, −3.6 TER
+— all significant), loses de/fr/pt by ~0.2–0.3, and is statistically tied on the other five. With
+5,000 paired segments the bootstrap resolves differences this small as "significant," but
+statistical significance here is not practical significance: a 0.3-BLEU / 0.07-COMET shift is not
+visible in output quality.
 
-The two languages added last (Russian, Persian) are the strongest single data points for
-equivalence: **every metric is non-significant on both**, with ΔBLEU of −0.05 and +0.02 and
-p-values from 0.21 to 1.00. They also widen the script coverage to a second Cyrillic and a second
-Arabic-script language without changing the picture.
+The identical-output rate (58–78%) tracks language difficulty — the harder the language, the more the
+two decoders diverge — but where they diverge, quality is a wash.
 
-The identical-output rate (58–78%) tracks language difficulty — the harder the language, the more
-the two decoders diverge — but where they diverge, quality is a wash.
+**Cross-hardware reproducibility.** The H100 run reproduced every Axis A figure above to three
+decimals (largest divergence: pt-en int8 45.865 vs 45.867). Same samples, same seed, different GPU
+and driver stack. Beam-4 decoding on these systems is deterministic enough that quality results
+transfer between platforms — worth knowing before re-running anything for quality reasons.
 
 Note that Axis A still compares **two things at once**: Transformers-fp16 vs CTranslate2-int8.
 Engine and precision are confounded. The decomposition below separates them.
@@ -94,137 +108,195 @@ Engine and precision are confounded. The decomposition below separates them.
 
 Axis A's "fp16 vs int8" bundles two independent changes: the *inference engine* (HuggingFace
 Transformers → CTranslate2) and the *numeric precision* (fp16 → int8). These are orthogonal —
-CTranslate2 runs fp16 perfectly well — so a third system, **CTranslate2-fp16**, splits the
-contrast cleanly. Run on an independent 1,000-sentence pt-en sample, all three per-sentence at
-beam 4.
+CTranslate2 runs fp16 perfectly well — so a third system, **CTranslate2-fp16**, splits the contrast
+cleanly. Run on all nine pairs, 1,000 sentences each, H100, all three systems per-sentence at beam 4.
+Compute types self-verified at load (`float16` and `int8_float16`).
 
 Δengine = CT2-fp16 − HF-fp16 (same precision, different engine).
 Δquant = CT2-int8 − CT2-fp16 (same engine, different precision).
 
-| Metric | HF-fp16 | CT2-fp16 | CT2-int8 | Δengine (sig) | Δquant (sig) |
+| Pair | CT2-fp16 BLEU | Δengine BLEU (p) | Δquant BLEU (p) | Δquant COMET (p) |
+|---|---|---|---|---|
+| ar-en † | 40.20 | +1.91 (p<0.001) † | +0.17 (0.37) | −0.00 (0.98) |
+| bn-en | 33.55 | +0.19 (0.14) | +0.07 (0.71) | −0.04 (0.47) |
+| de-en | 38.85 | −0.19 (0.36) | +0.00 (0.96) | +0.03 (0.71) |
+| fa-en | 36.11 | +0.11 (0.17) | −0.05 (0.73) | +0.07 (0.21) |
+| fr-en | 42.53 | −0.26 (0.036) | −0.18 (0.33) | −0.02 (0.59) |
+| pt-en | 44.92 | −0.14 (0.46) | −0.03 (0.85) | −0.01 (0.84) |
+| ru-en | 30.48 | +0.15 (0.076) | −0.14 (0.34) | −0.04 (0.48) |
+| uk-en | 33.46 | −0.10 (0.29) | +0.06 (0.67) | +0.03 (0.61) |
+| zh-en | 25.55 | +0.08 (0.58) | −0.08 (0.58) | −0.01 (0.86) |
+
+† **The ar-en engine figure is an artifact, not an engine effect.** `run_decomp.sh` passes no job
+properties to the HF system, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` is active for Arabic there, while
+`run_pipeline.sh` disables it for Axis A. HF-fp16 scores 38.29 in the decomposition versus 40.71 in
+Axis A, at ~55% the throughput of the other pairs (1.23 vs ~2.2 sent/s) — both consistent with
+over-aggressive chunking. Excluding it, Δengine spans −0.26 to +0.19 and is significant only for
+fr-en. The harness needs `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` for parity before this contrast is
+reused.
+
+**Quantization is a no-op for quality.** Δquant is non-significant on **every pair, on both metrics**
+(BLEU p = 0.33–0.96, COMET p = 0.21–0.98), with signs mixed — even though the two systems genuinely
+produce different text (214/1,000 outputs differ on pt-en). This upgrades the earlier single-language
+result into a nine-language one, and it is the finding that makes precision a pure
+engineering choice.
+
+### Throughput (sentences/sec, single-sentence latency, batch 1, H100)
+
+| Pair | HF-fp16 | CT2-fp16 | CT2-int8 | engine speedup | int8 ÷ fp16 |
 |---|---|---|---|---|---|
-| BLEU | 45.06 | 44.92 | 44.88 | −0.14 (p=0.46, n.s.) | −0.04 (p=0.83, n.s.) |
-| chrF | 66.32 | 66.23 | 66.27 | −0.09 (p=0.60, n.s.) | +0.04 (p=0.80, n.s.) |
-| chrF++ | 65.01 | 64.92 | 64.94 | −0.09 | +0.03 |
-| COMET | 87.35 | 87.37 | 87.37 | +0.02 (p=0.60, n.s.) | −0.00 (p=0.96, n.s.) |
+| ar-en | 1.23 † | 5.02 | 4.65 | (4.1× †) | 0.93× |
+| bn-en | 2.15 | 5.06 | 4.66 | 2.4× | 0.92× |
+| de-en | 2.23 | 4.80 | 4.44 | 2.2× | 0.93× |
+| fa-en | 2.05 | 4.62 | 4.55 | 2.3× | 0.98× |
+| fr-en | 2.06 | 4.95 | 4.75 | 2.4× | 0.96× |
+| pt-en | 2.06 | 5.00 | 4.59 | 2.4× | 0.92× |
+| ru-en | 2.23 | 5.33 | 4.77 | 2.4× | 0.89× |
+| uk-en | 2.22 | 5.30 | 4.84 | 2.4× | 0.91× |
+| zh-en | 2.73 | 4.64 | 3.69 | 1.7× | **0.80×** |
 
-**Quantization is a no-op for quality.** With the engine held constant, every int8-vs-fp16 delta is
-within noise (p ≥ 0.80 on all three tested metrics), even though the two systems genuinely produce
-different text (214/1000 outputs differ). Whatever small movement Axis A shows is attributable to
-the engine's beam-search internals, not to the int8 weights. For pt-en the two halves also sum
-consistently with the Axis A result (−0.14 + −0.04 ≈ −0.18 observed).
+**Two conclusions, both of which change prior guidance.**
 
-### Throughput (sentences/sec, single-sentence latency, batch 1)
+**The speedup is the engine, and it is smaller on server hardware.** CTranslate2 at *unchanged* fp16
+precision buys 1.7–2.4× on H100. The same contrast measured 6.3× on the RTX 5070 Ti: H100
+accelerates the batched PyTorch path far more than it accelerates CTranslate2's latency-bound
+single-sentence path. The engine win is real and worth taking, but "~6×" is a consumer-GPU number.
 
-| System | sent/s | speedup vs HF-fp16 |
-|---|---|---|
-| HF-fp16 (Transformers) | 0.63 | 1.0× |
-| CT2-fp16 (CTranslate2) | 3.96 | **6.3×** |
-| CT2-int8 (CTranslate2) | 4.15 | **6.6×** |
+**int8 is slower than fp16 on H100, unanimously.** Every pair lands below 1.0×, averaging ~0.92× and
+falling to 0.80× on Chinese. This reverses the RTX 5070 Ti result (int8 was ~5% *faster* there).
+Since quantization is also quality-neutral, int8 retains exactly one advantage on GPU — 3.36 GB vs
+6.7 GB — which is immaterial on an 80 GB card. **CT2-fp16 is the right GPU configuration.** int8
+remains correct for CPU deployment, where CTranslate2 does not support fp16 at all.
 
-**The speedup is the engine.** Moving Transformers → CTranslate2 at *unchanged* fp16 precision
-already buys 6.3×; int8 adds a further ~5%. Batched, the two CTranslate2 configurations are
-effectively tied (33.1 vs 32.1 sent/s measured) — on this GPU int8 does not unlock a tensor-core
-win over fp16. int8's genuine advantage is **memory footprint** (~⅓ of fp16), which matters for
-model co-residency and for smaller cards, not raw speed.
+### A note on the main pipeline's own timings
 
-This reframes the throughput claim: the win we have been attributing to int8 is really the win
-from leaving the PyTorch/Transformers generation loop. **CT2-fp16 is a viable "fast fp16"** — same
-6× speedup, no quantization at all — if quantization ever needs to be taken off the table.
+The pipeline compares **batched fp16** against **per-line int8**, so its throughput numbers are not
+like-for-like — and the asymmetry flipped direction between platforms:
 
-For reference, the main pipeline's own timings (fp16 batched at 16 vs int8 per-line) show int8
-**3.3–4.7× faster** per pair — int8 3.32–3.66 sent/s, fp16 0.74–1.11 sent/s — across the seven
-pairs whose run metadata records per-second throughput (pt, bn, de, fr, uk, ru, fa). int8 wins by
-that margin *despite* running unbatched, consistent with the controlled figures above.
+| Platform | int8 (per-line) | fp16 (batched) | apparent winner |
+|---|---|---|---|
+| RTX 5070 Ti | 3.32–3.66 | 0.74–1.11 | int8, by 3.3–4.7× |
+| H100 | 2.75–3.62 | 5.89–7.98 (batch 16–24) | fp16, by ~2.2× |
+
+int8's per-line rate barely moved between platforms (~3.3 vs ~3.1 sent/s) because batch-1 decoding is
+latency-bound, while the batched fp16 path scaled with the GPU. Read these as a batching story, not
+a precision story; the batch-1 table above is the controlled comparison. (pt-en's H100 metadata
+predates the throughput fields and is excluded.)
 
 ## Axis B — as-deployed (each branch exactly as shipped)
 
-Whole 5,000-sentence file as one document through each branch's own pipeline (fp16: greedy +
-`sat-3l-sm` token-based splitter; int8: beam 4 + `wtp-bert-mini` **character-based** splitter).
-Run on pt/ar/zh only — the other six pairs were Axis A only (`RUN_AXIS_B=0`).
+Whole 5,000-sentence file as one document through each branch's own pipeline (fp16: **greedy** +
+`sat-3l-sm` token-based splitter; int8: **beam 4** + `wtp-bert-mini` **character-based** splitter).
+All nine pairs, H100.
 
-| Pair | BLEU fp16 | BLEU int8 | ΔBLEU | length ratio fp16 | length ratio int8 |
+| Pair | BLEU fp16 | BLEU int8 | ΔBLEU | ratio fp16 | ratio int8 |
 |---|---|---|---|---|---|
-| pt-en † | 51.53 | 50.14 | −1.39 | 0.940 | 0.903 |
-| ar-en | 46.19 | 44.24 | −1.95 | 0.942 | 0.892 |
-| zh-en | 27.03 | **18.39** | **−8.64** | 0.751 | **0.570** |
+| ar-en | 46.19 | 45.18 | −1.00 | 0.942 | 0.909 |
+| **bn-en** | 29.86 | **37.43** | **+7.57** | **0.692** | 0.825 |
+| de-en | 45.97 | 45.24 | −0.73 | 0.915 | 0.906 |
+| **fa-en** | 34.98 | **42.20** | **+7.22** | **0.764** | 0.899 |
+| fr-en | 49.35 | 48.42 | −0.93 | 0.931 | 0.911 |
+| pt-en | 51.47 | 49.96 | −1.51 | 0.935 | 0.908 |
+| ru-en | 38.74 | 38.54 | −0.20 | 0.915 | 0.904 |
+| uk-en | 41.78 | 41.16 | −0.62 | 0.915 | 0.905 |
+| **zh-en** | 27.03 | **17.00** | **−10.03** | 0.751 | **0.551** |
 
-† pt-en Axis B was measured on the earlier 5,000-sentence Moses-derived pt sample, not the
-TMX-derived sample used for the Axis A row above. The comparison is internally paired
-(same input to both branches), so the Δ stands.
+**This is not the story the three-language run told.** With all nine pairs measured, the pattern is
+**bimodal**, and the earlier conclusion — "int8's character splitter is the whole gap" — is only
+correct for Chinese.
 
-**Reading it — this gap is a splitter defect, not quantization.** The tell is the **length ratio**:
-int8's as-deployed output is systematically short, and for Chinese it collapses to **57% of the
-reference length**, triggering a severe brevity penalty. Root cause: the int8 branch splits by
-*character count* (360 chars). Chinese has no spaces and is character-dense, so 360 chars is a huge
-span → few, very long chunks → NLLB under-translates/truncates them. `develop` splits by *token
-count* (130-token target with `sat-3l-sm`), producing right-sized chunks and near-complete output.
-Axis A proves the int8 *model* does not under-generate per sentence (it matches/beats fp16); the
-under-generation appears only in document mode, pinning the blame on the splitter.
+- **Chinese: int8's splitter is the problem, confirmed and worse.** −10.03 BLEU at a length ratio of
+  0.551. The int8 branch splits on *character count* (360 chars); Chinese is spaceless and
+  character-dense, so 360 characters is an enormous span → few very long chunks → the model
+  under-translates them.
+- **Bangla and Persian: `develop` is the problem.** Look at the fp16 column — 0.692 and 0.764. The
+  supposedly-better token-based pipeline under-generates badly on these scripts, and int8 wins by
+  ~7 BLEU. `develop`'s splitter is not uniformly superior.
+- **Latin/Cyrillic: a consistent small int8 deficit** (−0.20 to −1.51), tracking slightly lower
+  ratios (0.904–0.911 vs 0.915–0.942). The character splitter costs a little everywhere.
+
+**Axis B confounds two variables and cannot attribute this on its own.** The two branches differ in
+*both* segmentation *and* decoding — `develop` decodes **greedily** (its `generation_config.json`
+sets no `num_beams`), while the int8 branch uses **beam 4**. Axis A rules out the model itself
+(bn −0.10, fa +0.02 with decoding harmonized and splitting neutralized), so the bn/fa reversal comes
+from the pipeline — but whether it is greedy decoding truncating output or the splitter mishandling
+those scripts is not separable from these artifacts. Greedy decoding is the leading hypothesis, and
+it is cheap to test: re-run `develop`'s blob with beam 4 forced (the eval driver already does this at
+runtime via `generation_config.num_beams = 4`, no rebuild needed). If the gap closes, it was
+decoding.
 
 ---
 
 ## Recommendation
 
-1. **Ship int8.** Confirmed across nine languages and five scripts: intrinsic quality is equivalent
-   to fp16, for ~6× throughput and ~⅓ the memory. Strong, multi-language, significance-tested
-   backing, with the quantization variable now isolated and shown to be a no-op.
-2. **Port `develop`'s token-based splitter (`sat-3l-sm` + `NLLB_TRANSLATION_TOKEN_LIMIT` logic) to
-   the ctranslate2 branch — a priority.** It is the *entire* as-deployed gap, and it is severe
-   for CJK/dense scripts. **As shipped today, the int8 as-deployed pipeline is not fit for Chinese.**
-3. **Interim mitigation** (before the port): drop `SENTENCE_SPLITTER_CHAR_COUNT` well below 360 for
-   dense-script sources, or feed pre-segmented input.
-4. **Fix `NLLB_MODEL` handling on the ctranslate2 branch (component bug, found during this work).**
+1. **Choose precision by device, not by quality.** Quantization is quality-neutral on all nine
+   languages, so the decision is purely device fit:
+   - **GPU → fp16.** Faster than int8 on every pair on H100, and the 2× footprint is immaterial on
+     server cards.
+   - **CPU → int8** (`int8_float32`). CTranslate2 does not support fp16 on CPU at all; a
+     float16 model loaded on CPU is silently up-converted to float32, forfeiting the size win.
+2. **Adopt CTranslate2 as the engine** — ~2.3× over Transformers on H100 at indistinguishable
+   quality, and more on smaller cards. Credit the gain to the engine, not to quantization.
+3. **Fix segmentation for dense scripts — in both directions.** Porting `develop`'s token-based
+   splitter remains necessary for Chinese, but it is **not sufficient and not risk-free**: it would
+   import `develop`'s bn/fa under-generation. Gate any splitter change on Axis B for **zh, bn, and
+   fa**, and target a length ratio near 0.90 rather than `develop`'s 0.751.
+4. **Keep beam 4; never inherit `develop`'s greedy default.** It is the most likely cause of the
+   ~7 BLEU bn/fa deficit and costs little on this engine.
+5. **Fix `NLLB_MODEL` handling on the ctranslate2 branch (component bug, found during this work).**
    The component loads `DEFAULT_NLLB_MODEL` in `__init__` and `_check_model` only reloads
    `if not self._model.model_is_loaded` — so a job-level `NLLB_MODEL` property is silently
-   **ignored** and the baked-in model is used regardless. Any deployment relying on per-job model
-   selection is not getting it. (Worked around here with a standalone `ct2_driver.py`.)
-5. **Credit the speedup correctly in downstream docs.** It is CTranslate2, not int8. If int8 ever
-   becomes contentious, CT2-fp16 delivers the same ~6× at bit-exact fp16 precision.
+   **ignored** and the baked-in model is used regardless. (Worked around here with a standalone
+   `ct2_driver.py`.)
+6. **Assert the resolved `compute_type` at load.** Precision is becoming build-time-conditional, and
+   two silent failure modes exist: bare `int8` resolving to the slow `int8_float32` on GPU, and
+   float16 up-converting to float32 on CPU. One log line makes the deployed numerics auditable.
+
+Implementation plan: `../PLAN.md`.
 
 ## Caveats
 
-- **Cross-engine decoding:** Axis A harmonizes beam *size* (4) but HF's `generate` and
-  CTranslate2's `translate_batch` differ in beam-search internals (length penalty, normalization).
-  The decomposition attributes the small Axis A deltas to exactly this, and shows the effect is not
-  statistically significant even at the engine level on pt-en (n=1,000).
-- **Decomposition scope:** run on pt-en only, n=1,000. The quantization no-op result is
-  well-supported there (p≥0.80 on every metric) but has not been replicated per language; the
-  nine-language Axis A evidence is what covers language breadth.
-- **Bangla corpus is small:** the bn-en TMX holds only 10,260 units, so the 5,000-sentence sample
-  is ~49% of the available corpus. The paired comparison is unaffected, but the bn sample is less
+- **Axis B confounds splitter and decoding** (greedy vs beam 4). The bn/fa reversal is established;
+  its cause is not. See the discriminating experiment above.
+- **The ar-en engine contrast is invalid** as measured — `DIFFICULT_LANGUAGE_TOKEN_LIMIT` is active
+  in the HF path and disabled in Axis A. Excluded from the engine-speedup range.
+- **Decomposition sample size** is 1,000 per pair (vs 5,000 for Axis A), so its confidence intervals
+  are wider. The quantization null result is consistent across all nine pairs, which is what carries
+  it, rather than any single pair's precision.
+- **Bangla corpus is small:** the bn-en TMX holds only 10,260 units, so the 5,000-sentence sample is
+  ~49% of the available corpus. The paired comparison is unaffected, but the bn sample is less
   independent of the corpus than the others.
 - **Per-language difficulty:** absolute scores vary by language (zh hardest at BLEU ~25; that's the
   language, not the engine). Arabic is NLLB's flagged "difficult" language; its special split limit
   was disabled in Axis A so both branches segment it identically.
 - TED2020 references are loose crowd translations (caps absolute BLEU); possible pretraining
   contamination inflates absolute scores. Both affect fp16 and int8 equally — the deltas stand.
-- **pt-en Axis A was re-run** on a TMX-derived sample (BLEU 46.04/45.87, Δ−0.18) replacing an
-  earlier Moses-derived sample (46.47/46.23, Δ−0.24). Both agree: negligible, int8 marginally
-  behind.
-- **en-ru's fp16 leg was resumed**, not run in one pass: the first attempt died at 3,992/5,000 on a
-  CUDA "unknown error" and `--resume` completed the remaining 1,008 lines. The hypotheses are
-  complete and the scoring is over all 5,000 segments, but the recorded fp16 throughput for that
-  pair covers only the resumed portion and is excluded from the timing ranges below.
-- **en-fa needed a language-code fix first.** The initial run was skipped by the fail-fast smoke
-  test because the configured code was `per_Arab` — `per` is the ISO 639-2/B bibliographic
-  abbreviation, and FLORES-200 uses ISO 639-3. Verified against the NLLB tokenizer:
-  `per_Arab` → UNK (id 3), **`pes_Arab` → id 256053**. Corrected to `pes` and re-run clean.
+- **ru-en's fp16 leg was resumed** on the RTX 5070 Ti run after a CUDA error at 3,992/5,000.
+  Hypotheses and scoring are complete over all 5,000 segments; its throughput figure covers only the
+  resumed portion and is excluded from timing ranges.
+- **fa-en needed a language-code fix first.** The initial run was skipped by the fail-fast smoke test
+  because the configured code was `per_Arab` — `per` is ISO 639-2/B, and FLORES-200 uses ISO 639-3.
+  Verified against the NLLB tokenizer: `per_Arab` → UNK (id 3), **`pes_Arab` → id 256053**.
+- **pt-en Axis A was re-sampled** from TMX (BLEU 46.04/45.87, Δ−0.18), replacing an earlier
+  Moses-derived sample (46.47/46.23, Δ−0.24). Both agree: negligible, int8 marginally behind.
 
 ## Not yet run
 
-- **Axis B for bn/de/fr/uk/ru/fa** — those runs used `RUN_AXIS_B=0`. The splitter finding is
-  already established on pt/ar/zh; extending it is optional, though a dense-script pair would
-  strengthen the zh result.
-- **Decomposition for languages other than pt-en** (`run_decomp.sh`, needs the converted
-  `float16` + `int8_float16` models from `convert_ct2.sh`).
+- **CPU-target measurement.** int8 is recommended for CPU on capability grounds (fp16 is unsupported
+  there), but NLLB-3.3B CPU throughput has not been measured. Whether the CPU target is viable for
+  any real workload is an open question.
+- **The beam-4 discriminating run** for bn/fa described above — the single highest-value remaining
+  experiment, since it decides whether the splitter port is a fix or a regression.
+- **Batched throughput for the CT2 systems.** All decomposition figures are batch 1. Batched
+  CTranslate2 was spot-checked only on the RTX 5070 Ti (fp16 33.1 vs int8 32.1 sent/s).
 
 ## Artifacts
 
-`results/SUMMARY.md` (combined table). Per pair in `results/<pair>/`: `hyp.{fp16,int8}.en`,
-`axisA.report.txt`, `axisA.segments.csv` (per-sentence + COMET), `meta.*.json`; plus
-`asdeployed.{fp16,int8}.json` / `axisB.*.report.txt` for pt/ar/zh. Decomposition in
-`results/decomp/pt-en/`: `decomp.SUMMARY.md`, `decomp.{engine,quant}.report.txt`,
-`hyp.{hf-fp16,ct2-fp16,ct2-int8}.en`. Pipeline: `run_pipeline.sh` and `run_decomp.sh` (+
-`tmx_sample.py`, `mt_eval.py`, `nllb_eval_driver.py`, `ct2_driver.py`, `convert_ct2.sh`,
-`summarize.py`, `decomp_report.py`). Timing: int8 23–25 min/pair, fp16 1.3–2.1 h/pair.
+- **`pipeline-results/`** — H100 run (current). `SUMMARY.md`; per pair `axisA.report.txt`,
+  `axisB.{fp16,int8}.report.txt`, `meta.*.json`; per pair `decomp/<pair>/decomp.SUMMARY.md` and
+  `decomp.{engine,quant}.report.txt`. Hypothesis and sample files omitted for size.
+- **`results/`** — RTX 5070 Ti run (original, gitignored locally). Adds `axisA.segments.csv`
+  (per-sentence + COMET) and the `hyp.*.en` files.
+- **Pipeline:** `run_pipeline.sh`, `run_decomp.sh`, `tmx_sample.py`, `mt_eval.py`,
+  `nllb_eval_driver.py`, `ct2_driver.py`, `convert_ct2.sh`, `summarize.py`, `decomp_report.py`.
+- **Timing** (RTX 5070 Ti, 5,000 sentences/pair): int8 23–25 min, fp16 1.3–2.1 h.
