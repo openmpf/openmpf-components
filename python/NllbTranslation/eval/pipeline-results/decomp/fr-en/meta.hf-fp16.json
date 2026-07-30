@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/decomp/fr-en/sample.src",
+  "output": "/eval/results/decomp/fr-en/hyp.hf-fp16.en",
+  "source_lang": "fra",
+  "source_script": "Latn",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "fra",
+    "DEFAULT_SOURCE_SCRIPT": "Latn",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 1000,
+  "lines_this_run": 1000,
+  "elapsed_sec": 485.3,
+  "sentences_per_sec": 2.061,
+  "output_chars": 95063,
+  "chars_per_sec": 195.9,
+  "batch": null
+}

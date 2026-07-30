@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/en-fa/sample.src",
+  "output": "/eval/results/en-fa/hyp.int8.en",
+  "source_lang": "pes",
+  "source_script": "Arab",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "pes",
+    "DEFAULT_SOURCE_SCRIPT": "Arab",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 1529.6,
+  "sentences_per_sec": 3.269,
+  "output_chars": 472912,
+  "chars_per_sec": 309.2,
+  "batch": null
+}

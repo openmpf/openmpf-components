@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/decomp/fa-en/sample.src",
+  "output": "/eval/results/decomp/fa-en/hyp.hf-fp16.en",
+  "source_lang": "pes",
+  "source_script": "Arab",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "pes",
+    "DEFAULT_SOURCE_SCRIPT": "Arab",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 1000,
+  "lines_this_run": 1000,
+  "elapsed_sec": 488.6,
+  "sentences_per_sec": 2.047,
+  "output_chars": 95339,
+  "chars_per_sec": 195.1,
+  "batch": null
+}

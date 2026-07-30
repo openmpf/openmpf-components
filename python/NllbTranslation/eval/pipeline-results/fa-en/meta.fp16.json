@@ -1,0 +1,23 @@
+{
+  "input": "/eval/results/en-fa/sample.src",
+  "output": "/eval/results/en-fa/hyp.fp16.en",
+  "source_lang": "pes",
+  "source_script": "Arab",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "pes",
+    "DEFAULT_SOURCE_SCRIPT": "Arab",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 728.8,
+  "sentences_per_sec": 6.861,
+  "output_chars": 474797,
+  "chars_per_sec": 651.5,
+  "batch": 16
+}

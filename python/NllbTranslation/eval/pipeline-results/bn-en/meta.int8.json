@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/bn-en/sample.src",
+  "output": "/eval/results/bn-en/hyp.int8.en",
+  "source_lang": "ben",
+  "source_script": "Beng",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "ben",
+    "DEFAULT_SOURCE_SCRIPT": "Beng",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 1767.6,
+  "sentences_per_sec": 2.829,
+  "output_chars": 450947,
+  "chars_per_sec": 255.1,
+  "batch": null
+}

@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/de-en/sample.src",
+  "output": "/eval/results/de-en/hyp.int8.en",
+  "source_lang": "deu",
+  "source_script": "Latn",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "deu",
+    "DEFAULT_SOURCE_SCRIPT": "Latn",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 1671.1,
+  "sentences_per_sec": 2.992,
+  "output_chars": 445321,
+  "chars_per_sec": 266.5,
+  "batch": null
+}

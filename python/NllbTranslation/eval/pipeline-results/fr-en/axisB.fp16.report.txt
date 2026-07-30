@@ -1,0 +1,21 @@
+==========================================================================
+Machine Translation Evaluation
+==========================================================================
+  System:         ./results/en-fr/asdeployed.fp16.json
+  Reference:      ./results/en-fr/sample.ref
+  Mode:           document  (1 hyp seg, 5000 ref lines)
+  Longest seg:    86480 words
+  Note:           single blob -> scored as one concatenated document
+--------------------------------------------------------------------------
+  Metric     Score  Detail
+  ------  --------  ------
+  BLEU       49.35  93.2/68.0/43.2/29.2 (BP=0.928 ratio=0.931 hyp=92462 ref=99359)
+  chrF       83.73  character F-score (beta=2)
+  chrF++     81.76  chrF + word bigrams
+  TER      skipped  skipped — segment too long (see --max-ter-tokens)
+--------------------------------------------------------------------------
+Signatures:
+  BLEU    #:1|c:mixed|e:no|tok:13a|s:exp|v:2.6.0
+  chrF    #:1|c:mixed|e:yes|nc:6|nw:0|s:no|v:2.6.0
+  chrF++  #:1|c:mixed|e:yes|nc:6|nw:2|s:no|v:2.6.0
+==========================================================================

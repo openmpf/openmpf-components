@@ -1,0 +1,23 @@
+{
+  "input": "/eval/results/de-en/sample.src",
+  "output": "/eval/results/de-en/hyp.fp16.en",
+  "source_lang": "deu",
+  "source_script": "Latn",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "deu",
+    "DEFAULT_SOURCE_SCRIPT": "Latn",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 626.4,
+  "sentences_per_sec": 7.982,
+  "output_chars": 446341,
+  "chars_per_sec": 712.6,
+  "batch": 16
+}

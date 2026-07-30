@@ -1,0 +1,16 @@
+{
+  "driver": "ct2_driver",
+  "model": "/models/nllb-3.3B-ct2-float16",
+  "requested_compute_type": "default",
+  "actual_compute_type": "float16",
+  "source": "pes_Arab",
+  "target": "eng_Latn",
+  "beam": 4,
+  "batched": false,
+  "n_lines": 1000,
+  "lines_this_run": 1000,
+  "elapsed_sec": 216.2,
+  "sentences_per_sec": 4.625,
+  "output_chars": 94415,
+  "chars_per_sec": 436.7
+}

@@ -1,0 +1,23 @@
+{
+  "input": "/eval/results/bn-en/sample.src",
+  "output": "/eval/results/bn-en/hyp.fp16.en",
+  "source_lang": "ben",
+  "source_script": "Beng",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "ben",
+    "DEFAULT_SOURCE_SCRIPT": "Beng",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 670.2,
+  "sentences_per_sec": 7.46,
+  "output_chars": 453306,
+  "chars_per_sec": 676.3,
+  "batch": 16
+}

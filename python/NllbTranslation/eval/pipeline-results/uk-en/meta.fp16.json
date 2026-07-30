@@ -1,0 +1,23 @@
+{
+  "input": "/eval/results/en-uk/sample.src",
+  "output": "/eval/results/en-uk/hyp.fp16.en",
+  "source_lang": "ukr",
+  "source_script": "Cyrl",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "ukr",
+    "DEFAULT_SOURCE_SCRIPT": "Cyrl",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 639.0,
+  "sentences_per_sec": 7.824,
+  "output_chars": 447997,
+  "chars_per_sec": 701.1,
+  "batch": 16
+}

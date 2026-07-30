@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/decomp/bn-en/sample.src",
+  "output": "/eval/results/decomp/bn-en/hyp.hf-fp16.en",
+  "source_lang": "ben",
+  "source_script": "Beng",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "ben",
+    "DEFAULT_SOURCE_SCRIPT": "Beng",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 1000,
+  "lines_this_run": 1000,
+  "elapsed_sec": 465.7,
+  "sentences_per_sec": 2.147,
+  "output_chars": 92113,
+  "chars_per_sec": 197.8,
+  "batch": null
+}

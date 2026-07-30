@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/decomp/zh-en/sample.src",
+  "output": "/eval/results/decomp/zh-en/hyp.hf-fp16.en",
+  "source_lang": "zho",
+  "source_script": "Hans",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "zho",
+    "DEFAULT_SOURCE_SCRIPT": "Hans",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 1000,
+  "lines_this_run": 1000,
+  "elapsed_sec": 366.4,
+  "sentences_per_sec": 2.729,
+  "output_chars": 90965,
+  "chars_per_sec": 248.2,
+  "batch": null
+}
