@@ -38,7 +38,8 @@ from .nllb_utils import NllbLanguageMapper
 from nlp_text_splitter import TextSplitterModel, TextSplitter, WtpLanguageSettings
 
 import ctranslate2
-import sentencepiece as spm
+
+from . import tokenizers
 
 logger = logging.getLogger('NllbTranslationComponent')
 
@@ -50,10 +51,6 @@ T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocati
 # the directory name deliberately does not encode it. The deployed precision is
 # reported at load time instead -- see _load_model.
 DEFAULT_NLLB_MODEL = 'nllb-200-3.3B-ct2'
-
-# SentencePiece model, copied into the converted model directory by
-# ct2-transformers-converter --copy_files.
-SP_MODEL_FILENAME = 'sentencepiece.bpe.model'
 
 # What the image build intended the compute type to be. Set per BUILD_TYPE in the
 # Dockerfile; absent when running outside the image.
@@ -68,7 +65,7 @@ class NllbTranslationComponent:
         # Initialised before _load_model, which sets _current_model_name; assigning
         # these afterwards would clobber it.
         self._tokenizer = None
-        self._tokenizer_model_name = None
+        self._tokenizer_cache_key = None
         self._current_model_name = None
         self._load_model()
 
@@ -132,25 +129,20 @@ class NllbTranslationComponent:
             raise
 
     def _load_tokenizer(self, config: Dict[str, str]) -> None:
-        # Tokenization uses the SentencePiece model that ships inside the converted
-        # model directory. It is language-agnostic -- the source language is
-        # prepended as a token at encode time rather than baked into the tokenizer
-        # -- so one instance serves every job, and is only reloaded if the model
-        # itself changes.
-        if self._tokenizer is not None and self._tokenizer_model_name == self._current_model_name:
+        """Build the configured tokenizer backend, cached by (model, backend).
+
+        Both backends read from the converted model directory, so a change of
+        either the model or the requested backend invalidates the cache. Neither
+        is language-specific at this level -- the source language is handled
+        inside the backend -- so one instance serves every job otherwise.
+        """
+        cache_key = (self._current_model_name, (config.nllb_tokenizer or '').strip().upper())
+        if self._tokenizer is not None and self._tokenizer_cache_key == cache_key:
             return
-        sp_path = os.path.join('/models', self._current_model_name, SP_MODEL_FILENAME)
-        if not os.path.isfile(sp_path):
-            raise mpf.DetectionException(
-                f'SentencePiece model not found at {sp_path}. The converted model '
-                f'directory must include {SP_MODEL_FILENAME} '
-                f'(ct2-transformers-converter --copy_files).',
-                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
-        start = time.time()
-        self._tokenizer = spm.SentencePieceProcessor()
-        self._tokenizer.load(sp_path)
-        self._tokenizer_model_name = self._current_model_name
-        logger.debug(f"Loaded tokenizer from {sp_path} in {time.time() - start} seconds.")
+        model_dir = os.path.join('/models', self._current_model_name)
+        self._tokenizer = tokenizers.create_backend(config.nllb_tokenizer, model_dir)
+        self._tokenizer_cache_key = cache_key
+        logger.info(f'Tokenizer backend: {self._tokenizer.name} (from {model_dir})')
 
     def _load_model(self, model_name: str = None, config: Dict[str, str] = None) -> None:
         try:
@@ -245,15 +237,9 @@ class NllbTranslationComponent:
 
     def _get_text_size_function(self, config: Dict[str, str]) -> Callable[[str], int]:
         if config.use_token_length:
-            # SentencePiece equivalent of develop's HF token count. The +2
-            # accounts for the source-language token and </s> that _encode adds,
-            # matching what the model actually receives.
-            # TODO (Phase 2): replace with the tokenizer backend's count_tokens
-            # so this works for the HuggingFace backend too.
-            count_tokens: Callable[[str], int] = (
-                lambda txt: len(self._tokenizer.encode_as_pieces(txt)) + 2
-            )
-            return count_tokens
+            # Delegated to the backend so token-based splitting sizes chunks
+            # against whatever tokenizer will actually encode them.
+            return self._tokenizer.count_tokens
         else:
             return len
 
@@ -395,11 +381,8 @@ class NllbTranslationComponent:
                     logger.debug(f'Skipping translation for:\n{sentence.strip()}')
 
             if to_translate:
-                sentences_subworded = [
-                    [config.translate_from_language] + pieces + ["</s>"]
-                    for pieces in self._tokenizer.encode_as_pieces(
-                        [s for _, s in to_translate])
-                ]
+                sentences_subworded = self._tokenizer.encode(
+                    [s for _, s in to_translate], config.translate_from_language)
                 target_prefix = [[config.translate_to_language]] * len(sentences_subworded)
 
                 results = self._model.translate_batch(
@@ -550,6 +533,12 @@ class JobConfig:
         self.nllb_token_soft_limit = mpf_util.get_property(
             props, 'NLLB_TRANSLATION_TOKEN_SOFT_LIMIT', 130
         )
+
+        # Tokenizer backend. SENTENCEPIECE is the default because it is what the
+        # evaluation measured; HUGGINGFACE is functionally interchangeable (see
+        # tokenizers.py) but has not been A/B'd on this deployment.
+        self.nllb_tokenizer = mpf_util.get_property(
+            props, 'NLLB_TOKENIZER', tokenizers.SENTENCEPIECE)
 
         # CTranslate2 decoding. Defaults preserve the values the ctranslate2
         # branch hardcoded, so behavior is unchanged by exposing them.

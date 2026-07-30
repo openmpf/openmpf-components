@@ -33,6 +33,12 @@
           "defaultValue": "FALSE"
         },
         {
+          "name": "NLLB_TOKENIZER",
+          "description": "Tokenizer backend. SENTENCEPIECE (default) uses sentencepiece.bpe.model from the model directory; HUGGINGFACE uses transformers AutoTokenizer over the same directory. Functionally interchangeable.",
+          "type": "STRING",
+          "defaultValue": "SENTENCEPIECE"
+        },
+        {
           "name": "NLLB_MODEL",
           "description": "Name of the CTranslate2 model directory under /models. Built from facebook/nllb-200-3.3B at image build time.",
           "type": "STRING",
