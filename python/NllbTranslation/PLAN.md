@@ -68,7 +68,7 @@ What the merge landed, and what it left:
 | Phase | State after `8d300300` |
 |---|---|
 | 0 — branch hygiene | **done** |
-| 1 — model packaging | **code done** (1.1–1.7); unbuilt — needs a real image build to prove |
+| 1 — model packaging | **done and built** — both `BUILD_TYPE` images verified |
 | 2 — tokenizer abstraction | not started; an SPM `count_tokens` shim is in place as a stand-in |
 | 3 — token-based splitter | **mostly landed**; validation outstanding |
 | 4 — model lifecycle bug | still broken; `_current_model_name` is now tracked but unused |
@@ -161,18 +161,41 @@ Why this split, measured not assumed (`ctranslate2` 4.8.1):
       `int8_float16`.
 - [x] **1.7 Update `DEFAULT_NLLB_MODEL`** at `nllb_translation_component.py:49` from
       `'OpenNMT/nllb-200-3.3B-ct2-int8'` to `'nllb-200-3.3B-ct2'`.
-- [ ] **1.8 Size and build cost.** Every build now converts, so **both** paths pull the **17 GB** HF
-      checkpoint transiently and run a multi-minute conversion. Final image carries 6.7 GB (gpu) or
-      3.36 GB (cpu); the multi-stage build keeps the source checkpoint out of the image. Confirm CI
-      builder disk headroom before merging — a WSL2 disk exhaustion already bit this project once.
-      This is the real cost of the single-source decision: we trade a 3.36 GB download for a 17 GB
-      download plus conversion on *every* build, in exchange for one provenance and one pinned
-      revision across both targets.
-- [ ] **1.9 Set expectations for the CPU target.** NLLB-3.3B on CPU will be far slower than GPU —
-      the CPU build is a portability/functionality option, not a throughput one. `int8_float32` is
-      the right choice there for both speed and the 3.36 GB footprint. Consider exposing
-      CTranslate2's `inter_threads` / `intra_threads` as properties (Phase 5) since they matter much
-      more on CPU than on GPU.
+- [x] **1.8 Size and build cost — measured.** Both images built successfully.
+
+      | | `BUILD_TYPE=gpu` | `BUILD_TYPE=cpu` |
+      |---|---|---|
+      | image | **37.9 GB** | **23.2 GB** |
+      | `model.bin` | 6.69 GB (float16) | 3.36 GB (int8) |
+      | resolved `compute_type` | `float16` | `int8_float32` |
+
+      For reference the previous prebuilt-int8 image was 32 GB and the fp16
+      HF-checkpoint image 51.2 GB, so the GPU image is ~6 GB larger than what it
+      replaces and the CPU image is substantially smaller (it skips the CUDA venv).
+      Both resolved compute types matched `NLLB_EXPECTED_COMPUTE_TYPE` exactly, and
+      the copied `sentencepiece.bpe.model` in each artifact carries md5
+      `05c551ae7955b3980d5a9d044eb09d70` — the same file the component used to
+      download separately. The 17 GB transient checkpoint did not cause a build
+      failure on this host; CI disk headroom is still worth confirming separately.
+
+- [x] **1.9 CPU target expectations — measured, and it is slow.** On 4 container
+      cores the CPU image runs **0.215 sent/s** (~4.7 s/sentence) against **1.88
+      sent/s** for the GPU image on an RTX 5070 Ti — roughly **9× slower**, and the
+      GPU figure is itself batch-1 on a consumer card. Extrapolated, a
+      5,000-sentence job is ~6.5 hours on CPU. **Treat the CPU build as a
+      portability/functionality option, not a throughput one**, and say so in any
+      deployment guidance.
+      - [ ] **1.9a Expose CTranslate2 threading** (`inter_threads` / `intra_threads`)
+            as properties. It matters far more on CPU than GPU, and the measurement
+            above was taken at CTranslate2's defaults on only 4 visible cores, so
+            there is likely headroom on a larger host. Folds naturally into Phase 5.1.
+
+**Consequence for Phase 7:** the two build targets **produce different
+translations**. On a 10-sentence sample, CPU (`int8_float32`) and GPU (`float16`)
+agreed on 8 and diverged on 2 (e.g. *"So they brought the guns."* vs *"...the
+cannons."*). This is the same quantization-level divergence the evaluation
+measured as quality-neutral — but it means any expected-string test suite is
+pinned to whichever `BUILD_TYPE` generated it. See open question 5.
 
 ## Phase 2 — Tokenizer abstraction (keep options open)
 
@@ -479,9 +502,12 @@ names by string needs updating.
 4. ~~`OUTPUT_MERGE_WITH_PREVIOUS_TASK` on the CT2 branch only — intentional?~~ **Answered: it was
    stale.** `develop` renamed it to `IS_ANNOTATOR` repo-wide in `cb351e4a`. Dropped in the merge —
    see task 6.3.
-5. **Which `BUILD_TYPE` should the test expectations be baselined against** (task 7.1)? gpu→fp16 and
-   cpu→int8 produce different output, so a regenerated expected-string suite is pinned to whichever
-   built it. Decoder-agnostic assertions would avoid the problem but test less.
+5. **Which `BUILD_TYPE` should the test expectations be baselined against** (task 7.1)? **Now
+   demonstrated, not hypothetical:** on a 10-sentence sample the gpu (`float16`) and cpu
+   (`int8_float32`) images agreed on 8 and diverged on 2. A regenerated expected-string suite would
+   therefore pass on one build target and fail on the other. Options: baseline on gpu and skip the
+   strings on cpu; assert decoder-agnostically (length ratio, non-empty, no source passthrough) and
+   test less; or keep two expectation sets. This blocks 7.1.
 
 > **Note on eval-harness paths.** Tasks referencing `eval/…` scripts now resolve on this branch —
 > the harness was copied here as a prototype enabler (see the banner at the top). The *results*
