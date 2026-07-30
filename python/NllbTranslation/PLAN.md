@@ -330,11 +330,16 @@ CT2 branch is missing 8 properties present on `develop`, and has 1 `develop` lac
       converted model loads with `compute_type=int8_float32`, that `_resolve_device()` correctly
       falls back to CPU, and that a short job completes. This path is now a shipped configuration,
       not an option — it needs its own gate.
-- [ ] **8.5 Fix the decomposition's Arabic confound before reusing it.**
-      `run_decomp.sh:105` passes no props to `hf-fp16`, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` is
-      active there while `run_pipeline.sh:123` disables it for Axis A. That inflates the reported
-      ar-en "engine effect" to +1.91 BLEU / +0.71 COMET (p<0.001) — an artifact of chunking, not the
-      engine. Pass `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` for parity.
+- [x] **8.5 Decomposition Arabic confound — FIXED in the harness.** `run_decomp.sh` passed no props
+      to `hf-fp16`, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` was active there while `run_pipeline.sh`
+      disables it for Axis A. That inflated the reported ar-en "engine effect" to +1.91 BLEU /
+      +0.71 COMET (p<0.001) — an artifact of chunking, not the engine. The script now passes
+      `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0`.
+- [ ] **8.5a Re-run the ar-en decomposition.** The committed `eval/pipeline-results/decomp/ar-en/`
+      data predates the fix, so its engine contrast is still invalid. Expect HF-fp16 to rise from
+      38.29 toward its Axis A level and the engine speedup to fall from 4.1× into the ~2.3× band the
+      other pairs occupy. Other pairs are unaffected — only Arabic triggers the difficult-language
+      path by default.
 
 ---
 

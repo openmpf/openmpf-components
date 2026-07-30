@@ -132,8 +132,10 @@ properties to the HF system, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` is active fo
 `run_pipeline.sh` disables it for Axis A. HF-fp16 scores 38.29 in the decomposition versus 40.71 in
 Axis A, at ~55% the throughput of the other pairs (1.23 vs ~2.2 sent/s) — both consistent with
 over-aggressive chunking. Excluding it, Δengine spans −0.26 to +0.19 and is significant only for
-fr-en. The harness needs `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` for parity before this contrast is
-reused.
+fr-en. **`run_decomp.sh` now passes `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` for parity**, so future runs
+are sound — but the committed ar-en decomposition predates that fix and its engine contrast should be
+regenerated. Only Arabic is affected; no other language triggers the difficult-language path by
+default.
 
 **Quantization is a no-op for quality.** Δquant is non-significant on **every pair, on both metrics**
 (BLEU p = 0.33–0.96, COMET p = 0.21–0.98), with signs mixed — even though the two systems genuinely

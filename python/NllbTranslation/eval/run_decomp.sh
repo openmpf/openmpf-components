@@ -102,7 +102,15 @@ gen_ct2() {  # label model_dir
   log "$label -> $(nlines "$H/hyp.$label.en")/$NL  (compute_type=$ct, $sp sent/s)"
 }
 
-gen_component hf-fp16  "$FP16_IMAGE" "" ""
+# DIFFICULT_LANGUAGE_TOKEN_LIMIT=0 is REQUIRED for parity, not optional. The
+# develop component applies a 50-token "preferred limit" to languages it flags
+# as difficult (Arabic by default), which sub-chunks even single sentences.
+# ct2_driver.py has no such logic, so leaving it enabled makes the engine
+# contrast measure chunking rather than the engine: with it on, ar-en showed a
+# spurious +1.91 BLEU / +0.71 COMET "engine effect" (p<0.001) and HF-fp16 ran at
+# ~55% the throughput of comparable pairs. run_pipeline.sh disables it for
+# Axis A for the same reason.
+gen_component hf-fp16  "$FP16_IMAGE" "" "DIFFICULT_LANGUAGE_TOKEN_LIMIT=0"
 gen_ct2 ct2-fp16 "$CT2_FP16"
 gen_ct2 ct2-int8 "$CT2_INT8"
 
