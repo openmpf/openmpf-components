@@ -465,15 +465,12 @@ class TestNllbTranslation(unittest.TestCase):
         result_track: Sequence[mpf.GenericTrack] = self.component.get_detections_from_generic(job)
 
         result_props: dict[str, str] = result_track[0].detection_properties
-        # NOTE: the component does NOT short-circuit same-language jobs -- English input
-        # is still run through the model, which paraphrases it slightly ("This is an
-        # English text..."). Asserting byte-identical pass-through encodes a guarantee
-        # the component does not make. What matters here is that an eng->eng job
-        # completes and returns recognisably the same content.
-        translation = result_props["TRANSLATION"]
-        self.assertTrue(translation.strip())
-        self.assertIn('English text', translation)
-        self.assertIn('should not be translated', translation)
+        # Same-language jobs short-circuit: the model is never invoked, so the text is
+        # returned byte-identical. This is exact on every build precisely because no
+        # model runs -- without the short-circuit NLLB paraphrases eng->eng into
+        # "This is an English text...".
+        self.assertEqual('This is English text that should not be translated.',
+                         result_props["TRANSLATION"])
 
     def test_sentence_split_job(self):
         #set default props
@@ -745,6 +742,145 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
 
         # If difficult-language handling only overrides the soft limit, the output should match.
         self.assertEqual(normal_translation, difficult_translation)
+
+    # ---- 7.2: tokenizer backend parity -----------------------------------------
+    # The two backends must be interchangeable, because NLLB_TOKENIZER selects between
+    # them at job level. Two divergences are KNOWN and asserted as expected rather than
+    # treated as regressions -- see nllb_component/tokenizers.py.
+    PARITY_CORPUS = [
+        'Hallo, wie gehts Heute?',
+        'Wie ist das Wetter?',
+        'Es regnet.',
+        'Isto e uma frase de teste, com acentuacao e pontuacao!',
+        'Ich habe 3,50 EUR bezahlt - z.B. fuer Kaffee.',
+    ]
+
+    def _both_backends(self):
+        from nllb_component import tokenizers
+        model_dir = os.path.join('/models', self.component._current_model_name)
+        try:
+            hf = tokenizers.create_backend(tokenizers.HUGGINGFACE, model_dir)
+        except Exception as e:
+            self.skipTest(f'HuggingFace backend unavailable: {e}')
+        return tokenizers.create_backend(tokenizers.SENTENCEPIECE, model_dir), hf
+
+    def test_tokenizer_backends_agree_on_token_counts(self):
+        # count_tokens drives sentence splitting, so disagreement here would move chunk
+        # boundaries when the backend changes. This is the parity that must be exact.
+        sp, hf = self._both_backends()
+        for text in self.PARITY_CORPUS:
+            with self.subTest(text=text):
+                self.assertEqual(sp.count_tokens(text), hf.count_tokens(text))
+
+    def test_tokenizer_backends_produce_ct2_token_strings(self):
+        # CTranslate2 consumes token STRINGS, and requires the source-language token
+        # first and </s> last. Both backends must satisfy that shape.
+        sp, hf = self._both_backends()
+        for backend in (sp, hf):
+            with self.subTest(backend=backend.name):
+                encoded = backend.encode(self.PARITY_CORPUS, 'deu_Latn')
+                self.assertEqual(len(encoded), len(self.PARITY_CORPUS))
+                for tokens in encoded:
+                    self.assertEqual('deu_Latn', tokens[0])
+                    self.assertEqual('</s>', tokens[-1])
+                    self.assertTrue(all(isinstance(t, str) for t in tokens))
+
+    def test_tokenizer_backends_agree_except_on_unknown_characters(self):
+        # Known divergence: a character absent from the vocabulary (e.g. an em dash) is
+        # emitted by SentencePiece as its raw surface form and by HuggingFace as <unk>.
+        # Token COUNTS still match and CTranslate2 maps both to <unk>, so translations
+        # are unaffected. Asserted as expected so it cannot be mistaken for a regression.
+        sp, hf = self._both_backends()
+        plain = 'Wie ist das Wetter?'
+        self.assertEqual(sp.encode([plain], 'deu_Latn'), hf.encode([plain], 'deu_Latn'))
+
+        em_dash = 'Ich habe bezahlt \u2014 zum Beispiel.'
+        sp_tokens = sp.encode([em_dash], 'deu_Latn')[0]
+        hf_tokens = hf.encode([em_dash], 'deu_Latn')[0]
+        self.assertEqual(len(sp_tokens), len(hf_tokens))
+        self.assertIn('\u2014', sp_tokens)
+        self.assertIn('<unk>', hf_tokens)
+
+    def test_tokenizer_round_trips(self):
+        # decode(encode(x)) should recover the text, modulo the language/EOS markers the
+        # encoder adds. Guards the decode path each backend implements differently.
+        sp, _ = self._both_backends()
+        encoded = sp.encode(self.PARITY_CORPUS, 'deu_Latn')
+        stripped = [[t for t in toks if t not in ('deu_Latn', '</s>')] for toks in encoded]
+        for original, decoded in zip(self.PARITY_CORPUS, sp.decode(stripped)):
+            with self.subTest(text=original):
+                self.assertEqual(original, decoded)
+
+    def test_unrecognised_tokenizer_falls_back(self):
+        # An unusable NLLB_TOKENIZER should not fail the job -- it warns and uses the
+        # default, because a tokenizer typo is not worth losing a translation over.
+        from nllb_component import tokenizers
+        model_dir = os.path.join('/models', self.component._current_model_name)
+        self.assertEqual(tokenizers.SENTENCEPIECE,
+                         tokenizers.create_backend('NOT-A-BACKEND', model_dir).name)
+
+    # ---- 7.3: NLLB_MODEL is honoured -------------------------------------------
+    def test_nllb_model_property_is_honoured(self):
+        # Regression guard for the defect that made NLLB_MODEL a no-op: _check_model
+        # only tested model_is_loaded, which is never false for a live Translator, so
+        # the baked-in default served every request regardless of the job property.
+        alt = '/models/nllb-model-swap-test'
+        real = os.path.join('/models', self.component._current_model_name)
+        original = self.component._current_model_name
+        if not os.path.isdir(alt):
+            try:
+                os.makedirs(alt, exist_ok=True)
+                for f in os.listdir(real):
+                    link = os.path.join(alt, f)
+                    if not os.path.exists(link):
+                        os.symlink(os.path.join(real, f), link)
+            except OSError as e:
+                self.skipTest(f'cannot stage an alternate model directory: {e}')
+        try:
+            props = dict(self.defaultProps)
+            props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+            props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+            props['NLLB_MODEL'] = 'nllb-model-swap-test'
+            ff_track = mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))
+            job = mpf.GenericJob('Test Generic', 'test.pdf', props, {}, ff_track)
+            result = self.component.get_detections_from_generic(job)[0]
+
+            self.assertEqual('nllb-model-swap-test', self.component._current_model_name)
+            self.assertTranslated(result.detection_properties['TRANSLATION'], self.SAMPLE_0)
+        finally:
+            # Restore the shared component for the rest of the suite.
+            restore = dict(self.defaultProps)
+            restore['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+            restore['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+            restore['NLLB_MODEL'] = original
+            self.component.get_detections_from_generic(
+                mpf.GenericJob('Restore', 'test.pdf', restore, {},
+                               mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))))
+
+    def test_unknown_nllb_model_raises_instead_of_falling_back(self):
+        # A bad model name must fail loudly. Silently serving a different model is how
+        # the original bug stayed hidden through a whole evaluation run.
+        original = self.component._current_model_name
+        props = dict(self.defaultProps)
+        props['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+        props['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+        props['NLLB_MODEL'] = 'this-model-does-not-exist'
+        job = mpf.GenericJob('Test Generic', 'test.pdf', props, {},
+                             mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0)))
+        try:
+            with self.assertRaises(mpf.DetectionException) as cm:
+                self.component.get_detections_from_generic(job)
+            self.assertEqual(mpf.DetectionError.COULD_NOT_READ_DATAFILE, cm.exception.error_code)
+            # After a failed load the component must not claim to hold a model.
+            self.assertIsNone(self.component._current_model_name)
+        finally:
+            restore = dict(self.defaultProps)
+            restore['DEFAULT_SOURCE_LANGUAGE'] = 'deu'
+            restore['DEFAULT_SOURCE_SCRIPT'] = 'Latn'
+            restore['NLLB_MODEL'] = original
+            self.component.get_detections_from_generic(
+                mpf.GenericJob('Restore', 'test.pdf', restore, {},
+                               mpf.GenericTrack(-1, dict(TEXT=self.SAMPLE_0))))
 
     def test_should_translate(self):
 

@@ -74,7 +74,7 @@ What the merge landed, and what it left:
 | 4 — model lifecycle bug | **fixed and verified**; `NLLB_MODEL` now takes effect |
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
-| 7 — tests | **green on both builds** (24 pass, 1 gated golden test); 7.2/7.3 still owed |
+| 7 — tests | **done** — 32 tests green on both builds (1 gated golden test) |
 | 8 — validation | not started |
 
 ---
@@ -453,7 +453,12 @@ names by string needs updating.
 - [x] **7.1a Fix the erroring test — done.** It called `component._tokenizer(text)["input_ids"]`,
       the HuggingFace convention, on a `SentencePieceProcessor`. Now uses the Phase 2 backend's
       `count_tokens`.
-- [x] **7.1b `test_eng_to_eng_translation` rested on a false premise.** It asserted English input
+- [x] **7.1b `test_eng_to_eng_translation` rested on a false premise — component now fixed.**
+      `_get_translation` short-circuits when the source and target FLORES codes are identical:
+      the model is never invoked and the text is returned byte-identical. Comparing full codes keeps
+      genuine same-language conversions (`zho_Hans` → `zho_Hant`) on the normal path. The test
+      asserts exact pass-through again, and it now holds on *every* build precisely because no model
+      runs. Saves a full model pass on same-language jobs. Original note: It asserted English input
       returns byte-identical, but the component does **not** short-circuit same-language jobs — it
       runs eng→eng through the model, which paraphrases ("This is **an** English text..."). Now
       asserts the content survives, with a note. **Open question: should the component skip
@@ -465,10 +470,20 @@ names by string needs updating.
       consequence of the Phase 1 fp16 switch that int8's 3.36 GB had masked. They now share the
       class-level instance. Suite runtime also fell from 56s to 16s on gpu.
 
-- [ ] **7.2 Tokenizer parity test.** Assert both backends produce CT2-compatible token strings and
+- [x] **7.2 Tokenizer parity test — done.** Five tests: `count_tokens` must agree exactly (it
+      drives chunk boundaries, so disagreement would move splits when the backend changes); both
+      backends must emit CTranslate2-shaped token *strings* with the language token first and `</s>`
+      last; the em-dash divergence is asserted as **expected** so it cannot read as a regression;
+      SentencePiece round-trips; an unusable `NLLB_TOKENIZER` falls back rather than failing the job.
+      Original 7.2 text: Assert both backends produce CT2-compatible token strings and
       round-trip a fixed corpus. Encode the two known divergences (trailing whitespace, unknown-char
       surface form) as *expected*, so they do not read as regressions.
-- [ ] **7.3 Model-swap test** for Phase 4 — assert `NLLB_MODEL` actually changes the loaded model,
+- [x] **7.3 Model-swap test — done, and verified to actually catch the bug.** Two tests: a
+      job-level `NLLB_MODEL` must change `_current_model_name` and still translate, and an unknown
+      name must raise `COULD_NOT_READ_DATAFILE` leaving `_current_model_name` as `None`. Confirmed
+      non-vacuous by reverting `_check_model` to its pre-Phase-4 body and re-running: both fail
+      (`'nllb-model-swap-test' != 'nllb-200-3.3B-ct2'`, `DetectionException not raised`).
+      Original 7.3 text: for Phase 4 — assert `NLLB_MODEL` actually changes the loaded model,
       and that a bogus name raises rather than silently falling back.
 - [ ] **7.4 Keep `RUN_TESTS` build arg working** for **both** `BUILD_TYPE` values, since each now
       produces a different model artifact. The CPU build is the one likely to time out.

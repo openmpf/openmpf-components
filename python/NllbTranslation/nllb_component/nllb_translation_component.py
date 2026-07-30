@@ -312,6 +312,19 @@ class NllbTranslationComponent:
                     break
 
     def _get_translation(self, config: Dict[str, str], text_to_translate: Dict[str, str]) -> str:
+        # Nothing to do when the source and target are the same language *and* script.
+        # NLLB will happily "translate" eng_Latn -> eng_Latn, but it paraphrases rather
+        # than copying ("This is English text" -> "This is an English text"), which is
+        # both wasted work and a surprising mutation of the caller's data. Comparing the
+        # full FLORES codes keeps genuine same-language conversions (e.g. zho_Hans ->
+        # zho_Hant) on the normal path.
+        if config.translate_from_language == config.translate_to_language:
+            logger.info(
+                f'Source and target are both {config.translate_from_language}; '
+                f'returning the input unchanged without invoking the model.')
+            for text in text_to_translate.values():
+                return text
+
         # make sure the model loaded matches model set in job config
         self._check_model(config)
         self._load_tokenizer(config)
