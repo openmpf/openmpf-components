@@ -67,6 +67,7 @@ class NllbTranslationComponent:
         self._tokenizer = None
         self._tokenizer_cache_key = None
         self._current_model_name = None
+        self._loaded_threading = None
         self._load_model()
 
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
@@ -161,9 +162,20 @@ class NllbTranslationComponent:
                     f'CTranslate2 model directory not found: {model_path}',
                     mpf.DetectionError.COULD_NOT_READ_DATAFILE)
 
-            logger.info(f"Loading model from local directory: {model_path} (device={device})")
-            self._model = ctranslate2.Translator(model_path, device=device)
+            # Threading is fixed at construction. Defaults match CTranslate2's own
+            # (inter=1, intra=0 meaning "one thread per core"), so a job that does
+            # not set them behaves exactly as before.
+            inter_threads = config.nllb_inter_threads if config is not None else 1
+            intra_threads = config.nllb_intra_threads if config is not None else 0
+
+            logger.info(f"Loading model from local directory: {model_path} "
+                        f"(device={device}, inter_threads={inter_threads}, "
+                        f"intra_threads={intra_threads})")
+            self._model = ctranslate2.Translator(
+                model_path, device=device,
+                inter_threads=inter_threads, intra_threads=intra_threads)
             self._current_model_name = model_name
+            self._loaded_threading = (inter_threads, intra_threads)
             self._check_compute_type(model_path, device)
 
         except Exception:
@@ -244,6 +256,7 @@ class NllbTranslationComponent:
                              exc_info=True)
         self._model = None
         self._current_model_name = None
+        self._loaded_threading = None
         self._tokenizer = None
         self._tokenizer_cache_key = None
 
@@ -268,6 +281,17 @@ class NllbTranslationComponent:
         elif not self._model.model_is_loaded:
             logger.info("Model '%s' is no longer resident; reloading.", requested)
             self._model.load_model()
+
+        wanted_threading = (config.nllb_inter_threads, config.nllb_intra_threads)
+        if self._loaded_threading is not None and wanted_threading != self._loaded_threading:
+            # Deliberately not reloading: re-reading several GB to change a thread
+            # count would be a far bigger surprise than ignoring the request.
+            logger.warning(
+                "NLLB_INTER_THREADS/NLLB_INTRA_THREADS requested %s but the model is "
+                "loaded with %s. Threading is fixed when the model is constructed, so "
+                "this job runs with the loaded values. Set them on the first job after "
+                "component start, or restart the component to change them.",
+                wanted_threading, self._loaded_threading)
 
     def _get_text_size_function(self, config: Dict[str, str]) -> Callable[[str], int]:
         if config.use_token_length:
@@ -421,9 +445,10 @@ class NllbTranslationComponent:
 
                 results = self._model.translate_batch(
                     sentences_subworded,
-                    batch_type="tokens",
+                    batch_type=config.nllb_batch_type,
                     max_batch_size=config.nllb_max_batch_size,
                     beam_size=config.nllb_beam_size,
+                    length_penalty=config.nllb_length_penalty,
                     max_decoding_length=hard_limit,
                     target_prefix=target_prefix)
 
@@ -579,6 +604,18 @@ class JobConfig:
         # TODO (Phase 5.1): document these in descriptor.json.
         self.nllb_beam_size = mpf_util.get_property(props, 'NLLB_BEAM_SIZE', 4)
         self.nllb_max_batch_size = mpf_util.get_property(props, 'NLLB_MAX_BATCH_SIZE', 2024)
+        self.nllb_batch_type = mpf_util.get_property(props, 'NLLB_BATCH_TYPE', 'tokens')
+
+        # CTranslate2 length penalty. 1 is the library default (no change); values
+        # above 1 favour longer output. Exposed because the evaluation traced the
+        # as-deployed quality gaps to under-generation -- see PLAN.md Phase 3.
+        self.nllb_length_penalty = mpf_util.get_property(props, 'NLLB_LENGTH_PENALTY', 1.0)
+
+        # Threading is a property of the loaded Translator, not of a translation
+        # call, so these only take effect when the model is (re)loaded. They matter
+        # far more on CPU than GPU. 0/1 are CTranslate2's own defaults.
+        self.nllb_inter_threads = mpf_util.get_property(props, 'NLLB_INTER_THREADS', 1)
+        self.nllb_intra_threads = mpf_util.get_property(props, 'NLLB_INTRA_THREADS', 0)
 
         difficult_lang_list = mpf_util.get_property(
             props, 'PROCESS_DIFFICULT_LANGUAGES', 'arabic'

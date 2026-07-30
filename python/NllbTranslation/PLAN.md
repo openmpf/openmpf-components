@@ -72,7 +72,7 @@ What the merge landed, and what it left:
 | 2 — tokenizer abstraction | **done**; default unchanged (SENTENCEPIECE), full-scale A/B still owed |
 | 3 — token-based splitter | **mostly landed**; validation outstanding |
 | 4 — model lifecycle bug | **fixed and verified**; `NLLB_MODEL` now takes effect |
-| 5 — decode/batching params | 5.1 partly done, 5.3 done |
+| 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **now blocking — suite is red, `RUN_TESTS` fails the build** |
 | 8 — validation | not started |
@@ -345,12 +345,30 @@ closer-to-production measurement were wanted.
 Currently hardcoded at `nllb_translation_component.py:245–250`: `beam_size = 4`,
 `max_batch_size=2024`, `batch_type="tokens"`.
 
-- [~] **5.1 Expose as properties** — `NLLB_BEAM_SIZE` (4) and `NLLB_MAX_BATCH_SIZE` (2024) are in
-      `JobConfig` at the values the CT2 branch hardcoded, so behaviour is unchanged; **descriptor
-      entries are still owed**. Remaining:
-      `NLLB_BATCH_TYPE` (`tokens`). Optionally `length_penalty`, `no_repeat_ngram_size`. For the CPU
-      build also consider `inter_threads` / `intra_threads` (see 1.9).
-- [ ] **5.2 Keep beam 4. Never inherit `develop`'s greedy default.** As shipped, `develop` decodes
+- [x] **5.1 Expose as properties — done.** All decode and threading knobs are now job properties
+      with descriptor entries, at defaults that preserve prior behaviour:
+
+      | property | default | notes |
+      |---|---|---|
+      | `NLLB_BEAM_SIZE` | 4 | what the evaluation measured |
+      | `NLLB_MAX_BATCH_SIZE` | 2024 | as hardcoded before |
+      | `NLLB_BATCH_TYPE` | `tokens` | as hardcoded before |
+      | `NLLB_LENGTH_PENALTY` | 1.0 | CTranslate2 default; exposed because the as-deployed gaps were under-generation |
+      | `NLLB_INTER_THREADS` | 1 | CTranslate2 default |
+      | `NLLB_INTRA_THREADS` | 0 | CTranslate2 default (one thread per core) |
+
+      Verified each takes effect: beam 1 vs 4 changes output on 9/15 zh-en sentences (a short
+      Portuguese sentence is *not* a valid test — greedy and beam-4 agree on easy input);
+      `NLLB_LENGTH_PENALTY=3.0` changes wording; `NLLB_BATCH_TYPE=examples` runs.
+      `no_repeat_ngram_size` was **not** exposed — no identified use case here, and each extra knob
+      is surface to document and test.
+- [x] **1.9a Expose CTranslate2 threading — done**, with a caveat. `inter_threads`/`intra_threads`
+      are fixed when the `Translator` is constructed, so they apply on model load only. A job asking
+      for values different from the loaded ones gets a **warning naming both**, rather than a silent
+      no-op or a surprise multi-GB reload. Verified the warning fires.
+
+- [x] **5.2 Keep beam 4. Never inherit `develop`'s greedy default.** Default is 4 and the
+      descriptor documents greedy as the lower-quality option. As shipped, `develop` decodes
       **greedily** (its `generation_config.json` sets no `num_beams`) while the CT2 path uses beam 4.
       This is not a footnote — it is the most likely explanation for `develop` under-generating on
       Bengali and Persian as-deployed, where CT2 wins by **~7 BLEU** with length ratios of 0.825/0.899

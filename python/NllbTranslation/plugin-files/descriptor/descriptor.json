@@ -33,6 +33,42 @@
           "defaultValue": "FALSE"
         },
         {
+          "name": "NLLB_BEAM_SIZE",
+          "description": "CTranslate2 beam size. 4 matches what the quality evaluation measured; 1 is greedy and faster but lower quality.",
+          "type": "INT",
+          "defaultValue": "4"
+        },
+        {
+          "name": "NLLB_MAX_BATCH_SIZE",
+          "description": "Maximum CTranslate2 batch size, interpreted in the units given by NLLB_BATCH_TYPE.",
+          "type": "INT",
+          "defaultValue": "2024"
+        },
+        {
+          "name": "NLLB_BATCH_TYPE",
+          "description": "Unit for NLLB_MAX_BATCH_SIZE: 'tokens' or 'examples'.",
+          "type": "STRING",
+          "defaultValue": "tokens"
+        },
+        {
+          "name": "NLLB_LENGTH_PENALTY",
+          "description": "CTranslate2 beam-search length penalty. 1.0 is the library default; higher values favour longer output.",
+          "type": "DOUBLE",
+          "defaultValue": "1.0"
+        },
+        {
+          "name": "NLLB_INTER_THREADS",
+          "description": "Number of translations CTranslate2 runs in parallel. Fixed when the model loads, so only the first job after component start takes effect.",
+          "type": "INT",
+          "defaultValue": "1"
+        },
+        {
+          "name": "NLLB_INTRA_THREADS",
+          "description": "Threads per translation (0 = one per core). Matters mainly on CPU builds. Fixed when the model loads, so only the first job after component start takes effect.",
+          "type": "INT",
+          "defaultValue": "0"
+        },
+        {
           "name": "NLLB_TOKENIZER",
           "description": "Tokenizer backend. SENTENCEPIECE (default) uses sentencepiece.bpe.model from the model directory; HUGGINGFACE uses transformers AutoTokenizer over the same directory. Functionally interchangeable.",
           "type": "STRING",
