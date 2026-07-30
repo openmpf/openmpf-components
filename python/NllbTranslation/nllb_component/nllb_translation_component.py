@@ -45,9 +45,19 @@ logger = logging.getLogger('NllbTranslationComponent')
 # Roll-up TypeDef for different track types
 T_FF_OBJ = TypeVar('T_FF_OBJ', mpf.AudioTrack, mpf.GenericTrack, mpf.ImageLocation, mpf.VideoTrack)
 
-# default NLLB model
-DEFAULT_NLLB_MODEL = 'OpenNMT/nllb-200-3.3B-ct2-int8'
-SP_MODEL_PATH = '/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model'
+# Default NLLB model. Converted from facebook/nllb-200-3.3B at image build time;
+# the precision depends on BUILD_TYPE (gpu -> float16, cpu -> int8_float32), so
+# the directory name deliberately does not encode it. The deployed precision is
+# reported at load time instead -- see _load_model.
+DEFAULT_NLLB_MODEL = 'nllb-200-3.3B-ct2'
+
+# SentencePiece model, copied into the converted model directory by
+# ct2-transformers-converter --copy_files.
+SP_MODEL_FILENAME = 'sentencepiece.bpe.model'
+
+# What the image build intended the compute type to be. Set per BUILD_TYPE in the
+# Dockerfile; absent when running outside the image.
+EXPECTED_COMPUTE_TYPE_ENV = 'NLLB_EXPECTED_COMPUTE_TYPE'
 
 # compile this pattern once
 NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Mark}\u1734\p{Spacing_Mark}\p{Enclosing_Mark}\p{Decimal_Number}\p{Letter_Number}\p{Other_Number}\p{Format}]*')
@@ -55,9 +65,12 @@ NO_TRANSLATE_PATTERN = re.compile(r'[[:space:][:digit:][:punct:]\p{Nonspacing_Ma
 class NllbTranslationComponent:
 
     def __init__(self) -> None:
-        self._load_model()
+        # Initialised before _load_model, which sets _current_model_name; assigning
+        # these afterwards would clobber it.
         self._tokenizer = None
+        self._tokenizer_model_name = None
         self._current_model_name = None
+        self._load_model()
 
     def get_detections_from_image(self, job: mpf.ImageJob) -> Sequence[mpf.ImageLocation]:
         logger.info(f'Received image job.')
@@ -119,16 +132,25 @@ class NllbTranslationComponent:
             raise
 
     def _load_tokenizer(self, config: Dict[str, str]) -> None:
-        # The CTranslate2 model does not carry its own tokenizer; tokenization is
-        # done with the FLORES-200 SentencePiece model, which is language-agnostic
-        # (the source language is prepended as a token at encode time, not baked
-        # into the tokenizer), so a single instance is cached for all jobs.
-        if self._tokenizer is not None:
+        # Tokenization uses the SentencePiece model that ships inside the converted
+        # model directory. It is language-agnostic -- the source language is
+        # prepended as a token at encode time rather than baked into the tokenizer
+        # -- so one instance serves every job, and is only reloaded if the model
+        # itself changes.
+        if self._tokenizer is not None and self._tokenizer_model_name == self._current_model_name:
             return
+        sp_path = os.path.join('/models', self._current_model_name, SP_MODEL_FILENAME)
+        if not os.path.isfile(sp_path):
+            raise mpf.DetectionException(
+                f'SentencePiece model not found at {sp_path}. The converted model '
+                f'directory must include {SP_MODEL_FILENAME} '
+                f'(ct2-transformers-converter --copy_files).',
+                mpf.DetectionError.COULD_NOT_READ_DATAFILE)
         start = time.time()
         self._tokenizer = spm.SentencePieceProcessor()
-        self._tokenizer.load(SP_MODEL_PATH)
-        logger.debug(f"Successfully loaded tokenizer in {time.time() - start} seconds.")
+        self._tokenizer.load(sp_path)
+        self._tokenizer_model_name = self._current_model_name
+        logger.debug(f"Loaded tokenizer from {sp_path} in {time.time() - start} seconds.")
 
     def _load_model(self, model_name: str = None, config: Dict[str, str] = None) -> None:
         try:
@@ -150,13 +172,38 @@ class NllbTranslationComponent:
             logger.info(f"Loading model from local directory: {model_path} (device={device})")
             self._model = ctranslate2.Translator(model_path, device=device)
             self._current_model_name = model_name
-            logger.info(f"Model loaded: {model_path} "
-                        f"(device={device}, compute_type={self._model.compute_type})")
+            self._check_compute_type(model_path, device)
 
         except Exception:
             logger.exception(
                 f'Failed to complete job due to the following exception:')
             raise
+
+    def _check_compute_type(self, model_path: str, device: str) -> None:
+        """Report the compute type CTranslate2 actually resolved, and warn on a mismatch.
+
+        The resolved type is the only runtime evidence of which artifact is
+        deployed, and two failure modes are otherwise silent:
+
+        * a float16 model on a CPU-only host is quietly up-converted to float32,
+          forfeiting the size and speed benefit;
+        * a model converted with a bare ``int8`` quantization resolves to
+          ``int8_float32`` on GPU -- accurate, but with no tensor-core speedup.
+
+        This warns rather than raises: a mismatch means the job will be slower or
+        heavier than intended, not wrong, and failing an otherwise-serviceable
+        deployment would be the worse outcome.
+        """
+        actual = self._model.compute_type
+        expected = os.environ.get(EXPECTED_COMPUTE_TYPE_ENV)
+        logger.info(f"Model loaded: {model_path} (device={device}, compute_type={actual})")
+        if expected and actual != expected:
+            logger.warning(
+                "NLLB compute type is '%s' but this image was built for '%s'. "
+                "The model still works, but not at the intended precision or speed "
+                "(e.g. float16 is unsupported on CPU and is silently converted to "
+                "float32). Check that BUILD_TYPE matches the host.",
+                actual, expected)
 
     @staticmethod
     def _resolve_device() -> str:

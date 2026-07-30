@@ -68,7 +68,7 @@ What the merge landed, and what it left:
 | Phase | State after `8d300300` |
 |---|---|
 | 0 — branch hygiene | **done** |
-| 1 — model packaging | not started; Dockerfile now has `develop`'s structure to build on |
+| 1 — model packaging | **code done** (1.1–1.7); unbuilt — needs a real image build to prove |
 | 2 — tokenizer abstraction | not started; an SPM `count_tokens` shim is in place as a stand-in |
 | 3 — token-based splitter | **mostly landed**; validation outstanding |
 | 4 — model lifecycle bug | still broken; `_current_model_name` is now tracked but unused |
@@ -118,7 +118,7 @@ Why this split, measured not assumed (`ctranslate2` 4.8.1):
   efficient int8_float16 computation.` So the CPU build must convert with `int8`.
 - On GPU, fp16 is both faster than int8 (all 9 pairs) and quality-equivalent — see the evidence base.
 
-- [ ] **1.1 Replace the `download_model` stage with a `convert_model` stage** keyed to `BUILD_TYPE`:
+- [x] **1.1 Replace the `download_model` stage with a `convert_model` stage** keyed to `BUILD_TYPE`:
 
       ARG BUILD_TYPE=gpu
       ARG SRC_MODEL=facebook/nllb-200-3.3B
@@ -131,17 +131,17 @@ Why this split, measured not assumed (`ctranslate2` 4.8.1):
             --copy_files sentencepiece.bpe.model tokenizer.json \
                          tokenizer_config.json special_tokens_map.json
 
-- [ ] **1.2 Use a *stable* output directory name** (`/models/nllb-200-3.3B-ct2`) rather than encoding
+- [x] **1.2 Use a *stable* output directory name** (`/models/nllb-200-3.3B-ct2`) rather than encoding
       the quantization in the path. `DEFAULT_NLLB_MODEL` then does not vary by build type and the
       component needs no build-type awareness. The deployed precision is still discoverable at
       runtime via the `compute_type` log in 1.5 — which is the more reliable place for it anyway.
       (This reverses an earlier note that suggested putting the quantization in the directory name.)
-- [ ] **1.3 `--copy_files` is now mandatory on *both* paths, and is load-bearing.** A bare
+- [x] **1.3 `--copy_files` is now mandatory on *both* paths, and is load-bearing.** A bare
       `ct2-transformers-converter` run emits only `config.json`, `model.bin`, and
       `shared_vocabulary.json`. With the OpenNMT download gone, `--copy_files` is the **only** source
       of the SentencePiece model *and* the HF tokenizer files. Omit it and both tokenizer backends
       break.
-- [ ] **1.4 Drop the separate FLORES SPM download — it is the same file.** Verified byte-identical:
+- [x] **1.4 Drop the separate FLORES SPM download — it is the same file.** Verified byte-identical:
       `facebook/nllb-200-3.3B/sentencepiece.bpe.model` and
       `OpenNMT/nllb-200-onmt/flores200_sacrebleu_tokenizer_spm.model` both md5
       `05c551ae7955b3980d5a9d044eb09d70`. Copying `sentencepiece.bpe.model` from the source
@@ -149,17 +149,17 @@ Why this split, measured not assumed (`ctranslate2` 4.8.1):
       **Code change required:** `SP_MODEL_PATH` at `nllb_translation_component.py:50` currently points
       at `/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model` and must move to the converted
       model dir.
-- [ ] **1.5 Log and assert the resolved compute type at load.** Log `Translator.compute_type` after
+- [x] **1.5 Log and assert the resolved compute type at load.** *(Implemented as a WARNING, not an exception — a mismatch means slower/heavier, not wrong, and failing a serviceable deployment is the worse outcome. The Dockerfile sets `NLLB_EXPECTED_COMPUTE_TYPE` per `BUILD_TYPE`; the component compares against it.)* Log `Translator.compute_type` after
       loading, and fail loudly if it disagrees with what the build intended. This matters more now
       that precision is build-time-conditional: it is the only runtime evidence of which artifact is
       deployed, and it catches both the silent float16→float32 CPU up-conversion and the
       `int8_float32` GPU trap. `eval/ct2_driver.py` already records `actual_compute_type` — reuse it.
-- [ ] **1.6 Note the `int8` warning is GPU-specific and inverts on CPU.** On **GPU**, bare `int8`
+- [x] **1.6 Note the `int8` warning is GPU-specific and inverts on CPU.** *(Recorded as a comment on the conversion `RUN` so it is visible where someone would 'fix' it.)* On **GPU**, bare `int8`
       resolves to `int8_float32`: accurate but with no tensor-core speedup — a trap (it cost us a
       whole decomposition run). On **CPU**, `int8_float32` is the *only* int8 mode available and is
       exactly what we want. Same flag, opposite verdict; do not "fix" the CPU build to
       `int8_float16`.
-- [ ] **1.7 Update `DEFAULT_NLLB_MODEL`** at `nllb_translation_component.py:49` from
+- [x] **1.7 Update `DEFAULT_NLLB_MODEL`** at `nllb_translation_component.py:49` from
       `'OpenNMT/nllb-200-3.3B-ct2-int8'` to `'nllb-200-3.3B-ct2'`.
 - [ ] **1.8 Size and build cost.** Every build now converts, so **both** paths pull the **17 GB** HF
       checkpoint transiently and run a multi-minute conversion. Final image carries 6.7 GB (gpu) or
