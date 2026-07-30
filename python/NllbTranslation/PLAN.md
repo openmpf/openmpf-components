@@ -74,7 +74,7 @@ What the merge landed, and what it left:
 | 4 — model lifecycle bug | **fixed and verified**; `NLLB_MODEL` now takes effect |
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
-| 7 — tests | **now blocking — suite is red, `RUN_TESTS` fails the build** |
+| 7 — tests | **green on both builds** (24 pass, 1 gated golden test); 7.2/7.3 still owed |
 | 8 — validation | not started |
 
 ---
@@ -434,24 +434,37 @@ names by string needs updating.
 > None indicate a functional defect. `develop`'s suite was taken wholesale (it is a strict superset
 > of the CT2 one by test name), so its expectations encode `develop`'s model and decoding.
 
-- [ ] **7.1 Re-baseline the 15 expected-output failures.** Every one asserts a translation string
-      produced by **facebook fp16 with greedy decoding**; this component runs **CT2 int8 at beam 4**,
-      which legitimately words things differently — `'Hello, how are you today?'` vs `'Hi, …'`,
-      `'It is raining.'` vs `"It's raining."`, and longer paraphrase differences on the
-      paragraph/wtp tests. Decide whether the canonical expectations should track the shipped
-      configuration (regenerate) or be loosened to assertions that are not decoder-specific.
-      Regenerating pins the tests to whatever `BUILD_TYPE` produced them, which matters now that
-      gpu→fp16 and cpu→int8 give different output.
-- [ ] **7.1a Fix the one erroring test.**
-      `test_difficult_language_token_limit_overrides_soft_limit_not_hard_limit` calls
-      `component._tokenizer(text)["input_ids"]` — the HuggingFace convention — on a
-      `SentencePieceProcessor`, raising `TypeError: 'SentencePieceProcessor' object is not callable`.
-      It is white-box against the tokenizer. Either route it through the Phase 2 adapter's
-      `count_tokens` or use `len(component._tokenizer.encode_as_pieces(text)) + 2`.
-      *Currently passing (9), so these are the regression guard in the meantime:*
-      `test_invalid_script_lang_combination`, `test_long_spanish`, `test_sentence_split_job`,
-      `test_should_translate`, `test_unsupported_{source,target}_{language,script}`,
-      `test_wtp_iso_conversion`.
+- [x] **7.1 Re-baseline the expected-output failures — done, structurally.** Rather than pinning
+      strings to one build, the 31 exact-output assertions were classified by *what each test
+      actually verifies*, and 28 became structural via a new `assertTranslated` helper (present,
+      non-empty, not a source passthrough). Every converted assertion carries a one-line
+      justification, e.g. *"Verifies an ImageLocation's TEXT reaches TRANSLATION, not the wording of
+      the output."*
+      Rationale, measured rather than assumed: gpu (float16) and cpu (int8_float32) agree on only
+      24/30 sentences, and divergence tracks **lexical ambiguity, not length** — a 27-character
+      sentence diverges (`canhões` → "cannons" vs "guns"). Choosing "simpler" inputs to dodge this
+      would select for lexically unambiguous — i.e. trivial — test data.
+      Exceptions kept exact: `test_long_spanish` (already gated behind `RUN_DEEP_TESTS`, now
+      documented as the gpu-baselined golden test) and the comparative assertion in
+      `test_difficult_language_token_limit_...`, which compares two outputs of the *same* build and
+      was never build-dependent.
+      `test_split_with_non_translate_segments` gained a **stronger** assertion than it had: it now
+      checks the digit-only segments survive verbatim, which is its actual subject.
+- [x] **7.1a Fix the erroring test — done.** It called `component._tokenizer(text)["input_ids"]`,
+      the HuggingFace convention, on a `SentencePieceProcessor`. Now uses the Phase 2 backend's
+      `count_tokens`.
+- [x] **7.1b `test_eng_to_eng_translation` rested on a false premise.** It asserted English input
+      returns byte-identical, but the component does **not** short-circuit same-language jobs — it
+      runs eng→eng through the model, which paraphrases ("This is **an** English text..."). Now
+      asserts the content survives, with a note. **Open question: should the component skip
+      translation when source == target?** It would save a full model pass and make the original
+      intent true.
+- [x] **7.1c Tests no longer construct their own component.** Seven did, each loading a separate
+      copy of the model. At float16 (6.7 GB) two copies exceed a 16 GB card, so
+      `test_difficult_language_...` died with `CUDA failed with error out of memory` — a direct
+      consequence of the Phase 1 fp16 switch that int8's 3.36 GB had masked. They now share the
+      class-level instance. Suite runtime also fell from 56s to 16s on gpu.
+
 - [ ] **7.2 Tokenizer parity test.** Assert both backends produce CT2-compatible token strings and
       round-trip a fixed corpus. Encode the two known divergences (trailing whitespace, unknown-char
       surface form) as *expected*, so they do not read as regressions.
