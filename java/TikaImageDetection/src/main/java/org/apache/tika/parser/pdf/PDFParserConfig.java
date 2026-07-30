@@ -21,7 +21,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,6 +44,18 @@ import org.apache.tika.renderer.Renderer;
  */
 public class PDFParserConfig implements Serializable {
 
+    public enum TikaImageType {
+        RGB(ImageType.RGB),
+        GRAY(ImageType.GRAY);
+
+        private ImageType imageType;
+        TikaImageType(ImageType imageType) {
+            this.imageType = imageType;
+        }
+        public ImageType getImageType() {
+            return imageType;
+        }
+    }
 
     private static final long serialVersionUID = 6492570218190936986L;
     private final Set<String> userConfigured = new HashSet<>();
@@ -53,6 +64,9 @@ public class PDFParserConfig implements Serializable {
 
     // True if we let PDFBox remove duplicate overlapping text:
     private boolean suppressDuplicateOverlappingText = false;
+
+    // True if we let PDFBox ignore spaces in the content stream and rely purely on the algorithm:
+    private boolean ignoreContentStreamSpaceGlyphs = false;
 
     // True if we extract annotation text ourselves
     // (workaround for PDFBOX-1143):
@@ -114,7 +128,7 @@ public class PDFParserConfig implements Serializable {
     private OCR_RENDERING_STRATEGY ocrRenderingStrategy = OCR_RENDERING_STRATEGY.ALL;
 
     private int ocrDPI = 300;
-    private ImageType ocrImageType = ImageType.GRAY;
+    private TikaImageType ocrImageType = TikaImageType.GRAY;
     private String ocrImageFormatName = "png";
     private float ocrImageQuality = 1.0f;
 
@@ -142,6 +156,14 @@ public class PDFParserConfig implements Serializable {
 
     private Renderer renderer;
 
+    private boolean extractIncrementalUpdateInfo = false;
+
+    private boolean parseIncrementalUpdates = false;
+
+    int maxIncrementalUpdates = 10;
+
+    private boolean throwOnEncryptedPayload = false;
+
     /**
      * @return whether or not to extract only inline image metadata and not render the images
      */
@@ -160,7 +182,7 @@ public class PDFParserConfig implements Serializable {
      * @param extractInlineImageMetadataOnly
      * @since 1.25
      */
-    void setExtractInlineImageMetadataOnly(boolean extractInlineImageMetadataOnly) {
+    public void setExtractInlineImageMetadataOnly(boolean extractInlineImageMetadataOnly) {
         this.extractInlineImageMetadataOnly = extractInlineImageMetadataOnly;
         userConfigured.add("extractInlineImageMetadataOnly");
     }
@@ -204,6 +226,7 @@ public class PDFParserConfig implements Serializable {
             pdf2XHTML.setDropThreshold(dropThreshold);
         }
         pdf2XHTML.setSuppressDuplicateOverlappingText(isSuppressDuplicateOverlappingText());
+        pdf2XHTML.setIgnoreContentStreamSpaceGlyphs(isIgnoreContentStreamSpaceGlyphs());
     }
 
     /**
@@ -383,6 +406,24 @@ public class PDFParserConfig implements Serializable {
     public void setSuppressDuplicateOverlappingText(boolean suppressDuplicateOverlappingText) {
         this.suppressDuplicateOverlappingText = suppressDuplicateOverlappingText;
         userConfigured.add("suppressDuplicateOverlappingText");
+    }
+
+    /**
+     * @see #setIgnoreContentStreamSpaceGlyphs(boolean)
+     */
+    public boolean isIgnoreContentStreamSpaceGlyphs() {
+        return ignoreContentStreamSpaceGlyphs;
+    }
+
+    /**
+     * If true, the parser should ignore spaces in the content stream and rely purely on the
+     * algorithm to determine where word breaks are (PDFBOX-3774). This can improve text extraction
+     * results where the content stream is sorted by position and has text overlapping spaces, but
+     * could cause some word breaks to not be added to the output. By default this is disabled.
+     */
+    public void setIgnoreContentStreamSpaceGlyphs(boolean ignoreContentStreamSpaceGlyphs) {
+        this.ignoreContentStreamSpaceGlyphs = ignoreContentStreamSpaceGlyphs;
+        userConfigured.add("ignoreContentStreamSpaceGlyphs");
     }
 
     /**
@@ -615,9 +656,9 @@ public class PDFParserConfig implements Serializable {
      * Image type used to render the page image for OCR.
      *
      * @return image type
-     * @see #setOcrImageType(ImageType)
+     * @see #setOcrImageType(TikaImageType)
      */
-    public ImageType getOcrImageType() {
+    public TikaImageType getOcrImageType() {
         return ocrImageType;
     }
 
@@ -626,7 +667,7 @@ public class PDFParserConfig implements Serializable {
      *
      * @param ocrImageType
      */
-    public void setOcrImageType(ImageType ocrImageType) {
+    public void setOcrImageType(TikaImageType ocrImageType) {
         this.ocrImageType = ocrImageType;
         userConfigured.add("ocrImageType");
     }
@@ -634,7 +675,7 @@ public class PDFParserConfig implements Serializable {
     /**
      * Image type used to render the page image for OCR.
      *
-     * @see #setOcrImageType(ImageType)
+     * @see #setOcrImageType(TikaImageType)
      */
     public void setOcrImageType(String ocrImageTypeString) {
         setOcrImageType(parseImageType(ocrImageTypeString));
@@ -741,8 +782,8 @@ public class PDFParserConfig implements Serializable {
         userConfigured.add("setKCMS");
     }
 
-    private ImageType parseImageType(String ocrImageType) {
-        for (ImageType t : ImageType.values()) {
+    private TikaImageType parseImageType(String ocrImageType) {
+        for (TikaImageType t : TikaImageType.values()) {
             if (ocrImageType.equalsIgnoreCase(t.toString())) {
                 return t;
             }
@@ -798,58 +839,6 @@ public class PDFParserConfig implements Serializable {
         return updated;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        PDFParserConfig config = (PDFParserConfig) o;
-        return enableAutoSpace == config.enableAutoSpace &&
-                suppressDuplicateOverlappingText == config.suppressDuplicateOverlappingText &&
-                extractAnnotationText == config.extractAnnotationText &&
-                sortByPosition == config.sortByPosition &&
-                extractAcroFormContent == config.extractAcroFormContent &&
-                extractBookmarksText == config.extractBookmarksText &&
-                extractInlineImages == config.extractInlineImages &&
-                extractInlineImageMetadataOnly == config.extractInlineImageMetadataOnly &&
-                extractUniqueInlineImagesOnly == config.extractUniqueInlineImagesOnly &&
-                extractMarkedContent == config.extractMarkedContent &&
-                Float.compare(config.dropThreshold, dropThreshold) == 0 &&
-                ifXFAExtractOnlyXFA == config.ifXFAExtractOnlyXFA && ocrDPI == config.ocrDPI &&
-                Float.compare(config.ocrImageQuality, ocrImageQuality) == 0 &&
-                catchIntermediateIOExceptions == config.catchIntermediateIOExceptions &&
-                extractActions == config.extractActions &&
-                extractFontNames == config.extractFontNames &&
-                maxMainMemoryBytes == config.maxMainMemoryBytes && setKCMS == config.setKCMS &&
-                detectAngles == config.detectAngles &&
-                Objects.equals(userConfigured, config.userConfigured) &&
-                Objects.equals(averageCharTolerance, config.averageCharTolerance) &&
-                Objects.equals(spacingTolerance, config.spacingTolerance) &&
-                ocrStrategy == config.ocrStrategy &&
-                Objects.equals(ocrStrategyAuto, config.ocrStrategyAuto) &&
-                ocrRenderingStrategy == config.ocrRenderingStrategy &&
-                ocrImageType == config.ocrImageType &&
-                Objects.equals(ocrImageFormatName, config.ocrImageFormatName) &&
-                imageStrategy == config.imageStrategy &&
-                Objects.equals(accessChecker, config.accessChecker) &&
-                Objects.equals(renderer, config.renderer);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(userConfigured, enableAutoSpace, suppressDuplicateOverlappingText,
-                extractAnnotationText, sortByPosition, extractAcroFormContent, extractBookmarksText,
-                extractInlineImages, extractInlineImageMetadataOnly, extractUniqueInlineImagesOnly,
-                extractMarkedContent, averageCharTolerance, spacingTolerance, dropThreshold,
-                ifXFAExtractOnlyXFA, ocrStrategy, ocrStrategyAuto, ocrRenderingStrategy, ocrDPI,
-                ocrImageType, ocrImageFormatName, ocrImageQuality, imageStrategy, accessChecker,
-                catchIntermediateIOExceptions, extractActions, extractFontNames, maxMainMemoryBytes,
-                setKCMS, detectAngles, renderer);
-    }
-
     public void setRenderer(Renderer renderer) {
         this.renderer = renderer;
         userConfigured.add("renderer");
@@ -886,7 +875,46 @@ public class PDFParserConfig implements Serializable {
         return imageStrategy;
     }
 
+    public boolean isExtractIncrementalUpdateInfo() {
+        return extractIncrementalUpdateInfo;
+    }
 
+    public void setExtractIncrementalUpdateInfo(boolean extractIncrementalUpdateInfo) {
+        this.extractIncrementalUpdateInfo = extractIncrementalUpdateInfo;
+        userConfigured.add("extractIncrementalUpdateInfo");
+    }
+
+    public boolean isParseIncrementalUpdates() {
+        return parseIncrementalUpdates;
+    }
+
+    public void setParseIncrementalUpdates(boolean parseIncrementalUpdates) {
+        this.parseIncrementalUpdates = parseIncrementalUpdates;
+        userConfigured.add("parseIncrementalUpdates");
+    }
+
+    public int getMaxIncrementalUpdates() {
+        return maxIncrementalUpdates;
+    }
+
+    /**
+     * The maximum number of incremental updates to parse.
+     *
+     * @param maxIncrementalUpdates
+     */
+    public void setMaxIncrementalUpdates(int maxIncrementalUpdates) {
+        this.maxIncrementalUpdates = maxIncrementalUpdates;
+        userConfigured.add("maxIncrementalUpdates");
+    }
+
+    public void setThrowOnEncryptedPayload(boolean throwOnEncryptedPayload) {
+        this.throwOnEncryptedPayload = throwOnEncryptedPayload;
+        userConfigured.add("throwOnEncryptedPayload");
+    }
+
+    public boolean isThrowOnEncryptedPayload() {
+        return throwOnEncryptedPayload;
+    }
 
     public enum OCR_STRATEGY {
         AUTO, NO_OCR, OCR_ONLY, OCR_AND_TEXT_EXTRACTION;
@@ -945,6 +973,20 @@ public class PDFParserConfig implements Serializable {
 
         public int getTotalCharsPerPage() {
             return totalCharsPerPage;
+        }
+
+        @Override
+        public String toString() {
+            //TODO -- figure out if this is actual BEST or whatever
+            //and return that instead of the literal values
+            String unmappedString = null;
+            if (unmappedUnicodeCharsPerPage < 1.0) {
+                unmappedString = String.format(Locale.US, "%.03f",
+                        unmappedUnicodeCharsPerPage * 100) + "%";
+            } else {
+                unmappedString = String.format(Locale.US, "%.0f", unmappedUnicodeCharsPerPage);
+            }
+            return unmappedString + "," + totalCharsPerPage;
         }
     }
 

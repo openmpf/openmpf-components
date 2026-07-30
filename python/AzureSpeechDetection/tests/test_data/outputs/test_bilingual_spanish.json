@@ -1,5 +1,5 @@
 {
-    "source": "http://localhost:10669/speechtotext/v3.0/recordings/bilingual.mp3",
+    "source": "http://localhost:10669/speechtotext/recordings/bilingual.mp3",
     "timestamp": "2021-01-22T16:59:52Z",
     "durationInTicks": 886100000,
     "duration": "PT1M28.61S",

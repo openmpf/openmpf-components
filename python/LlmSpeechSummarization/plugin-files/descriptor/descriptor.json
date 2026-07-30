@@ -1,0 +1,203 @@
+{
+  "componentName": "LlmSpeechSummarization",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
+  "sourceLanguage": "python",
+  "batchLibrary": "LlmSpeechSummarization",
+  "environmentVariables": [],
+  "algorithm": {
+    "name": "LLMSPEECHSUMMARIZATION",
+    "description": "Uses an LLM to summarize speech",
+    "actionType": "DETECTION",
+    "trackType": "TEXT",
+    "requiresCollection": {
+      "states": []
+    },
+    "providesCollection": {
+      "states": [
+        "DETECTION",
+        "DETECTION_TEXT",
+        "DETECTION_TEXT_LLM_SPEECH_SUMMARIZATION"
+      ],
+      "properties": [
+        {
+          "name": "LLM_MODEL",
+          "description": "The model being served by the openai-api running at VLLM_URI",
+          "type": "STRING",
+          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        },
+        {
+          "name": "TOKENIZER_MODEL",
+          "description": "The HuggingFaceHub-available name of a pretrained tokenizer that's used by VLLM_MODEL",
+          "type": "STRING",
+          "defaultValue": "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        },
+        {
+          "name": "API_TOKEN",
+          "description": "The API Token that can access the openai api",
+          "type": "STRING",
+          "defaultValue": "any-value"
+        },
+        {
+          "name": "AZURE_CLIENT",
+          "description": "Set to true if the AzureOpenAI class should be use instead of OpenAI from the openai module",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "AZURE_API_VERSION",
+          "description": "Azure OpenAI API version to use. The component is tested with `2025-01-01-preview`",
+          "type": "STRING",
+          "defaultValue": ""
+        },
+        {
+          "name": "MAX_MODEL_LEN",
+          "description": "The largest model length that can fit on the GPU",
+          "type": "INT",
+          "defaultValue": 45000
+        },
+        {
+          "name": "INPUT_TOKEN_CHUNK_SIZE",
+          "description": "The input size maximum, roughly 20%-25% of max model length",
+          "type": "INT",
+          "defaultValue": 2000
+        },
+        {
+          "name": "INPUT_CHUNK_TOKEN_OVERLAP",
+          "description": "Overlap between split input chunks. Probably much smaller than INPUT_TOKEN_CHUNK_SIZE",
+          "type": "INT",
+          "defaultValue": "500"
+        },
+        {
+          "name": "CLASSIFIERS_LIST",
+          "description": "Comma-separated list of classifiers to include in the summary output.",
+          "type": "STRING",
+          "defaultValue": "ALL"
+        },
+        {
+          "name": "CLASSIFIERS_FILE",
+          "description": "The package-relative OR absolute filename of the classifiers json file",
+          "type": "STRING",
+          "defaultValue": "classifiers.json"
+        },
+        {
+          "name": "CLASSIFIER_CONFIDENCE_MINIMUM",
+          "description": "The minimum confidence of classifiers to include in classifiers output. When set to 0.3, classifiers with <0.3 confidence are excluded from produced tracks.",
+          "type": "FLOAT",
+          "defaultValue": "0.3"
+        },
+        {
+          "name": "ENABLE_DEBUG",
+          "description": "If true, each detection will include extra debug output.",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "ALLOW_PARTIAL_RESPONSE",
+          "description": "If true, the component will attempt to continue after an incomplete response is received from the LLM",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "ALLOW_REFUSAL_RESPONSE",
+          "description": "If true, the component will attempt to continue after the LLM refuses to respond",
+          "type": "BOOLEAN",
+          "defaultValue": "FALSE"
+        },
+        {
+          "name": "PROMPT_TEMPLATE",
+          "description": "If set, will override the default, tested prompt template with one read from a different file",
+          "type": "STRING",
+          "defaultValue": "templates/prompt.jinja"
+        },
+        {
+          "name": "API_URI",
+          "description": "The base_url of the openai-api-compatible API providing access to your model.",
+          "type": "STRING",
+          "defaultValue": "http://llm-speech-summarization-server:11434/v1"
+        },
+        {
+          "name": "API_HEALTH_URI",
+          "description": "An absolute OR relative URI of a healthcheck for the openai-api backend",
+          "type": "STRING",
+          "defaultValue": "../health"
+        },
+        {
+          "name": "TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed.",
+          "type": "INT",
+          "defaultValue": "-1"
+        },
+        {
+          "name": "VFR_TARGET_SEGMENT_LENGTH",
+          "description": "If this value is less than or equal to 0, no segmenting will be performed on variable frame rate videos.",
+          "type": "INT",
+          "defaultValue": "-1"
+        }
+
+      ]
+    }
+  },
+  "actions": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "algorithm": "LLMSPEECHSUMMARIZATION",
+      "properties": [
+        {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
+        {"name": "FEED_FORWARD_TYPE", "value": "REGION"}
+      ]
+    },
+    {
+      "name": "AZURE SPEECH SUMMARIZATION (WITH FF REGION) ACTION",
+      "description": "Performs Azure summarization Video|Audio tracks.",
+      "algorithm": "LLMSPEECHSUMMARIZATION",
+      "properties": [
+        {"name": "FEED_FORWARD_ALL_TRACKS", "value": "TRUE"},
+        {"name": "FEED_FORWARD_TYPE", "value": "REGION"},
+        {"name": "LLM_MODEL", "value": ""},
+        {"name": "TOKENIZER_MODEL", "value": ""},
+        {"name": "API_TOKEN", "value": ""},
+        {"name": "AZURE_API_VERSION", "value": "2025-01-01-preview"},
+        {"name": "AZURE_CLIENT", "value": "TRUE"},
+        {"name": "MAX_MODEL_LEN", "value": "-1"},
+        {"name": "API_URI", "value": ""},
+        {"name": "API_HEALTH_URI", "value": ""}
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "name": "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs Qwen summarization Video|Audio tracks.",
+      "actions": [
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+      ]
+    },
+    {
+      "name": "AZURE SPEECH SUMMARIZATION (WITH FF REGION) TASK",
+      "description": "Performs Azure summarization Video|Audio tracks.",
+      "actions": [
+        "AZURE SPEECH SUMMARIZATION (WITH FF REGION) ACTION"
+      ]
+    }
+  ],
+  "pipelines": [
+     {
+      "name": "WHISPER SPEECH DETECTION WITH QWEN SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using Qwen.",
+      "tasks": [
+        "WHISPER SPEECH DETECTION TASK",
+        "QWEN SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+      ]
+    },
+    {
+      "name": "WHISPER SPEECH DETECTION WITH AZURE SUMMARIZATION PIPELINE",
+      "description": "Runs Whisper speech detection on audio or video and summarizes the transcript using Azure.",
+      "tasks": [
+        "WHISPER SPEECH DETECTION TASK",
+        "AZURE SPEECH SUMMARIZATION (WITH FF REGION) TASK"
+      ]
+    }
+  ]
+}

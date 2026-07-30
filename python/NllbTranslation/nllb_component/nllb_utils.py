@@ -25,215 +25,219 @@
 #############################################################################
 
 from __future__ import annotations
+import mpf_component_api as mpf
+
+from nlp_text_splitter import WtpLanguageSettings
+
 
 class NllbLanguageMapper:
 
     # double nested dictionary to convert ISO-639-3 language and ISO-15924 script into Flores-200
     _iso_to_flores200: dict[str, dict[str, str]] = {
-    'ace' : {'Arab': 'ace_Arab',    # Acehnese Arabic
-             'Latn': 'ace_Latn'},   # Acehnese Latin
-    'acm' : {'Arab': 'acm_Arab'},   # Mesopotamian Arabic
-    'acq' : {'Arab': 'acq_Arab'},   # Ta’izzi-Adeni Arabic
-    'aeb' : {'Arab': 'aeb_Arab'},   # Tunisian Arabic
-    'afr' : {'Latn': 'afr_Latn'},   # Afrikaans
-    'ajp' : {'Arab': 'ajp_Arab'},   # South Levantine Arabic
-    'aka' : {'Latn': 'aka_Latn'},   # Akan
-    'amh' : {'Ethi': 'amh_Ethi'},   # Amharic
-    'apc' : {'Arab': 'apc_Arab'},   # North Levantine Arabic
-    'arb' : {'Arab': 'arb_Arab',    # Modern Standard Arabic
-             'Latn': 'arb_Latn'},   # Modern Standard Arabic (Romanized)
-    'ars' : {'Arab': 'ars_Arab'},   # Najdi Arabic
-    'ary' : {'Arab': 'ary_Arab'},   # Moroccan Arabic
-    'arz' : {'Arab': 'arz_Arab'},   # Egyptian Arabic
-    'asm' : {'Beng': 'asm_Beng'},   # Assamese
-    'ast' : {'Latn': 'ast_Latn'},   # Asturian
-    'awa' : {'Deva': 'awa_Deva'},	# Awadhi
-    'ayr' : {'Latn': 'ayr_Latn'},	# Central Aymara
-    'azb' : {'Arab': 'azb_Arab'},	# South Azerbaijani
-    'azj' : {'Latn': 'azj_Latn'},	# North Azerbaijani
-    'bak' : {'Cyrl': 'bak_Cyrl'},	# Bashkir
-    'bam' : {'Latn': 'bam_Latn'},	# Bambara
-    'ban' : {'Latn': 'ban_Latn'},	# Balinese
-    'bel' : {'Cyrl': 'bel_Cyrl'},   # Belarusian
-    'bem' : {'Latn': 'bem_Latn'},	# Bemba
-    'ben' : {'Beng': 'ben_Beng'},	# Bengali
-    'bho' : {'Deva': 'bho_Deva'},	# Bhojpuri
-    'bjn' : {'Arab': 'bjn_Arab',	# Banjar (Arabic script)
-             'Latn': 'bjn_Latn'},	# Banjar (Latin script)
-    'bod' : {'Tibt': 'bod_Tibt'},	# Standard Tibetan
-    'bos' : {'Latn': 'bos_Latn'},	# Bosnian
-    'bug' : {'Latn': 'bug_Latn'},	# Buginese
-    'bul' : {'Cyrl': 'bul_Cyrl'},	# Bulgarian
-    'cat' : {'Latn': 'cat_Latn'},	# Catalan
-    'ceb' : {'Latn': 'ceb_Latn'},	# Cebuano
-    'ces' : {'Latn': 'ces_Latn'},	# Czech
-    'cjk' : {'Latn': 'cjk_Latn'},	# Chokwe
-    'ckb' : {'Arab': 'ckb_Arab'},	# Central Kurdish
-    'crh' : {'Latn': 'crh_Latn'},	# Crimean Tatar
-    'cym' : {'Latn': 'cym_Latn'},	# Welsh
-    'dan' : {'Latn': 'dan_Latn'},	# Danish
-    'deu' : {'Latn': 'deu_Latn'},	# German
-    'dik' : {'Latn': 'dik_Latn'},	# Southwestern Dinka
-    'dyu' : {'Latn': 'dyu_Latn'},	# Dyula
-    'dzo' : {'Tibt': 'dzo_Tibt'},	# Dzongkha
-    'ell' : {'Grek': 'ell_Grek'},	# Greek
-    'eng' : {'Latn': 'eng_Latn'},	# English
-    'epo' : {'Latn': 'epo_Latn'},	# Esperanto
-    'est' : {'Latn': 'est_Latn'},	# Estonian
-    'eus' : {'Latn': 'eus_Latn'},	# Basque
-    'ewe' : {'Latn': 'ewe_Latn'},	# Ewe
-    'fao' : {'Latn': 'fao_Latn'},	# Faroese
-    'fij' : {'Latn': 'fij_Latn'},	# Fijian
-    'fin' : {'Latn': 'fin_Latn'},	# Finnish
-    'fon' : {'Latn': 'fon_Latn'},	# Fon
-    'fra' : {'Latn': 'fra_Latn'},	# French
-    'fur' : {'Latn': 'fur_Latn'},	# Friulian
-    'fuv' : {'Latn': 'fuv_Latn'},	# Nigerian Fulfulde
-    'gla' : {'Latn': 'gla_Latn'},	# Scottish Gaelic
-    'gle' : {'Latn': 'gle_Latn'},	# Irish
-    'glg' : {'Latn': 'glg_Latn'},	# Galician
-    'grn' : {'Latn': 'grn_Latn'},	# Guarani
-    'guj' : {'Gujr': 'guj_Gujr'},	# Gujarati
-    'hat' : {'Latn': 'hat_Latn'},	# Haitian Creole
-    'hau' : {'Latn': 'hau_Latn'},	# Hausa
-    'heb' : {'Hebr': 'heb_Hebr'},	# Hebrew
-    'hin' : {'Deva': 'hin_Deva'},	# Hindi
-    'hne' : {'Deva': 'hne_Deva'},	# Chhattisgarhi
-    'hrv' : {'Latn': 'hrv_Latn'},	# Croatian
-    'hun' : {'Latn': 'hun_Latn'},	# Hungarian
-    'hye' : {'Armn': 'hye_Armn'},	# Armenian
-    'ibo' : {'Latn': 'ibo_Latn'},	# Igbo
-    'ilo' : {'Latn': 'ilo_Latn'},	# Ilocano
-    'ind' : {'Latn': 'ind_Latn'},	# Indonesian
-    'isl' : {'Latn': 'isl_Latn'},	# Icelandic
-    'ita' : {'Latn': 'ita_Latn'},	# Italian
-    'jav' : {'Latn': 'jav_Latn'},	# Javanese
-    'jpn' : {'Jpan': 'jpn_Jpan'},	# Japanese
-    'kab' : {'Latn': 'kab_Latn'},	# Kabyle
-    'kac' : {'Latn': 'kac_Latn'},	# Jingpho
-    'kam' : {'Latn': 'kam_Latn'},	# Kamba
-    'kan' : {'Knda': 'kan_Knda'},	# Kannada
-    'kas' : {'Arab': 'kas_Arab',	# Kashmiri (Arabic script)
-             'Deva': 'kas_Deva'},	# Kashmiri (Devanagari script)
-    'kat' : {'Geor': 'kat_Geor'},	# Georgian
-    'knc' : {'Arab': 'knc_Arab',	# Central Kanuri (Arabic script)
-             'Latn': 'knc_Latn'},	# Central Kanuri (Latin script)
-    'kaz' : {'Cyrl': 'kaz_Cyrl'},	# Kazakh
-    'kbp' : {'Latn': 'kbp_Latn'},	# Kabiyè
-    'kea' : {'Latn': 'kea_Latn'},	# Kabuverdianu
-    'khm' : {'Khmr': 'khm_Khmr'},	# Khmer
-    'kik' : {'Latn': 'kik_Latn'},	# Kikuyu
-    'kin' : {'Latn': 'kin_Latn'},	# Kinyarwanda
-    'kir' : {'Cyrl': 'kir_Cyrl'},	# Kyrgyz
-    'kmb' : {'Latn': 'kmb_Latn'},	# Kimbundu
-    'kmr' : {'Latn': 'kmr_Latn'},	# Northern Kurdish
-    'kon' : {'Latn': 'kon_Latn'},	# Kikongo
-    'kor' : {'Hang': 'kor_Hang'},	# Korean
-    'lao' : {'Laoo': 'lao_Laoo'},	# Lao
-    'lij' : {'Latn': 'lij_Latn'},	# Ligurian
-    'lim' : {'Latn': 'lim_Latn'},	# Limburgish
-    'lin' : {'Latn': 'lin_Latn'},	# Lingala
-    'lit' : {'Latn': 'lit_Latn'},	# Lithuanian
-    'lmo' : {'Latn': 'lmo_Latn'},	# Lombard
-    'ltg' : {'Latn': 'ltg_Latn'},	# Latgalian
-    'ltz' : {'Latn': 'ltz_Latn'},	# Luxembourgish
-    'lua' : {'Latn': 'lua_Latn'},	# Luba-Kasai
-    'lug' : {'Latn': 'lug_Latn'},	# Ganda
-    'luo' : {'Latn': 'luo_Latn'},	# Luo
-    'lus' : {'Latn': 'lus_Latn'},	# Mizo
-    'lvs' : {'Latn': 'lvs_Latn'},	# Standard Latvian
-    'mag' : {'Deva': 'mag_Deva'},	# Magahi
-    'mai' : {'Deva': 'mai_Deva'},	# Maithili
-    'mal' : {'Mlym': 'mal_Mlym'},	# Malayalam
-    'mar' : {'Deva': 'mar_Deva'},	# Marathi
-    'min' : {'Arab': 'min_Arab',	# Minangkabau (Arabic script)
-             'Latn': 'min_Latn'},	# Minangkabau (Latin script)
-    'mkd' : {'Cyrl': 'mkd_Cyrl'},	# Macedonian
-    'plt' : {'Latn': 'plt_Latn'},	# Plateau Malagasy
-    'mlt' : {'Latn': 'mlt_Latn'},	# Maltese
-    'mni' : {'Beng': 'mni_Beng'},	# Meitei (Bengali script)
-    'khk' : {'Cyrl': 'khk_Cyrl'},	# Halh Mongolian
-    'mos' : {'Latn': 'mos_Latn'},	# Mossi
-    'mri' : {'Latn': 'mri_Latn'},	# Maori
-    'mya' : {'Mymr': 'mya_Mymr'},	# Burmese
-    'nld' : {'Latn': 'nld_Latn'},	# Dutch
-    'nno' : {'Latn': 'nno_Latn'},	# Norwegian Nynorsk
-    'nob' : {'Latn': 'nob_Latn'},	# Norwegian Bokmål
-    'npi' : {'Deva': 'npi_Deva'},	# Nepali
-    'nso' : {'Latn': 'nso_Latn'},	# Northern Sotho
-    'nus' : {'Latn': 'nus_Latn'},	# Nuer
-    'nya' : {'Latn': 'nya_Latn'},	# Nyanja
-    'oci' : {'Latn': 'oci_Latn'},	# Occitan
-    'gaz' : {'Latn': 'gaz_Latn'},	# West Central Oromo
-    'ory' : {'Orya': 'ory_Orya'},	# Odia
-    'pag' : {'Latn': 'pag_Latn'},	# Pangasinan
-    'pan' : {'Guru': 'pan_Guru'},	# Eastern Panjabi
-    'pap' : {'Latn': 'pap_Latn'},	# Papiamento
-    'pes' : {'Arab': 'pes_Arab'},	# Western Persian
-    'pol' : {'Latn': 'pol_Latn'},	# Polish
-    'por' : {'Latn': 'por_Latn'},	# Portuguese
-    'prs' : {'Arab': 'prs_Arab'},	# Dari
-    'pbt' : {'Arab': 'pbt_Arab'},	# Southern Pashto
-    'quy' : {'Latn': 'quy_Latn'},	# Ayacucho Quechua
-    'ron' : {'Latn': 'ron_Latn'},	# Romanian
-    'run' : {'Latn': 'run_Latn'},	# Rundi
-    'rus' : {'Cyrl': 'rus_Cyrl'},	# Russian
-    'sag' : {'Latn': 'sag_Latn'},	# Sango
-    'san' : {'Deva': 'san_Deva'},	# Sanskrit
-    'sat' : {'Olck': 'sat_Olck'},	# Santali
-    'scn' : {'Latn': 'scn_Latn'},	# Sicilian
-    'shn' : {'Mymr': 'shn_Mymr'},	# Shan
-    'sin' : {'Sinh': 'sin_Sinh'},	# Sinhala
-    'slk' : {'Latn': 'slk_Latn'},	# Slovak
-    'slv' : {'Latn': 'slv_Latn'},	# Slovenian
-    'smo' : {'Latn': 'smo_Latn'},	# Samoan
-    'sna' : {'Latn': 'sna_Latn'},	# Shona
-    'snd' : {'Arab': 'snd_Arab'},	# Sindhi
-    'som' : {'Latn': 'som_Latn'},	# Somali
-    'sot' : {'Latn': 'sot_Latn'},	# Southern Sotho
-    'spa' : {'Latn': 'spa_Latn'},	# Spanish
-    'als' : {'Latn': 'als_Latn'},	# Tosk Albanian
-    'srd' : {'Latn': 'srd_Latn'},	# Sardinian
-    'srp' : {'Cyrl': 'srp_Cyrl'},	# Serbian
-    'ssw' : {'Latn': 'ssw_Latn'},	# Swati
-    'sun' : {'Latn': 'sun_Latn'},	# Sundanese
-    'swe' : {'Latn': 'swe_Latn'},	# Swedish
-    'swh' : {'Latn': 'swh_Latn'},	# Swahili
-    'szl' : {'Latn': 'szl_Latn'},	# Silesian
-    'tam' : {'Taml': 'tam_Taml'},	# Tamil
-    'tat' : {'Cyrl': 'tat_Cyrl'},	# Tatar
-    'tel' : {'Telu': 'tel_Telu'},	# Telugu
-    'tgk' : {'Cyrl': 'tgk_Cyrl'},	# Tajik
-    'tgl' : {'Latn': 'tgl_Latn'},	# Tagalog
-    'tha' : {'Thai': 'tha_Thai'},	# Thai
-    'tir' : {'Ethi': 'tir_Ethi'},	# Tigrinya
-    'taq' : {'Latn': 'taq_Latn',	# Tamasheq (Latin script)
-             'Tfng': 'taq_Tfng'},	# Tamasheq (Tifinagh script)
-    'tpi' : {'Latn': 'tpi_Latn'},	# Tok Pisin
-    'tsn' : {'Latn': 'tsn_Latn'},	# Tswana
-    'tso' : {'Latn': 'tso_Latn'},	# Tsonga
-    'tuk' : {'Latn': 'tuk_Latn'},	# Turkmen
-    'tum' : {'Latn': 'tum_Latn'},	# Tumbuka
-    'tur' : {'Latn': 'tur_Latn'},	# Turkish
-    'twi' : {'Latn': 'twi_Latn'},	# Twi
-    'tzm' : {'Tfng': 'tzm_Tfng'},	# Central Atlas Tamazight
-    'uig' : {'Arab': 'uig_Arab'},	# Uyghur
-    'ukr' : {'Cyrl': 'ukr_Cyrl'},	# Ukrainian
-    'umb' : {'Latn': 'umb_Latn'},	# Umbundu
-    'urd' : {'Arab': 'urd_Arab'},	# Urdu
-    'uzn' : {'Latn': 'uzn_Latn'},	# Northern Uzbek
-    'vec' : {'Latn': 'vec_Latn'},	# Venetian
-    'vie' : {'Latn': 'vie_Latn'},	# Vietnamese
-    'war' : {'Latn': 'war_Latn'},	# Waray
-    'wol' : {'Latn': 'wol_Latn'},	# Wolof
-    'xho' : {'Latn': 'xho_Latn'},	# Xhosa
-    'ydd' : {'Hebr': 'ydd_Hebr'},	# Eastern Yiddish
-    'yor' : {'Latn': 'yor_Latn'},	# Yoruba
-    'yue' : {'Hant': 'yue_Hant'},	# Yue Chinese
-    'zho' : {'Hans': 'zho_Hans',	# Chinese (Simplified)
-             'Hant': 'zho_Hant'},	# Chinese (Traditional)
-    'zsm' : {'Latn': 'zsm_Latn'},	# Standard Malay
-    'zul' : {'Latn': 'zul_Latn'}}	# Zulu
+    'ace' : {'arab': 'ace_Arab',    # Acehnese Arabic
+             'latn': 'ace_Latn'},   # Acehnese Latin
+    'acm' : {'arab': 'acm_Arab'},   # Mesopotamian Arabic
+    'acq' : {'arab': 'acq_Arab'},   # Ta’izzi-Adeni Arabic
+    'aeb' : {'arab': 'aeb_Arab'},   # Tunisian Arabic
+    'afr' : {'latn': 'afr_Latn'},   # Afrikaans
+    'ajp' : {'arab': 'ajp_Arab'},   # South Levantine Arabic
+    'aka' : {'latn': 'aka_Latn'},   # Akan
+    'amh' : {'ethi': 'amh_Ethi'},   # Amharic
+    'apc' : {'arab': 'apc_Arab'},   # North Levantine Arabic
+    'arb' : {'arab': 'arb_Arab',    # Modern Standard Arabic
+             'latn': 'arb_Latn'},   # Modern Standard Arabic (Romanized)
+    'ars' : {'arab': 'ars_Arab'},   # Najdi Arabic
+    'ary' : {'arab': 'ary_Arab'},   # Moroccan Arabic
+    'arz' : {'arab': 'arz_Arab'},   # Egyptian Arabic
+    'asm' : {'beng': 'asm_Beng'},   # Assamese
+    'ast' : {'latn': 'ast_Latn'},   # Asturian
+    'awa' : {'deva': 'awa_Deva'},	# Awadhi
+    'ayr' : {'latn': 'ayr_Latn'},	# Central Aymara
+    'azb' : {'arab': 'azb_Arab'},	# South Azerbaijani
+    'azj' : {'latn': 'azj_Latn'},	# North Azerbaijani
+    'bak' : {'cyrl': 'bak_Cyrl'},	# Bashkir
+    'bam' : {'latn': 'bam_Latn'},	# Bambara
+    'ban' : {'latn': 'ban_Latn'},	# Balinese
+    'bel' : {'cyrl': 'bel_Cyrl'},   # Belarusian
+    'bem' : {'latn': 'bem_Latn'},	# Bemba
+    'ben' : {'beng': 'ben_Beng'},	# Bengali
+    'bho' : {'deva': 'bho_Deva'},	# Bhojpuri
+    'bjn' : {'arab': 'bjn_Arab',	# Banjar (Arabic script)
+             'latn': 'bjn_Latn'},	# Banjar (Latin script)
+    'bod' : {'tibt': 'bod_Tibt'},	# Standard Tibetan
+    'bos' : {'latn': 'bos_Latn'},	# Bosnian
+    'bug' : {'latn': 'bug_Latn'},	# Buginese
+    'bul' : {'cyrl': 'bul_Cyrl'},	# Bulgarian
+    'cat' : {'latn': 'cat_Latn'},	# Catalan
+    'ceb' : {'latn': 'ceb_Latn'},	# Cebuano
+    'ces' : {'latn': 'ces_Latn'},	# Czech
+    'cjk' : {'latn': 'cjk_Latn'},	# Chokwe
+    'ckb' : {'arab': 'ckb_Arab'},	# Central Kurdish
+    'crh' : {'latn': 'crh_Latn'},	# Crimean Tatar
+    'cym' : {'latn': 'cym_Latn'},	# Welsh
+    'dan' : {'latn': 'dan_Latn'},	# Danish
+    'deu' : {'latn': 'deu_Latn'},	# German
+    'dik' : {'latn': 'dik_Latn'},	# Southwestern Dinka
+    'dyu' : {'latn': 'dyu_Latn'},	# Dyula
+    'dzo' : {'tibt': 'dzo_Tibt'},	# Dzongkha
+    'ell' : {'grek': 'ell_Grek'},	# Greek
+    'eng' : {'latn': 'eng_Latn'},	# English
+    'epo' : {'latn': 'epo_Latn'},	# Esperanto
+    'est' : {'latn': 'est_Latn'},	# Estonian
+    'eus' : {'latn': 'eus_Latn'},	# Basque
+    'ewe' : {'latn': 'ewe_Latn'},	# Ewe
+    'fao' : {'latn': 'fao_Latn'},	# Faroese
+    'fij' : {'latn': 'fij_Latn'},	# Fijian
+    'fin' : {'latn': 'fin_Latn'},	# Finnish
+    'fon' : {'latn': 'fon_Latn'},	# Fon
+    'fra' : {'latn': 'fra_Latn'},	# French
+    'fur' : {'latn': 'fur_Latn'},	# Friulian
+    'fuv' : {'latn': 'fuv_Latn'},	# Nigerian Fulfulde
+    'gla' : {'latn': 'gla_Latn'},	# Scottish Gaelic
+    'gle' : {'latn': 'gle_Latn'},	# Irish
+    'glg' : {'latn': 'glg_Latn'},	# Galician
+    'grn' : {'latn': 'grn_Latn'},	# Guarani
+    'guj' : {'gujr': 'guj_Gujr'},	# Gujarati
+    'hat' : {'latn': 'hat_Latn'},	# Haitian Creole
+    'hau' : {'latn': 'hau_Latn'},	# Hausa
+    'heb' : {'hebr': 'heb_Hebr'},	# Hebrew
+    'hin' : {'deva': 'hin_Deva'},	# Hindi
+    'hne' : {'deva': 'hne_Deva'},	# Chhattisgarhi
+    'hrv' : {'latn': 'hrv_Latn'},	# Croatian
+    'hun' : {'latn': 'hun_Latn'},	# Hungarian
+    'hye' : {'armn': 'hye_Armn'},	# Armenian
+    'ibo' : {'latn': 'ibo_Latn'},	# Igbo
+    'ilo' : {'latn': 'ilo_Latn'},	# Ilocano
+    'ind' : {'latn': 'ind_Latn'},	# Indonesian
+    'isl' : {'latn': 'isl_Latn'},	# Icelandic
+    'ita' : {'latn': 'ita_Latn'},	# Italian
+    'jav' : {'latn': 'jav_Latn'},	# Javanese
+    'jpn' : {'jpan': 'jpn_Jpan'},	# Japanese
+    'kab' : {'latn': 'kab_Latn'},	# Kabyle
+    'kac' : {'latn': 'kac_Latn'},	# Jingpho
+    'kam' : {'latn': 'kam_Latn'},	# Kamba
+    'kan' : {'knda': 'kan_Knda'},	# Kannada
+    'kas' : {'arab': 'kas_Arab',	# Kashmiri (Arabic script)
+             'deva': 'kas_Deva'},	# Kashmiri (Devanagari script)
+    'kat' : {'geor': 'kat_Geor'},	# Georgian
+    'knc' : {'arab': 'knc_Arab',	# Central Kanuri (Arabic script)
+             'latn': 'knc_Latn'},	# Central Kanuri (Latin script)
+    'kaz' : {'cyrl': 'kaz_Cyrl'},	# Kazakh
+    'kbp' : {'latn': 'kbp_Latn'},	# Kabiyè
+    'kea' : {'latn': 'kea_Latn'},	# Kabuverdianu
+    'khm' : {'khmr': 'khm_Khmr'},	# Khmer
+    'kik' : {'latn': 'kik_Latn'},	# Kikuyu
+    'kin' : {'latn': 'kin_Latn'},	# Kinyarwanda
+    'kir' : {'cyrl': 'kir_Cyrl'},	# Kyrgyz
+    'kmb' : {'latn': 'kmb_Latn'},	# Kimbundu
+    'kmr' : {'latn': 'kmr_Latn'},	# Northern Kurdish
+    'kon' : {'latn': 'kon_Latn'},	# Kikongo
+    'kor' : {'hang': 'kor_Hang'},	# Korean
+    'lao' : {'laoo': 'lao_Laoo'},	# Lao
+    'lij' : {'latn': 'lij_Latn'},	# Ligurian
+    'lim' : {'latn': 'lim_Latn'},	# Limburgish
+    'lin' : {'latn': 'lin_Latn'},	# Lingala
+    'lit' : {'latn': 'lit_Latn'},	# Lithuanian
+    'lmo' : {'latn': 'lmo_Latn'},	# Lombard
+    'ltg' : {'latn': 'ltg_Latn'},	# Latgalian
+    'ltz' : {'latn': 'ltz_Latn'},	# Luxembourgish
+    'lua' : {'latn': 'lua_Latn'},	# Luba-Kasai
+    'lug' : {'latn': 'lug_Latn'},	# Ganda
+    'luo' : {'latn': 'luo_Latn'},	# Luo
+    'lus' : {'latn': 'lus_Latn'},	# Mizo
+    'lvs' : {'latn': 'lvs_Latn'},	# Standard Latvian
+    'mag' : {'deva': 'mag_Deva'},	# Magahi
+    'mai' : {'deva': 'mai_Deva'},	# Maithili
+    'mal' : {'mlym': 'mal_Mlym'},	# Malayalam
+    'mar' : {'deva': 'mar_Deva'},	# Marathi
+    'min' : {'arab': 'min_Arab',	# Minangkabau (Arabic script)
+             'latn': 'min_Latn'},	# Minangkabau (Latin script)
+    'mkd' : {'cyrl': 'mkd_Cyrl'},	# Macedonian
+    'plt' : {'latn': 'plt_Latn'},	# Plateau Malagasy
+    'mlt' : {'latn': 'mlt_Latn'},	# Maltese
+    'mni' : {'beng': 'mni_Beng'},	# Meitei (Bengali script)
+    'khk' : {'cyrl': 'khk_Cyrl'},	# Halh Mongolian
+    'mos' : {'latn': 'mos_Latn'},	# Mossi
+    'mri' : {'latn': 'mri_Latn'},	# Maori
+    'mya' : {'mymr': 'mya_Mymr'},	# Burmese
+    'nld' : {'latn': 'nld_Latn'},	# Dutch
+    'nno' : {'latn': 'nno_Latn'},	# Norwegian Nynorsk
+    'nob' : {'latn': 'nob_Latn'},	# Norwegian Bokmål
+    'npi' : {'deva': 'npi_Deva'},	# Nepali
+    'nso' : {'latn': 'nso_Latn'},	# Northern Sotho
+    'nus' : {'latn': 'nus_Latn'},	# Nuer
+    'nya' : {'latn': 'nya_Latn'},	# Nyanja
+    'oci' : {'latn': 'oci_Latn'},	# Occitan
+    'gaz' : {'latn': 'gaz_Latn'},	# West Central Oromo
+    'ory' : {'orya': 'ory_Orya'},	# Odia
+    'pag' : {'latn': 'pag_Latn'},	# Pangasinan
+    'pan' : {'guru': 'pan_Guru'},	# Eastern Panjabi
+    'pap' : {'latn': 'pap_Latn'},	# Papiamento
+    'pes' : {'arab': 'pes_Arab'},	# Western Persian
+    'pol' : {'latn': 'pol_Latn'},	# Polish
+    'por' : {'latn': 'por_Latn'},	# Portuguese
+    'prs' : {'arab': 'prs_Arab'},	# Dari
+    'pbt' : {'arab': 'pbt_Arab'},	# Southern Pashto
+    'quy' : {'latn': 'quy_Latn'},	# Ayacucho Quechua
+    'ron' : {'latn': 'ron_Latn'},	# Romanian
+    'run' : {'latn': 'run_Latn'},	# Rundi
+    'rus' : {'cyrl': 'rus_Cyrl'},	# Russian
+    'sag' : {'latn': 'sag_Latn'},	# Sango
+    'san' : {'deva': 'san_Deva'},	# Sanskrit
+    'sat' : {'olck': 'sat_Olck'},	# Santali
+    'scn' : {'latn': 'scn_Latn'},	# Sicilian
+    'shn' : {'mymr': 'shn_Mymr'},	# Shan
+    'sin' : {'sinh': 'sin_Sinh'},	# Sinhala
+    'slk' : {'latn': 'slk_Latn'},	# Slovak
+    'slv' : {'latn': 'slv_Latn'},	# Slovenian
+    'smo' : {'latn': 'smo_Latn'},	# Samoan
+    'sna' : {'latn': 'sna_Latn'},	# Shona
+    'snd' : {'arab': 'snd_Arab'},	# Sindhi
+    'som' : {'latn': 'som_Latn'},	# Somali
+    'sot' : {'latn': 'sot_Latn'},	# Southern Sotho
+    'spa' : {'latn': 'spa_Latn'},	# Spanish
+    'als' : {'latn': 'als_Latn'},	# Tosk Albanian
+    'srd' : {'latn': 'srd_Latn'},	# Sardinian
+    'srp' : {'cyrl': 'srp_Cyrl'},	# Serbian
+    'ssw' : {'latn': 'ssw_Latn'},	# Swati
+    'sun' : {'latn': 'sun_Latn'},	# Sundanese
+    'swe' : {'latn': 'swe_Latn'},	# Swedish
+    'swh' : {'latn': 'swh_Latn'},	# Swahili
+    'szl' : {'latn': 'szl_Latn'},	# Silesian
+    'tam' : {'taml': 'tam_Taml'},	# Tamil
+    'tat' : {'cyrl': 'tat_Cyrl'},	# Tatar
+    'tel' : {'telu': 'tel_Telu'},	# Telugu
+    'tgk' : {'cyrl': 'tgk_Cyrl'},	# Tajik
+    'tgl' : {'latn': 'tgl_Latn'},	# Tagalog
+    'tha' : {'thai': 'tha_Thai'},	# Thai
+    'tir' : {'ethi': 'tir_Ethi'},	# Tigrinya
+    'taq' : {'latn': 'taq_Latn',	# Tamasheq (Latin script)
+             'tfng': 'taq_Tfng'},	# Tamasheq (Tifinagh script)
+    'tpi' : {'latn': 'tpi_Latn'},	# Tok Pisin
+    'tsn' : {'latn': 'tsn_Latn'},	# Tswana
+    'tso' : {'latn': 'tso_Latn'},	# Tsonga
+    'tuk' : {'latn': 'tuk_Latn'},	# Turkmen
+    'tum' : {'latn': 'tum_Latn'},	# Tumbuka
+    'tur' : {'latn': 'tur_Latn'},	# Turkish
+    'twi' : {'latn': 'twi_Latn'},	# Twi
+    'tzm' : {'tfng': 'tzm_Tfng'},	# Central Atlas Tamazight
+    'uig' : {'arab': 'uig_Arab'},	# Uyghur
+    'ukr' : {'cyrl': 'ukr_Cyrl'},	# Ukrainian
+    'umb' : {'latn': 'umb_Latn'},	# Umbundu
+    'urd' : {'arab': 'urd_Arab'},	# Urdu
+    'uzn' : {'latn': 'uzn_Latn'},	# Northern Uzbek
+    'vec' : {'latn': 'vec_Latn'},	# Venetian
+    'vie' : {'latn': 'vie_Latn'},	# Vietnamese
+    'war' : {'latn': 'war_Latn'},	# Waray
+    'wol' : {'latn': 'wol_Latn'},	# Wolof
+    'xho' : {'latn': 'xho_Latn'},	# Xhosa
+    'ydd' : {'hebr': 'ydd_Hebr'},	# Eastern Yiddish
+    'yor' : {'latn': 'yor_Latn'},	# Yoruba
+    'yue' : {'hant': 'yue_Hant'},	# Yue Chinese
+    'zho' : {'hans': 'zho_Hans',	# Chinese (Simplified)
+             'hant': 'zho_Hant'},	# Chinese (Traditional)
+    'zsm' : {'latn': 'zsm_Latn'},	# Standard Malay
+    'zul' : {'latn': 'zul_Latn'}}	# Zulu
 
     # default a script to use if only language is provided
     _iso_default_script_flores200: dict[str, str] = {
@@ -435,8 +439,6 @@ class NllbLanguageMapper:
     'zul' : 'zul_Latn'	# Zulu
     }
 
-    # iso mappings for Flores-200 not recognized by
-    # WtpLanguageSettings.convert_to_iso()
     _flores_to_wtpsplit_iso_639_1 = {
     'ace_Arab': 'ar',   # Acehnese Arabic
     'ace_Latn': 'id',   # Acehnese Latin
@@ -570,9 +572,14 @@ class NllbLanguageMapper:
 
     @classmethod
     def get_code(cls, lang : str, script : str):
-        if script and lang in cls._iso_to_flores200:
-            return cls._iso_to_flores200[lang][script]
-        return cls._iso_default_script_flores200.get(lang)
+        if script and lang.lower() in cls._iso_to_flores200:
+            if script.lower() in cls._iso_to_flores200[lang.lower()]:
+                return cls._iso_to_flores200[lang.lower()][script.lower()]
+            else:
+                raise mpf.DetectionException(
+                    f'Language/script combination ({lang}_{script}) is invalid or not supported',
+                mpf.DetectionError.INVALID_PROPERTY)
+        return cls._iso_default_script_flores200.get(lang.lower())
 
     @classmethod
     def get_normalized_iso(cls, code : str):

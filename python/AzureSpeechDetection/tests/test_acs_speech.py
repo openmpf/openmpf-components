@@ -24,18 +24,24 @@
 # limitations under the License.                                            #
 #############################################################################
 
+import io
 import sys
 import logging
 import os
 import json
 import unittest
 import threading
+import urllib.parse
 from typing import ClassVar
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from acs_speech_component import AcsSpeechComponent
+from acs_speech_component.azure_connect import (
+    AzureConnection,
+    AcsServerInfo,
+)
 
 import mpf_component_api as mpf
 import mpf_component_util as mpf_util
@@ -43,15 +49,16 @@ import mpf_component_util as mpf_util
 
 local_path = os.path.realpath(os.path.dirname(__file__))
 base_local_path = os.path.join(local_path, 'test_data')
-base_url_path = '/speechtotext/v3.0/'
+base_url_path = '/speechtotext/'
+api_version = '2025-10-15'
 
 test_port = 10669
 origin = 'http://localhost:{}'.format(test_port)
-url_prefix = origin + base_url_path
-transcription_url = url_prefix + 'transcriptions'
-blobs_url = url_prefix + 'recordings'
-outputs_url = url_prefix + 'outputs'
-models_url = url_prefix + 'models'
+url_prefix = origin + base_url_path.rstrip('/')
+transcription_url = url_prefix
+blobs_url = url_prefix + '/recordings'
+outputs_url = url_prefix + '/outputs'
+models_url = url_prefix + '/models'
 container_url = 'https://account_name.blob.core.endpoint.suffix/container_name'
 account_sas = '[sas_url]'
 
@@ -59,13 +66,24 @@ account_sas = '[sas_url]'
 def get_test_properties(**extra_properties):
     return dict(
         ACS_URL=transcription_url,
+        ACS_API_VERSION=api_version,
         ACS_SUBSCRIPTION_KEY='acs_subscription_key',
         ACS_BLOB_CONTAINER_URL=container_url,
         ACS_BLOB_SERVICE_KEY='acs_blob_service_key',
+        USE_SAS_AUTH='FALSE',
         **extra_properties
     )
 
 logging.basicConfig(level=logging.DEBUG)
+
+
+class JsonResponse(io.StringIO):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self.close()
+        return False
 
 class TestAcsSpeech(unittest.TestCase):
     mock_server: ClassVar['MockServer']
@@ -95,26 +113,121 @@ class TestAcsSpeech(unittest.TestCase):
         else:
             raise Exception('Mode must be "audio" or "video".')
 
-        with patch.object(comp.processor.acs, 'delete_blob'),\
-                patch.object(comp.processor.acs, 'get_blob_client'),\
+        with patch.object(comp.processor.acs, 'delete_blob'), \
+                patch.object(comp.processor.acs, 'get_blob_client'), \
                 patch.object(
                     comp.processor.acs,
                     'generate_account_sas',
                     return_value=account_sas):
             return list(map(detection_func, jobs))
 
+    def test_normalize_speech_base_url_trims_extra_path(self):
+        normalize = AzureConnection._normalize_speech_base_url
+
+        self.assertEqual(
+            'https://example.com/speechtotext',
+            normalize('https://example.com/speechtotext')
+        )
+
+        self.assertEqual(
+            'https://example.com/speechtotext',
+            normalize('https://example.com/speechtotext/transcriptions')
+        )
+
+        self.assertEqual(
+            'https://example.com/custom/speechtotext',
+            normalize('https://example.com/custom/speechtotext/transcriptions')
+        )
+
+    def test_normalize_speech_base_url_appends_and_warns_when_missing(self):
+        normalize = AzureConnection._normalize_speech_base_url
+
+        with self.assertLogs('AcsSpeechComponent', level='WARNING') as cm:
+            result = normalize('https://example.com/custom/path')
+
+        self.assertEqual(
+            'https://example.com/custom/path/speechtotext',
+            result
+        )
+        self.assertTrue(any('/speechtotext' in msg for msg in cm.output))
+
+
+    @patch('acs_speech_component.azure_connect.ContainerClient.from_container_url')
+    def test_update_acs_rejects_invalid_format(self, _mock_container):
+        conn = AzureConnection()
+
+        fake_retry = Mock()
+        fake_retry.urlopen.return_value = JsonResponse(json.dumps([
+            'wrong-format!'
+        ]))
+
+        server_info = AcsServerInfo(
+            url='https://example.com/speechtotext',
+            api_version='2025-10-15',
+            subscription_key='test-key',
+            blob_container_url='https://blob.example.com/container',
+            blob_service_key='blob-key',
+            http_retry=fake_retry,
+            http_max_attempts=1,
+            use_sas_auth=False
+        )
+
+        with self.assertRaises(mpf.DetectionException) as cm:
+            conn.update_acs(server_info)
+
+        self.assertEqual(mpf.DetectionError.DETECTION_FAILED, cm.exception.error_code)
+
+    @patch('acs_speech_component.azure_connect.ContainerClient.from_container_url')
+    def test_update_acs_accepts_new_locales_format(self, _mock_container):
+        conn = AzureConnection()
+
+        fake_retry = Mock()
+        fake_retry.urlopen.return_value = JsonResponse(json.dumps({
+            'Submit': ['en-US', 'zh-CN-SHANDONG'],
+            'Transcribe': ['en-US']
+        }))
+
+        server_info = AcsServerInfo(
+            url='https://example.com/custom/path',
+            api_version='2025-10-15',
+            subscription_key='test-key',
+            blob_container_url='https://blob.example.com/container',
+            blob_service_key='blob-key',
+            http_retry=fake_retry,
+            http_max_attempts=1,
+            use_sas_auth=False
+        )
+
+        with self.assertLogs('AcsSpeechComponent', level='WARNING') as cm:
+            conn.update_acs(server_info)
+
+        # Missing /speechtotext should be appended.
+        self.assertEqual(
+            'https://example.com/custom/path/speechtotext',
+            conn._base_url
+        )
+
+        # Both raw and normalized locale variants should be usable.
+        self.assertIn('en-US', conn.supported_locales)
+        self.assertIn('zh-CN-SHANDONG', conn.supported_locales)
+        self.assertIn('zh-CN-shandong', conn.supported_locales)
+
+        self.assertTrue(any('/speechtotext' in msg for msg in cm.output))
+
     def test_audio_file(self):
         self.mock_server.sas_enabled = True
+
+        job_properties = get_test_properties(
+                DIARIZE='FALSE',
+                LANGUAGE='EN-us',
+            )
+        job_properties['USE_SAS_AUTH'] = 'TRUE'
         job = mpf.AudioJob(
             job_name='test_audio',
             data_uri=self._get_test_file('left.wav'),
             start_time=0,
             stop_time=-1,
-            job_properties=get_test_properties(
-                DIARIZE='FALSE',
-                LANGUAGE='EN-us',
-                USE_SAS_AUTH='TRUE'
-            ),
+            job_properties=job_properties,
             media_properties={},
             feed_forward_track=None
         )
@@ -302,14 +415,18 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         (e.g. drive or directory names) are ignored.  (XXX They should
         probably be diagnosed.)
         """
-        if path.startswith(self.server.base_url_path):
-            path = path[len(self.server.base_url_path):]
-            if path == '':
-                path = '/'
+        parsed = urllib.parse.urlparse(path)
+        path_only = parsed.path
+
+        if path_only.startswith(self.server.base_url_path):
+            path_only = path_only[len(self.server.base_url_path):]
+            if path_only == '':
+                path_only = '/'
         else:
             return None
-        path = super().translate_path(path)
-        rel_path = os.path.relpath(path, os.getcwd())
+
+        path_only = super().translate_path(path_only)
+        rel_path = os.path.relpath(path_only, os.getcwd())
         full_path = os.path.join(self.server.base_local_path, rel_path)
         return full_path
 
@@ -317,31 +434,38 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         if not self.headers.get('Ocp-Apim-Subscription-Key'):
             self.send_error(403, 'Forbidden')
             self.wfile.write('No permission to access this resource.'.encode())
-            return
+            return False
 
         if self.headers.get('Content-Type') != 'application/json':
             self.send_error(400, 'BadRequest')
             self.wfile.write('The request has been incorrect.'.encode())
-            return
+            return False
+        return True
+
+    def _get_tail_and_query(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if not parsed.path.startswith(self.server.base_url_path):
+            return None, None
+        tail = parsed.path[len(self.server.base_url_path):]
+        query = urllib.parse.parse_qs(parsed.query)
+        return tail, query
 
     def do_GET(self):
         if not isinstance(self.path, str):
             self.send_response(442)
-            self.send_headers()
+            self.end_headers()
             self.wfile.close()
             return
 
-        if not self.path.startswith(self.server.base_url_path):
+        tail, query = self._get_tail_and_query()
+        if tail is None:
             self.send_error(404, 'NotFound')
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
             return
-        tail = self.path[len(self.server.base_url_path):]
+
+
 
         if tail == 'transcriptions/locales':
-            self.path += '.json'
+            self.path = urllib.parse.urlparse(self.path).path + '.json'
         elif tail.startswith('transcriptions'):
             jobname = tail[len('transcriptions/'):]
             if jobname.endswith('.json'):
@@ -351,7 +475,6 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
 
             self._validate_headers()
             if jobname not in self.server.jobs:
-                print('\n\n\n', jobname, self.server.jobs, '\n\n\n')
                 self.send_error(404, 'NotFound')
                 self.wfile.write(
                     'The specified entity cannot be found.'.encode()
@@ -367,41 +490,43 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             )
             return
 
-        if self.path.startswith(self.server.base_url_path):
-            super(MockRequestHandler, self).do_GET()
+        super(MockRequestHandler, self).do_GET()
 
     def do_DELETE(self):
         if not isinstance(self.path, str):
             self.send_response(442)
-            self.send_headers()
+            self.end_headers()
             self.wfile.close()
             return
 
-        if not self.path.startswith(self.server.base_url_path):
+        tail, query = self._get_tail_and_query()
+        if tail is None:
             self.send_error(404, 'NotFound')
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
             return
-        tail = self.path[len(self.server.base_url_path):]
+
+        if query.get('api-version', [''])[0] != api_version:
+            self.send_error(400, 'InvalidApiVersion')
+            return
 
         if tail.startswith('transcriptions'):
             self._validate_headers()
             self.send_response(204)
-            if self.path in self.server.jobs:
-                self.server.jobs.remove(self.path)
             self.end_headers()
         else:
             self.send_error(404)
-            self.wfile.write(
-                'The resource you are looking for has been removed, had its '
-                'name changed, or is temporarily unavailable.'.encode()
-            )
-
 
     def do_POST(self):
-        self._validate_headers()
+        tail, query = self._get_tail_and_query()
+        if tail != 'transcriptions:submit':
+            self.send_error(404, 'NotFound')
+            return
+
+        if query.get('api-version', [''])[0] != api_version:
+            self.send_error(400, 'InvalidApiVersion')
+            return
+
+        if not self._validate_headers():
+            return
 
         content_len = int(self.headers['Content-Length'])
         post_body = self.rfile.read(content_len)
@@ -432,12 +557,17 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
             return
 
         properties = data.get('properties')
-        if not properties or not mpf_util.get_property(
-                    properties,
-                    'wordLevelTimestampsEnabled',
-                    False
-                ):
-            raise Exception('Expected wordLevelTimestampsEnabled')
+        if not properties or properties.get('wordLevelTimestampsEnabled') is not True:
+            raise Exception('Expected wordLevelTimestampsEnabled=True')
+
+        if 'timeToLiveHours' not in properties:
+            raise Exception('Expected timeToLiveHours')
+
+        diarization = properties.get('diarization')
+        if not isinstance(diarization, dict):
+            raise Exception('Expected diarization object')
+        if 'enabled' not in diarization:
+            raise Exception('Expected diarization.enabled')
 
         recording_url = data.get('contentUrls')[0]
         if self.server.sas_enabled:
@@ -446,16 +576,19 @@ class MockRequestHandler(SimpleHTTPRequestHandler):
         elif '?' in recording_url:
             raise Exception('SAS disabled, but sas found in recording URL.')
 
-        self.send_response(202)
+        job_name = data.get('displayName')
+        self.server.jobs.add(job_name)
 
-        location = os.path.join(
-            self.server.base_url_path,
-            'transcriptions',
-            data.get('displayName') + '.json'
+        self.send_response(201)
+        self.send_header(
+            'Location',
+            f'{origin}{self.server.base_url_path}transcriptions:submit/{job_name}?api-version={api_version}'
         )
-        self.server.jobs.add(data.get('displayName'))
-        self.send_header('Location', origin + location)
+        self.send_header('Content-Type', 'application/json')
         self.end_headers()
+        self.wfile.write(json.dumps({
+            'self': f'{origin}{self.server.base_url_path}transcriptions/{job_name}.json?api-version={api_version}'
+        }).encode())
 
 
 if __name__ == '__main__':

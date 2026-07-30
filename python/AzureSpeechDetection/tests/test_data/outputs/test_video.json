@@ -1,5 +1,5 @@
 {
-    "source": "http://localhost:10669/speechtotext/v3.0/recordings/left.avi",
+    "source": "http://localhost:10669/speechtotext/recordings/left.avi",
     "timestamp": "2021-01-22T16:15:25Z",
     "durationInTicks": 50200000,
     "duration": "PT5.02S",

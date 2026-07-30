@@ -1,7 +1,7 @@
 {
   "componentName": "ArgosTranslation",
-  "componentVersion": "9.0",
-  "middlewareVersion": "9.0",
+  "componentVersion": "10.0",
+  "middlewareVersion": "10.0",
   "sourceLanguage": "python",
   "batchLibrary": "ArgosTranslation",
   "environmentVariables": [],
@@ -64,13 +64,13 @@
           "value": "REGION"
         },
         {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "name": "IS_ANNOTATOR",
           "value": "TRUE"
         }
       ]
     },
     {
-      "name": "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) ACTION",
+      "name": "ARGOS TRANSLATION (WITH FF REGION AND NOT ANNOTATOR) ACTION",
       "description": "Uses Argos Translation to perform translation on feed-forward tracks and detections.",
       "algorithm": "ARGOSTRANSLATION",
       "properties": [
@@ -79,7 +79,7 @@
           "value": "REGION"
         },
         {
-          "name": "OUTPUT_MERGE_WITH_PREVIOUS_TASK",
+          "name": "IS_ANNOTATOR",
           "value": "FALSE"
         }
       ]
@@ -101,10 +101,10 @@
       ]
     },
     {
-      "name": "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) TASK",
+      "name": "ARGOS TRANSLATION (WITH FF REGION AND NOT ANNOTATOR) TASK",
       "description": "Uses Argos Translate to perform translation on feed-forward tracks and detections.",
       "actions": [
-        "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) ACTION"
+        "ARGOS TRANSLATION (WITH FF REGION AND NOT ANNOTATOR) ACTION"
       ]
     },
     {
@@ -128,7 +128,7 @@
       "description": "Uses Argos Translate to perform translation on a plain text file.",
       "tasks": [
         "FASTTEXT LANGUAGE ID TEXT FILE TASK",
-        "ARGOS TRANSLATION (WITH FF REGION AND NO TASK MERGING) TASK"
+        "ARGOS TRANSLATION (WITH FF REGION AND NOT ANNOTATOR) TASK"
       ]
     }
   ]

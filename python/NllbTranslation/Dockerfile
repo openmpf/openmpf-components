@@ -33,39 +33,54 @@ ARG BUILD_TAG=latest
 # below line to BUILD_TYPE=cpu
 ARG BUILD_TYPE=gpu
 
+# Use a base image we did not build so that we do not have re-download the model every time
+# openmpf_python_component_build changes.
+FROM python:3.12-alpine AS download_model
+
+RUN pip install --no-cache-dir 'huggingface_hub[cli]'
+
+ARG MODEL_NAME=OpenNMT/nllb-200-3.3B-ct2-int8
+ARG MODEL_REVISION=28d998cc8548ad62f4f98cf8860928c3af99b97b
+
+# The CTranslate2 model does not ship a SentencePiece model, so the FLORES-200
+# tokenizer is downloaded alongside it (see SP_MODEL_PATH in the component).
+ARG SPM_REVISION=065b96d3e3c453f4433f2a83456b8b864e8a09d6
+
+RUN hf download "$MODEL_NAME" --local-dir "/models/$MODEL_NAME" --revision "$MODEL_REVISION" \
+    && rm -rf /models/$MODEL_NAME/.[^.]* \
+    && hf download OpenNMT/nllb-200-onmt flores200_sacrebleu_tokenizer_spm.model \
+        --revision "$SPM_REVISION" --local-dir /models/OpenNMT
+
+
 FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS build
 
 ARG BUILD_TYPE
-WORKDIR /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
-RUN if [[ "${BUILD_TYPE}" == "gpu" ]]; \
-    then ./install.sh --gpu; \
-    else ./install.sh; fi;
+RUN <<eot
+    cd /home/mpf/openmpf-projects/openmpf-python-component-sdk/detection/nlp_text_splitter
+    if [[ "${BUILD_TYPE}" == "gpu" ]]; then
+        ./install.sh --gpu
+    else
+        ./install.sh
+    fi
+eot
 
-FROM ${BUILD_REGISTRY}openmpf_python_component_build:${BUILD_TAG} AS download_model
-
-# download nllb model
-ARG MODEL_NAME=OpenNMT/nllb-200-3.3B-ct2-int8
-ARG MODEL_REVISION=28d998cc8548ad62f4f98cf8860928c3af99b97b
-RUN pip install -U "huggingface_hub[cli]" ctranslate2 sentencepiece; \
-    hf download $MODEL_NAME \
-    --local-dir /models/$MODEL_NAME \
-    --revision $MODEL_REVISION; \
-    rm -rf /models/$MODEL_NAME/.[^.]*; \
-    hf download OpenNMT/nllb-200-onmt flores200_sacrebleu_tokenizer_spm.model \
-    --revision 065b96d3e3c453f4433f2a83456b8b864e8a09d6 \
-    --local-dir /models/OpenNMT;
-
-FROM ${BUILD_REGISTRY}openmpf_python_executor_ssb:${BUILD_TAG} AS cpu_component
-
-COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
-COPY --from=build /opt/wtp /opt/wtp
-COPY --from=download_model /models /models
+RUN pip install --no-cache-dir 'accelerate>=0.26.0' 'numpy<2'
 
 ARG RUN_TESTS=false
 RUN --mount=target=.,readwrite \
+    --mount=from=download_model,src=/models,target=/models \
     install-component.sh; \
     if [ "${RUN_TESTS,,}" == true ]; then python tests/test_nllb_translation.py; fi
 
+
+
+FROM ${BUILD_REGISTRY}openmpf_python_executor:${BUILD_TAG} AS cpu_component
+
+COPY --from=download_model /models /models
+COPY --from=build /opt/wtp /opt/wtp
+
+COPY --from=build $COMPONENT_VIRTUALENV $COMPONENT_VIRTUALENV
+COPY --from=build $PLUGINS_DIR/NllbTranslation $PLUGINS_DIR/NllbTranslation
 
 LABEL org.label-schema.license="Apache 2.0" \
       org.label-schema.name="OpenMPF No Language Left Behind Translation" \

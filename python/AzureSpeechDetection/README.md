@@ -5,6 +5,12 @@ Transcription REST
 endpoint](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/batch-transcription)
 to transcribe speech from audio and video files.
 
+The component submits transcription jobs with the
+`/speechtotext/transcriptions:submit` endpoint and then polls for completion.
+By default, the component targets Speech-to-text REST API version `2025-10-15`,
+and the API version can be configured with the `ACS_API_VERSION` job property.
+
+
 
 # Required Job Properties
 In order for the component to process any jobs, the job properties listed below must be
@@ -12,12 +18,14 @@ provided. These properties have no default value, but can be set through environ
 variables of the same name. If both environment variable and job property are provided,
 the job property will be used.
 
-- `ACS_URL`: URL for the Azure Cognitive Services Endpoint. For example,
-  `https://virginia.cris.azure.us/api/speechtotext/v3.1/transcriptions`. The component has
-  been tested against v3.1 of the API.
+- `ACS_URL`: Base URL for the Azure Speech-to-text REST endpoint. Example:
+  `https://eastus.api.cognitive.microsoft.com/speechtotext`
 
-- `ACS_SUBSCRIPTION_KEY`: A string containing your subscription key for the speech
-  service.
+  Do not include `/transcriptions`, `/v3.x`, or `?api-version=...` in this
+  value. The component appends the correct path and `api-version`
+  parameter internally using `ACS_API_VERSION`.
+
+- `ACS_SUBSCRIPTION_KEY`: Subscription key for the Azure Speech resource.
 
 - `ACS_BLOB_CONTAINER_URL`: URL for an Azure Storage Blob container in which to store
   files during processing. e.g. `https://myaccount.blob.core.windows.net/mycontainer`. See
@@ -32,21 +40,46 @@ the job property will be used.
 # Optional Job Properties
 The below properties can be optionally provided to alter the behavior of the component.
 
-- `LANGUAGE`:  The BCP-47 locale to use for transcription. Defaults to `en-US`. A complete
-  list of available locales can be found in Microsoft's [Speech service
-  documentation](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support).
+- `ACS_API_VERSION`: Speech-to-text REST API version to use. The component is
+  tested with `2024-11-15` and `2025-10-15`. The default is `2025-10-15`.
 
-- `DIARIZE`: Whether to assign utterances to different speakers. Currently, this component
-  supports only two-speaker diarization. Diarization is enabled by default.
+  If an unrecognized version string is supplied, the component logs a warning
+  and passes the value through to Azure. This can allow newer Azure API
+  versions to work without a code change, but invalid version strings will fail
+  at request time.
 
-- `CLEANUP`: Whether to delete files from Azure Blob storage container when processing is
-  complete. It is recommended to always keep this enabled, unless it is expected that the
-  same piece of media will be processed multiple times.
+- `LANGUAGE`: The BCP-47 locale to use for transcription. Defaults to `en-US`.
+  Refer to the official Azure Speech language support page for the current list
+  of locales supported for batch transcription.
 
-- `BLOB_ACCESS_TIME`: The amount of time in minutes for which the Azure Speech service
-  will have access to the file in blob storage.
+- `DIARIZE`: Whether to assign utterances to different speakers. Diarization is
+  enabled by default. Azure’s current batch transcription API specifies diarization
+  as a nested configuration object with the option to set a max expected number of speakers. By default, this option is set to two, but future updates could allow for an increased number of detected speakers (TODO).
+- `CLEANUP`: Whether to delete files from Azure Blob Storage when processing is
+  complete. It is recommended to keep this enabled unless the same media will
+  be processed repeatedly.
+
+- `BLOB_ACCESS_TIME`: The amount of time, in minutes, for which the uploaded blob
+  URL should remain accessible to Azure Speech.
+
+- `TRANSCRIPTION_EXPIRATION`: Desired transcription retention period, in minutes.
+  The component converts this value to Azure’s `timeToLiveHours` request field.
+  Azure currently requires a minimum transcription lifetime of 6 hours, so values
+  below 360 minutes are effectively rounded up at request time.
+
+- `USE_SAS_AUTH`: When `true`, the component appends a shared access signature
+  (SAS) token to the uploaded recording URL before submitting the transcription job.
+
+  When `false`, the blob must still be accessible to Azure Speech. In that case,
+  configure the storage account and Speech resource to use Azure’s trusted Azure
+  services / managed identity mechanism.
 
 
+ Note:
+  Azure Speech batch transcription must be able to read the uploaded source
+  audio from Azure Blob Storage. Microsoft documents two supported approaches:
+  using a SAS URI or configuring the storage account so the Speech resource can
+  access it via trusted Azure services / system-assigned managed identity.
 
 ## Detection Properties
 Returned `AudioTrack` objects have the following members in their `detection_properties`:
@@ -76,9 +109,19 @@ voiced segment, and the utterance `confidence`, as returned by Azure.
 with the `-h` flag to see accepted command-line arguments.
 
 
-# Language Identifiers
+# Language Support
+
+Azure Speech language support changes over time and varies by feature
+(real-time, fast transcription, and batch transcription). Refer to the
+official Azure Speech language support page for the current list of supported
+locales:
+
+https://learn.microsoft.com/en-us/azure/ai-services/speech-service/language-support
+
+# Language Identifiers (Legacy)
 The following are the BCP-47 codes and their corresponding languages which Azure
-Speech-to-Text supports.
+Speech-to-Text supports. This list is currently dated, but lists languages which have been supported
+since version 3.0.
 
 
 | Language                                    | Locale (BCP-47) |
@@ -237,7 +280,12 @@ can be altered by editing `acs_speech_component/azure_utils.py`.
 
 If the language code supplied by a feed-forward track is not handled in
 `acs_speech_component/azure_utils.py`, the component will raise an `INVALID_PROPERTY`
-exception.
+exception. Otherwise, if a feed-forward language label is invalid, unsupported, or cannot be mapped
+to a supported Azure locale, the component logs a warning, records the label in
+`MISSING_LANGUAGE_MODELS`, and falls back to the best available locale or the
+configured default language.
+
+This table below is a snapshot reference, not the authoritative list of all Azure-supported locales.
 
 | ISO 639--3 | Language                     | BCP-47 |
 | ---------- | ---------------------------- | ------ |
