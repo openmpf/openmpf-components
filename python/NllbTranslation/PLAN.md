@@ -71,7 +71,7 @@ What the merge landed, and what it left:
 | 1 — model packaging | **done and built** — both `BUILD_TYPE` images verified |
 | 2 — tokenizer abstraction | **done**; default unchanged (SENTENCEPIECE), full-scale A/B still owed |
 | 3 — token-based splitter | **mostly landed**; validation outstanding |
-| 4 — model lifecycle bug | still broken; `_current_model_name` is now tracked but unused |
+| 4 — model lifecycle bug | **fixed and verified**; `NLLB_MODEL` now takes effect |
 | 5 — decode/batching params | 5.1 partly done, 5.3 done |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **now blocking — suite is red, `RUN_TESTS` fails the build** |
@@ -314,19 +314,31 @@ This is the fix for the −8.6 BLEU Chinese regression. Source: `develop`
 and the baked-in default is always used. This was discovered the hard way during the evaluation
 (it invalidated a whole decomposition run) and is a genuine defect, not just an eval artifact.
 
-- [x] **4.1 Track the loaded model name** — `self._current_model_name` is now set at load time.
-      **It is not yet consulted**, so the bug is still live; 4.2 is what actually fixes it.
+- [x] **4.1 Track the loaded model name** — `self._current_model_name` is set at load time and
+      is now consulted by `_check_model`.
       (`ctranslate2.Translator` has no
       `name_or_path`, so `develop`'s approach at line 170 does not port directly — store it
       ourselves at load time).
-- [ ] **4.2 Reload on mismatch**, resetting the tokenizer backend too.
-- [ ] **4.3 Guard against silent fallback.** If a requested `NLLB_MODEL` directory does not exist,
-      raise `DetectionException(INVALID_PROPERTY)` rather than loading something else. The current
-      `_load_model` "download" branch (line 144-147) calls
-      `ctranslate2.Translator(model_path)` on a path that does not exist and then
-      `self._model.save_pretrained(...)` — **`Translator` has no `save_pretrained` method**, so that
-      branch is dead code that would raise `AttributeError`. Delete it; CT2 models cannot be pulled
-      from the Hub as-is anyway.
+- [x] **4.2 Reload on mismatch**, resetting the tokenizer backend too. `_check_model` compares the
+      requested name against the loaded one and reloads through `_unload_model`, which releases the
+      Translator (`unload_model()`) and drops the tokenizer so the Phase 2 backend is rebuilt from
+      the new model directory. Verified end-to-end: switching to a second model directory logs the
+      reload and re-reads the tokenizer from the new path.
+- [x] **4.3 Guard against silent fallback.** A missing model directory raises
+      `DetectionException(COULD_NOT_READ_DATAFILE)` naming the path, rather than loading something
+      else. The dead download branch is gone (it called `save_pretrained`, which
+      `ctranslate2.Translator` does not implement, so it could only ever have raised
+      `AttributeError`).
+      `_unload_model` also clears `_current_model_name`, so a *failed* reload leaves the component
+      in an honest "nothing loaded" state instead of one claiming a model it no longer holds.
+      Verified: a bogus `NLLB_MODEL` raises, state resets to `None`, and the next valid job reloads
+      and translates normally.
+
+**Consequence for the eval harness:** `run_decomp.sh` drives `ct2_driver.py` instead of the
+component specifically because this bug made `--prop NLLB_MODEL=<dir>` a no-op. That reason is now
+gone. The standalone driver is still worth keeping — it can force a `compute_type` and records
+`actual_compute_type` — but the decomposition could be re-pointed at the component if a
+closer-to-production measurement were wanted.
 
 ## Phase 5 — Decode & batching parameters
 

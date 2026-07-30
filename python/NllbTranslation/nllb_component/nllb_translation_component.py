@@ -228,12 +228,46 @@ class NllbTranslationComponent:
             "not be loaded; falling back to CPU for NLLB translation.")
         return "cpu"
 
+    def _unload_model(self) -> None:
+        """Release the loaded model and anything derived from it.
+
+        ``_current_model_name`` is cleared so that a *failed* reload leaves the
+        component in an honest "nothing loaded" state rather than one that claims
+        to hold a model it no longer has.
+        """
+        if self._model is not None:
+            try:
+                self._model.unload_model()
+            except Exception:
+                # Best-effort: the reference is dropped either way.
+                logger.debug('unload_model() failed; releasing the reference anyway.',
+                             exc_info=True)
+        self._model = None
+        self._current_model_name = None
+        self._tokenizer = None
+        self._tokenizer_cache_key = None
+
     def _check_model(self, config: Dict[str, str]) -> None:
-        # TODO (Phase 4): ctranslate2.Translator has no name_or_path, so the
-        # loaded model is tracked in self._current_model_name. This still does
-        # not reload on a name change -- see PLAN.md Phase 4.
-        if not self._model.model_is_loaded:
+        """Ensure the model the job asked for is the one that is loaded.
+
+        ``ctranslate2.Translator`` exposes no equivalent of ``name_or_path``, so
+        the loaded name is tracked in ``_current_model_name`` at load time and
+        compared here. Previously this only checked ``model_is_loaded``, which is
+        never false for a live Translator -- so a job-level ``NLLB_MODEL`` was
+        silently ignored and the baked-in default served every request.
+        """
+        requested = config.nllb_model
+
+        if self._model is None or requested != self._current_model_name:
+            logger.info(
+                "Loading model '%s' (previously loaded: %s). Note that switching "
+                "models between jobs re-reads several GB from disk.",
+                requested, self._current_model_name or 'none')
+            self._unload_model()
             self._load_model(config=config)
+        elif not self._model.model_is_loaded:
+            logger.info("Model '%s' is no longer resident; reloading.", requested)
+            self._model.load_model()
 
     def _get_text_size_function(self, config: Dict[str, str]) -> Callable[[str], int]:
         if config.use_token_length:
