@@ -22,8 +22,8 @@ Five findings drive this plan:
   slower on average, 20% slower on Chinese). int8's only remaining advantage is footprint, which is
   irrelevant on an 80 GB card. **This is why the GPU build uses fp16.**
 - **The engine win is real but hardware-dependent:** CT2-fp16 vs HF-fp16 is ~2.3× on H100
-  (1.7–2.4× excluding a confounded Arabic figure) versus 6.3× on a consumer RTX 5070 Ti. Do not
-  quote "~6×" unqualified.
+  (1.7–2.4× on eight of nine pairs; ar-en is an unexplained outlier at 4.1×) versus 6.3× on a
+  consumer RTX 5070 Ti. Do not quote "~6×" unqualified.
 - **Axis A is hardware-independent.** The H100 run reproduced the RTX 5070 Ti Axis A scores to three
   decimals on all 9 pairs — the quality conclusions do not depend on the GPU.
 - **The as-deployed splitter picture is bimodal, and `develop`'s splitter is not uniformly better.**
@@ -237,11 +237,16 @@ This is the fix for the −8.6 BLEU Chinese regression. Source: `develop`
 - [x] **3.3 Change `SENTENCE_MODEL` default** `wtp-bert-mini` → `sat-3l-sm` — done via
       `develop`'s descriptor and `JobConfig`.
 - [ ] **3.4 Port the difficult-language logic** (`_is_difficult_language`, `_ARABIC_FLORES_LANGS`,
-      `PROCESS_DIFFICULT_LANGUAGES`, `DIFFICULT_LANGUAGE_TOKEN_LIMIT`) — but **port it opt-out, and
-      re-check the default of 50 tokens.** In the H100 decomposition the Arabic HF path ran with this
-      limit active and scored 38.29 BLEU versus 40.71 in Axis A where it was disabled, at ~55% the
-      throughput. That is circumstantial (different sample sizes) but points at the aggressive
-      50-token preferred limit hurting rather than helping. Measure before adopting the default.
+      `PROCESS_DIFFICULT_LANGUAGES`, `DIFFICULT_LANGUAGE_TOKEN_LIMIT`) — carried over by the merge.
+      **Open question: does the 50-token default do anything at all?** Re-running the ar-en
+      decomposition with `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` produced *identical* results, even
+      though 13.4% of ar-en sentences exceed 50 tokens — so on per-sentence input the override
+      appears to be inert. One untested explanation is that the splitter cannot subdivide a single
+      sentence. Worth establishing whether the setting is load-bearing in document mode before
+      trusting it; a property that silently does nothing is worse than one tuned wrong.
+      *(An earlier version of this plan cited "Arabic scored 38.29 in the decomposition vs 40.71 in
+      Axis A" as evidence the limit hurts. That comparison was across different samples — n=1,000 vs
+      n=5,000 — and the controlled re-run has since disproved the causal claim.)*
 - [ ] **3.4a Do not assume `develop`'s splitter is uniformly better.** As-deployed, `develop`
       under-generates on **Bengali (length ratio 0.692)** and **Persian (0.764)** while the CT2
       branch reaches 0.825 / 0.899 and wins by ~7 BLEU on both. Porting the splitter fixes Chinese
@@ -398,16 +403,20 @@ names by string needs updating.
       converted model loads with `compute_type=int8_float32`, that `_resolve_device()` correctly
       falls back to CPU, and that a short job completes. This path is now a shipped configuration,
       not an option — it needs its own gate.
-- [x] **8.5 Decomposition Arabic confound — FIXED in the harness.** `run_decomp.sh` passed no props
-      to `hf-fp16`, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` was active there while `run_pipeline.sh`
-      disables it for Axis A. That inflated the reported ar-en "engine effect" to +1.91 BLEU /
-      +0.71 COMET (p<0.001) — an artifact of chunking, not the engine. The script now passes
-      `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0`.
-- [ ] **8.5a Re-run the ar-en decomposition.** The committed `eval/pipeline-results/decomp/ar-en/`
-      data predates the fix, so its engine contrast is still invalid. Expect HF-fp16 to rise from
-      38.29 toward its Axis A level and the engine speedup to fall from 4.1× into the ~2.3× band the
-      other pairs occupy. Other pairs are unaffected — only Arabic triggers the difficult-language
-      path by default.
+- [x] **8.5 Decomposition Arabic parity — harness updated, but the confound was not real.**
+      `run_decomp.sh` now passes `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` to `hf-fp16`, matching
+      `run_pipeline.sh`. **The hypothesis this was meant to fix has been disproved:** re-running
+      ar-en with the property set produced *identical* results, so the +1.91 BLEU / +0.71 COMET
+      engine effect is **not** a chunking artifact. The change is harmless parity insurance, not a
+      correction.
+- [x] **8.5a Re-run the ar-en decomposition — done, results unchanged.** The committed data stands
+      as valid. ar-en remains an unexplained outlier: the only pair with a large Δengine, and the
+      slowest HF-fp16 throughput (1.23 vs ~2.2 sent/s). Reported as measured in `REPORT.md` rather
+      than excluded.
+- [ ] **8.5b Optional: establish *why* ar-en is an outlier.** Two explanations are dead (chunking
+      confound; sentences too short). A repeat on a second Arabic-script corpus would show whether
+      the effect is language-specific or sample-specific. Not blocking — it changes no decision in
+      this plan, since the engine choice does not hinge on one pair.
 
 ---
 
