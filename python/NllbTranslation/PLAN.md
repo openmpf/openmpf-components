@@ -9,9 +9,25 @@ alternative).
 
 **Primary deployment target is H100-class GPU;** CPU is a supported secondary target.
 
-**Evidence base:** `REPORT.md` and the H100 runs in `pipeline-results/`, both under
-`python/NllbTranslation/eval/` **on the `eval/nllb-mt-evaluation` branch** — that directory is not
-checked out on this branch. Read with
+> ## ⚠️ `eval/` is a prototype enabler — remove it before the merge request
+>
+> This branch is deliberately named with a **`prototype/`** prefix. The `eval/` directory carries the
+> machine-translation evaluation harness (`run_pipeline.sh`, `run_decomp.sh`, `mt_eval.py`,
+> `nllb_eval_driver.py`, `ct2_driver.py`, and supporting scripts). It is here to make the plan
+> *executable* — Phases 2.5, 7 and 8 all invoke these scripts, and without them the validation steps
+> cannot be run from this checkout.
+>
+> **It is development tooling, not product code.** It benchmarks two OpenMPF *images* against each
+> other, depends on TMX corpora and a separate scoring venv, and has no role at runtime.
+>
+> **Before opening a merge request to ship the component, delete `python/NllbTranslation/eval/`.**
+> Nothing under `nllb_component/`, `plugin-files/`, `tests/` or the `Dockerfile` references it, so
+> removal is a clean `git rm -r`. The evaluation record — including `REPORT.md` and the raw
+> `pipeline-results/` — is preserved independently on the **`eval/nllb-mt-evaluation`** branch, so
+> deleting it here loses nothing.
+
+**Evidence base:** `REPORT.md` and the H100 runs in `pipeline-results/`, kept on the
+**`eval/nllb-mt-evaluation`** branch (not copied here, to avoid a second copy that drifts). Read with
 `git show eval/nllb-mt-evaluation:python/NllbTranslation/eval/REPORT.md`.
 Five findings drive this plan:
 
@@ -418,6 +434,19 @@ names by string needs updating.
       the effect is language-specific or sample-specific. Not blocking — it changes no decision in
       this plan, since the engine choice does not hinge on one pair.
 
+## Phase 9 — Before the merge request
+
+- [ ] **9.1 Delete `python/NllbTranslation/eval/`.** It is a prototype enabler, not product code
+      (see the banner at the top of this document). `git rm -r python/NllbTranslation/eval` — nothing
+      under `nllb_component/`, `plugin-files/`, `tests/` or the `Dockerfile` imports or references
+      it, so removal is clean. The evaluation record is preserved on the
+      `eval/nllb-mt-evaluation` branch.
+- [ ] **9.2 Confirm nothing else prototype-only leaks into the MR** — e.g. `Dockerfile.dev`, any
+      scratch models under `models/`, and the `TODO (Phase N)` comments seeded in
+      `nllb_translation_component.py` during the merge.
+- [ ] **9.3 Decide the fate of this document.** `PLAN.md` is itself prototype scaffolding; either
+      drop it from the MR or reduce it to whatever design notes are worth keeping in-tree.
+
 ---
 
 ## Risks
@@ -454,6 +483,7 @@ names by string needs updating.
    cpu→int8 produce different output, so a regenerated expected-string suite is pinned to whichever
    built it. Decoder-agnostic assertions would avoid the problem but test less.
 
-> **Note on eval-harness paths.** Tasks below reference `eval/…` scripts and results. That directory
-> lives on the **`eval/nllb-mt-evaluation`** branch and is not checked out here; run those steps from
-> a checkout of that branch, or `git show` the files across.
+> **Note on eval-harness paths.** Tasks referencing `eval/…` scripts now resolve on this branch —
+> the harness was copied here as a prototype enabler (see the banner at the top). The *results*
+> (`REPORT.md`, `pipeline-results/`) deliberately were not, and still live on
+> **`eval/nllb-mt-evaluation`**.

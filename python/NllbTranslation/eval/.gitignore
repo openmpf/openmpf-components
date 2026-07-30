@@ -1,0 +1,10 @@
+models/
+results/
+tmx/
+*.log
+sample.idx
+sample.ref
+sample.src
+*.en
+asdeployed.*.json
+axisA.segments.csv
