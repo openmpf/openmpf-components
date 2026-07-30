@@ -1,24 +1,33 @@
 # NllbTranslation: CTranslate2 — Implementation Plan
 
 **Target branch:** `regexer/nllb-ctranslate2-updates` (base), drawing from `develop`.
-**Goal:** ship the NllbTranslation component on the **CTranslate2** inference engine, keeping the
-prebuilt **`OpenNMT/nllb-200-3.3B-ct2-int8`** model (already `int8_float16`) as the default and
-adding an **opt-in fp16 build** converted from `facebook/nllb-200-3.3B`, while keeping the
-**tokenizer backend swappable** (FLORES SentencePiece today, HuggingFace `AutoTokenizer` as a
-first-class alternative).
+**Goal:** ship the NllbTranslation component on the **CTranslate2** inference engine, with the model
+converted from a **single source — `facebook/nllb-200-3.3B`** — at a precision chosen by the
+existing `BUILD_TYPE` docker arg: **`gpu` → `float16`, `cpu` → `int8`**. Keep the **tokenizer
+backend swappable** (FLORES SentencePiece today, HuggingFace `AutoTokenizer` as a first-class
+alternative).
 
-**The model artifact does not change.** The value of this work is in the *code* around it: the
-token-based splitter, the model-lifecycle fix, and the tokenizer abstraction.
+**Primary deployment target is H100-class GPU;** CPU is a supported secondary target.
 
-**Evidence base:** `eval/REPORT.md`. The three findings that drive this plan:
+**Evidence base:** `eval/REPORT.md` plus the H100 runs in `eval/pipeline-results/`. Five findings
+drive this plan:
 
-- The ~6× throughput win is the **engine**, not the quantization. CT2-fp16 = 6.3× HF-fp16 and
-  CT2-int8 = 6.6×, all at statistically indistinguishable quality.
-- **Quantization is a no-op for quality.** Holding the engine fixed, int8-vs-fp16 is within noise on
-  every metric (ΔBLEU −0.04 p=0.83, ΔchrF +0.04 p=0.80, ΔCOMET −0.00 p=0.96). This is what makes
-  `int8_float16` the right default: it is quality-equivalent, marginally faster, and half the disk.
-- The as-deployed int8 quality gap (−8.6 BLEU on Chinese) is the **character-based splitter**, not
-  the model. Porting `develop`'s token-based splitter is the single highest-value code change here.
+- **Quantization is a no-op for quality — established across all 9 languages.** Holding the engine
+  fixed, Δ(int8 − fp16) is non-significant on every pair: BLEU p = 0.33–0.96, COMET p = 0.21–0.98,
+  signs mixed. Precision can therefore be chosen purely on speed/memory grounds.
+- **On H100, int8 is *slower* than fp16 — on all 9 pairs** (CT2-int8 is 0.80–0.98× CT2-fp16, ~8.5%
+  slower on average, 20% slower on Chinese). int8's only remaining advantage is footprint, which is
+  irrelevant on an 80 GB card. **This is why the GPU build uses fp16.**
+- **The engine win is real but hardware-dependent:** CT2-fp16 vs HF-fp16 is ~2.3× on H100
+  (1.7–2.4× excluding a confounded Arabic figure) versus 6.3× on a consumer RTX 5070 Ti. Do not
+  quote "~6×" unqualified.
+- **Axis A is hardware-independent.** The H100 run reproduced the RTX 5070 Ti Axis A scores to three
+  decimals on all 9 pairs — the quality conclusions do not depend on the GPU.
+- **The as-deployed splitter picture is bimodal, and `develop`'s splitter is not uniformly better.**
+  int8's character splitter is catastrophic on Chinese (−10.0 BLEU, length ratio 0.551), but
+  `develop`'s own as-deployed pipeline *under-generates* on Bengali (0.692) and Persian (0.764),
+  where int8 wins by ~7 BLEU. Axis B confounds splitter with decoding (`develop` = greedy, CT2 =
+  beam 4). See Phase 3 and Phase 5.
 
 **Branch topology.** `regexer/nllb-ctranslate2-updates` forked from `develop` at `9adca039`
 (Feat/py3.12). `develop` has since landed `b22c3f55` (TextSplitter utility update — the token-based
@@ -40,59 +49,83 @@ the CT2 branch.
 - [ ] **0.3 Descriptor version.** `componentVersion` / `middlewareVersion` 9.0 → 10.0. Note
       `develop` has 2 pipelines vs CT2's 1 — reconcile.
 
-## Phase 1 — Model packaging (prebuilt int8 default, fp16 optional)
+## Phase 1 — Model packaging (single source, precision keyed to `BUILD_TYPE`)
 
-**Decision: keep pulling the prebuilt `OpenNMT/nllb-200-3.3B-ct2-int8`.** Its stored compute type
-already resolves to **`int8_float16`** — the fast, slightly-lossy configuration — so the default
-build keeps today's exact deployed model and arithmetic. This is the cheap path: a 3.36 GB download,
-no conversion step, and **no change to Phase 8's baseline**, which means any measured difference
-after this work is attributable to our code changes rather than to a swapped model artifact.
+**Decision: convert from `facebook/nllb-200-3.3B` for both targets, and let the existing
+`BUILD_TYPE` arg pick the precision.** The prebuilt `OpenNMT/nllb-200-3.3B-ct2-int8` is dropped
+entirely, so there is exactly one upstream checkpoint and one pinned revision behind every image.
 
-Phase 1 therefore reduces to *leaving the model stage alone* and adding an **opt-in** fp16
-conversion path. There is no published fp16 CTranslate2 build of NLLB-200-3.3B, so fp16 necessarily
-requires build-time conversion; validated recipe is in `eval/convert_ct2.sh`.
+| `BUILD_TYPE` | `--quantization` | resolves to | model size |
+|---|---|---|---|
+| `gpu` (default) | `float16` | `float16` | 6.7 GB |
+| `cpu` | `int8` | `int8_float32` | 3.36 GB |
 
-- [ ] **1.1 Keep the existing `download_model` stage** as the default — no change required.
-      Pin the revision as it is today (`MODEL_REVISION=28d998cc...`) and keep the FLORES SPM
-      download alongside it.
-- [ ] **1.2 Add an *optional* fp16 conversion stage**, selected by a build ARG so the default build
-      never pays for it:
+Why this split, measured not assumed (`ctranslate2` 4.8.1):
 
-      ARG NLLB_VARIANT=prebuilt-int8          # prebuilt-int8 | convert-fp16
-      # convert-fp16 stage only:
+- **CPU supports only `{float32, int8_float32, int8}`** — no `float16` at all. A float16-converted
+  model loaded on CPU is silently up-converted to `float32` ("the target device or backend do not
+  support efficient float16 computation"), which forfeits the size win and buys nothing. Shipping the
+  GPU artifact to a CPU target is therefore actively wrong, not merely suboptimal.
+- **`int8_float16` on CPU is a hard error**, not a fallback:
+  `ValueError: Requested int8_float16 compute type, but the target device or backend do not support
+  efficient int8_float16 computation.` So the CPU build must convert with `int8`.
+- On GPU, fp16 is both faster than int8 (all 9 pairs) and quality-equivalent — see the evidence base.
+
+- [ ] **1.1 Replace the `download_model` stage with a `convert_model` stage** keyed to `BUILD_TYPE`:
+
+      ARG BUILD_TYPE=gpu
       ARG SRC_MODEL=facebook/nllb-200-3.3B
       ARG SRC_REVISION=1a07f7d195896b2114afcb79b7b57ab512e7b43e
       RUN pip install -U "huggingface_hub[cli]" ctranslate2 transformers sentencepiece
-      RUN ct2-transformers-converter --model $SRC_MODEL --revision $SRC_REVISION \
-            --output_dir /models/nllb-200-3.3B-ct2-float16 \
-            --quantization float16 --low_cpu_mem_usage \
-            --copy_files tokenizer.json tokenizer_config.json special_tokens_map.json \
-                         sentencepiece.bpe.model
+      RUN if [ "$BUILD_TYPE" = "cpu" ]; then Q=int8; else Q=float16; fi; \
+          ct2-transformers-converter --model $SRC_MODEL --revision $SRC_REVISION \
+            --output_dir /models/nllb-200-3.3B-ct2 \
+            --quantization "$Q" --low_cpu_mem_usage \
+            --copy_files sentencepiece.bpe.model tokenizer.json \
+                         tokenizer_config.json special_tokens_map.json
 
-- [ ] **1.3 `--copy_files` is mandatory on the conversion path only.** Verified: a bare
-      `ct2-transformers-converter` run emits only `config.json`, `model.bin`,
-      `shared_vocabulary.json` — **no tokenizer files**, which would make the HuggingFace tokenizer
-      backend (Phase 2) impossible. The prebuilt `OpenNMT` dir already ships `tokenizer.json`,
-      `tokenizer_config.json`, `special_tokens_map.json`, so **the default path needs nothing** —
-      confirmed by loading `AutoTokenizer` directly from it. Only the fp16 stage must copy them.
-- [ ] **1.4 Keep the FLORES SPM download** (`OpenNMT/nllb-200-onmt/flores200_sacrebleu_tokenizer_spm.model`)
-      so the SentencePiece backend stays available. It is 4.8 MB; cost of keeping both is trivial.
-- [ ] **1.5 If the conversion path is ever used, never pass bare `int8`.** It produces a model whose
-      stored default resolves to `int8_float32`: essentially lossless, but with *no* tensor-core
-      speedup (measured identical sent/s to fp16, and 0/1000 outputs changed). Use `int8_float16` to
-      match the prebuilt. This bit us mid-evaluation; see `eval/REPORT.md`.
-- [ ] **1.6 Assert the resolved compute type at load.** Log `Translator.compute_type` after loading
-      and fail loudly if it is not the expected one. This is worth keeping even on the prebuilt path:
-      it is the cheap guard that would have caught the `int8_float32` trap immediately, and it
-      documents the deployed numerics in the logs. `eval/ct2_driver.py` already records
-      `actual_compute_type` — reuse the check.
-- [ ] **1.7 `DEFAULT_NLLB_MODEL` stays `'OpenNMT/nllb-200-3.3B-ct2-int8'`** — no change at
-      `nllb_translation_component.py:49`. If the fp16 variant is built, it is selected by
-      `NLLB_MODEL` at job level, which requires the Phase 4 fix to actually work.
-- [ ] **1.8 Size.** Default path: **3.36 GB** downloaded, no transient cost. The fp16 option adds a
-      **17 GB** transient HF checkpoint plus a **6.7 GB** output during build — confirm CI builder
-      disk headroom *before* using it. A WSL2 disk exhaustion already bit this project once.
-      Multi-stage build means only the selected model dir lands in the final image.
+- [ ] **1.2 Use a *stable* output directory name** (`/models/nllb-200-3.3B-ct2`) rather than encoding
+      the quantization in the path. `DEFAULT_NLLB_MODEL` then does not vary by build type and the
+      component needs no build-type awareness. The deployed precision is still discoverable at
+      runtime via the `compute_type` log in 1.5 — which is the more reliable place for it anyway.
+      (This reverses an earlier note that suggested putting the quantization in the directory name.)
+- [ ] **1.3 `--copy_files` is now mandatory on *both* paths, and is load-bearing.** A bare
+      `ct2-transformers-converter` run emits only `config.json`, `model.bin`, and
+      `shared_vocabulary.json`. With the OpenNMT download gone, `--copy_files` is the **only** source
+      of the SentencePiece model *and* the HF tokenizer files. Omit it and both tokenizer backends
+      break.
+- [ ] **1.4 Drop the separate FLORES SPM download — it is the same file.** Verified byte-identical:
+      `facebook/nllb-200-3.3B/sentencepiece.bpe.model` and
+      `OpenNMT/nllb-200-onmt/flores200_sacrebleu_tokenizer_spm.model` both md5
+      `05c551ae7955b3980d5a9d044eb09d70`. Copying `sentencepiece.bpe.model` from the source
+      checkpoint reproduces exactly the tokenizer the component uses today, from a single provenance.
+      **Code change required:** `SP_MODEL_PATH` at `nllb_translation_component.py:50` currently points
+      at `/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model` and must move to the converted
+      model dir.
+- [ ] **1.5 Log and assert the resolved compute type at load.** Log `Translator.compute_type` after
+      loading, and fail loudly if it disagrees with what the build intended. This matters more now
+      that precision is build-time-conditional: it is the only runtime evidence of which artifact is
+      deployed, and it catches both the silent float16→float32 CPU up-conversion and the
+      `int8_float32` GPU trap. `eval/ct2_driver.py` already records `actual_compute_type` — reuse it.
+- [ ] **1.6 Note the `int8` warning is GPU-specific and inverts on CPU.** On **GPU**, bare `int8`
+      resolves to `int8_float32`: accurate but with no tensor-core speedup — a trap (it cost us a
+      whole decomposition run). On **CPU**, `int8_float32` is the *only* int8 mode available and is
+      exactly what we want. Same flag, opposite verdict; do not "fix" the CPU build to
+      `int8_float16`.
+- [ ] **1.7 Update `DEFAULT_NLLB_MODEL`** at `nllb_translation_component.py:49` from
+      `'OpenNMT/nllb-200-3.3B-ct2-int8'` to `'nllb-200-3.3B-ct2'`.
+- [ ] **1.8 Size and build cost.** Every build now converts, so **both** paths pull the **17 GB** HF
+      checkpoint transiently and run a multi-minute conversion. Final image carries 6.7 GB (gpu) or
+      3.36 GB (cpu); the multi-stage build keeps the source checkpoint out of the image. Confirm CI
+      builder disk headroom before merging — a WSL2 disk exhaustion already bit this project once.
+      This is the real cost of the single-source decision: we trade a 3.36 GB download for a 17 GB
+      download plus conversion on *every* build, in exchange for one provenance and one pinned
+      revision across both targets.
+- [ ] **1.9 Set expectations for the CPU target.** NLLB-3.3B on CPU will be far slower than GPU —
+      the CPU build is a portability/functionality option, not a throughput one. `int8_float32` is
+      the right choice there for both speed and the 3.36 GB footprint. Consider exposing
+      CTranslate2's `inter_threads` / `intra_threads` as properties (Phase 5) since they matter much
+      more on CPU than on GPU.
 
 ## Phase 2 — Tokenizer abstraction (keep options open)
 
@@ -117,6 +150,12 @@ The two divergences, both benign:
 
 **Conclusion: the backends are functionally interchangeable.** The swap is a low-risk design
 choice, not a gamble — but it must still be A/B'd (task 2.5) before changing the default.
+
+**Both backends now load from the same directory.** Since `--copy_files` brings
+`sentencepiece.bpe.model` *and* the HF tokenizer files into the converted model dir (task 1.3), and
+that SPM is byte-identical to the FLORES SPM used today (task 1.4), the SentencePiece and
+HuggingFace backends read from one location with no separate download. This removes the
+`/models/OpenNMT/...` special case from the tokenizer path entirely.
 
 ### Work
 
@@ -163,7 +202,16 @@ This is the fix for the −8.6 BLEU Chinese regression. Source: `develop`
       full signature (`.../nlp_text_splitter/__init__.py:404`).
 - [ ] **3.3 Change `SENTENCE_MODEL` default** `wtp-bert-mini` → `sat-3l-sm`.
 - [ ] **3.4 Port the difficult-language logic** (`_is_difficult_language`, `_ARABIC_FLORES_LANGS`,
-      `PROCESS_DIFFICULT_LANGUAGES`, `DIFFICULT_LANGUAGE_TOKEN_LIMIT`).
+      `PROCESS_DIFFICULT_LANGUAGES`, `DIFFICULT_LANGUAGE_TOKEN_LIMIT`) — but **port it opt-out, and
+      re-check the default of 50 tokens.** In the H100 decomposition the Arabic HF path ran with this
+      limit active and scored 38.29 BLEU versus 40.71 in Axis A where it was disabled, at ~55% the
+      throughput. That is circumstantial (different sample sizes) but points at the aggressive
+      50-token preferred limit hurting rather than helping. Measure before adopting the default.
+- [ ] **3.4a Do not assume `develop`'s splitter is uniformly better.** As-deployed, `develop`
+      under-generates on **Bengali (length ratio 0.692)** and **Persian (0.764)** while the CT2
+      branch reaches 0.825 / 0.899 and wins by ~7 BLEU on both. Porting the splitter fixes Chinese
+      but may import a bn/fa regression. Gate the port on Axis B for **zh, bn, and fa** — not zh
+      alone.
 - [ ] **3.5 Consider `SENTENCE_SPLITTER_MODE=SENTENCE` as the CT2 default.** It yields one sentence
       at a time, which pairs naturally with CT2's batch translation — the engine can batch the
       sentences that the splitter emits, instead of translating a few large chunks. This is a
@@ -197,11 +245,22 @@ Currently hardcoded at `nllb_translation_component.py:245–250`: `beam_size = 4
 `max_batch_size=2024`, `batch_type="tokens"`.
 
 - [ ] **5.1 Expose as properties:** `NLLB_BEAM_SIZE` (default 4), `NLLB_MAX_BATCH_SIZE` (2024),
-      `NLLB_BATCH_TYPE` (`tokens`). Optionally `length_penalty`, `no_repeat_ngram_size`.
-- [ ] **5.2 Note the expected quality change vs `develop`.** As shipped, `develop` decodes
-      **greedily** (its `generation_config.json` sets no `num_beams`), while the CT2 path uses beam 4.
-      Moving to CT2 should therefore *improve* quality relative to today's fp16 deployment,
-      independent of engine or precision. Do not attribute that gain to CTranslate2.
+      `NLLB_BATCH_TYPE` (`tokens`). Optionally `length_penalty`, `no_repeat_ngram_size`. For the CPU
+      build also consider `inter_threads` / `intra_threads` (see 1.9).
+- [ ] **5.2 Keep beam 4. Never inherit `develop`'s greedy default.** As shipped, `develop` decodes
+      **greedily** (its `generation_config.json` sets no `num_beams`) while the CT2 path uses beam 4.
+      This is not a footnote — it is the most likely explanation for `develop` under-generating on
+      Bengali and Persian as-deployed, where CT2 wins by **~7 BLEU** with length ratios of 0.825/0.899
+      against `develop`'s 0.692/0.764. Axis A rules out the model (bn −0.10, fa +0.02 with decoding
+      harmonized), so the gap comes from the pipeline. Corollary for reporting: moving to CT2 improves
+      quality vs today's fp16 deployment partly *because of beam search*, so do not credit that gain
+      to CTranslate2 or to precision.
+- [ ] **5.2a Separate splitter from decoding before drawing splitter conclusions.** Axis B confounds
+      the two. The cheap discriminating experiment: re-run the `develop` as-deployed blob for bn/fa
+      with beam 4 forced (the eval driver already does this by setting
+      `generation_config.num_beams = 4` at runtime — no rebuild needed). If the bn/fa gap closes, it
+      was decoding; if it persists, `develop`'s splitter genuinely mishandles those scripts and
+      task 3.4a becomes a blocker rather than a check.
 - [ ] **5.3 Clean up the `should_translate` batch hack** (lines 258–266). Today every segment —
       including ones that should not be translated — is sent to the model, and the output is then
       discarded and swapped back. Instead, filter before the call and re-insert by index. Saves GPU
@@ -248,25 +307,34 @@ CT2 branch is missing 8 properties present on `develop`, and has 1 `develop` lac
       surface form) as *expected*, so they do not read as regressions.
 - [ ] **7.3 Model-swap test** for Phase 4 — assert `NLLB_MODEL` actually changes the loaded model,
       and that a bogus name raises rather than silently falling back.
-- [ ] **7.4 Keep `RUN_TESTS` build arg working** on the default (prebuilt) path, and confirm it does
-      not silently break on the opt-in fp16 build, which is 2× the model size.
+- [ ] **7.4 Keep `RUN_TESTS` build arg working** for **both** `BUILD_TYPE` values, since each now
+      produces a different model artifact. The CPU build is the one likely to time out.
 
 ## Phase 8 — Validation
 
-- [ ] **8.1 Re-run Axis A** (`eval/run_pipeline.sh`) against the new CT2 image for at least
-      pt/ar/zh plus one Cyrillic and one Indic pair. **Because the model artifact is unchanged, the
-      recorded int8 numbers in `eval/REPORT.md` are a direct baseline** — Axis A feeds one
-      pre-segmented sentence per detection, so the splitter work should leave it essentially
-      untouched. Acceptance: no significant regression. Any large delta points at a decode-parameter
-      or tokenizer change, not at the model.
-- [ ] **8.2 Re-run Axis B** (`RUN_AXIS_B=1`) for **zh-en specifically** — this is the acceptance
-      test for Phase 3. Acceptance: length ratio recovers from **0.570** toward `develop`'s
-      **0.751**, and ΔBLEU vs fp16-develop is no longer ≈ −8.6.
-- [ ] **8.3 Re-measure throughput** to confirm the ~6× holds in the packaged image.
-- [ ] **8.4 Spot-check the fp16 option** (`--build-arg NLLB_VARIANT=convert-fp16`) on one pair, so
-      the alternative is known-good rather than theoretical. Record whether fp16's larger footprint
-      changes batching headroom on a 16 GB card. Low priority — the default path does not depend
-      on it.
+- [ ] **8.1 Re-run Axis A** (`eval/run_pipeline.sh`) on the new GPU image for at least pt/ar/zh plus
+      one Cyrillic and one Indic pair. **Baseline: the fp16 column of `eval/pipeline-results/`**, not
+      the int8 column — the GPU build now ships fp16. Axis A proved hardware-independent (H100
+      reproduced the RTX 5070 Ti scores to 3 decimals), so the recorded numbers are a valid target.
+      Acceptance: no significant regression. Any large delta points at a decode-parameter or
+      tokenizer change, not at the model, since Δquant is non-significant on all 9 pairs.
+- [ ] **8.2 Re-run Axis B** (`RUN_AXIS_B=1`) for **zh, bn, and fa** — the acceptance test for
+      Phase 3. Acceptance: **zh length ratio reaches ~0.90**, in line with the healthy languages.
+      Note the earlier target of "recover toward `develop`'s 0.751" was **wrong**: 0.751 is itself
+      deficient, and `develop` is worse still on bn (0.692) and fa (0.764). Do not regress bn/fa
+      below the CT2 branch's current 0.825 / 0.899.
+- [ ] **8.3 Re-measure throughput on the target hardware.** Expect ~2.3× over HF-fp16 on H100, not
+      the ~6× seen on a consumer card. Record CPU-build throughput separately — it sets whether the
+      CPU target is viable for the intended workload at all.
+- [ ] **8.4 Smoke-test the CPU build end-to-end** (`--build-arg BUILD_TYPE=cpu`). Confirm the
+      converted model loads with `compute_type=int8_float32`, that `_resolve_device()` correctly
+      falls back to CPU, and that a short job completes. This path is now a shipped configuration,
+      not an option — it needs its own gate.
+- [ ] **8.5 Fix the decomposition's Arabic confound before reusing it.**
+      `run_decomp.sh:105` passes no props to `hf-fp16`, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` is
+      active there while `run_pipeline.sh:123` disables it for Axis A. That inflates the reported
+      ar-en "engine effect" to +1.91 BLEU / +0.71 COMET (p<0.001) — an artifact of chunking, not the
+      engine. Pass `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` for parity.
 
 ---
 
@@ -274,20 +342,24 @@ CT2 branch is missing 8 properties present on `develop`, and has 1 `develop` lac
 
 | Risk | Mitigation |
 |---|---|
-| Bare `int8` silently yields the slow `int8_float32` path | Only reachable via the opt-in conversion stage; `compute_type` assertion at load (1.6) catches it regardless |
-| fp16 option costs ~17 GB transient + 6.7 GB output at build | Not the default; opt-in ARG, confirm CI disk before use, spot-checked in 8.4 |
+| Every build now pulls 17 GB and converts | Accepted cost of single-source provenance; multi-stage keeps it out of the image; confirm CI disk before merge |
+| Wrong precision for the target device (fp16 on CPU silently becomes float32; `int8_float16` on CPU hard-errors) | `BUILD_TYPE` drives conversion (1.1); `compute_type` asserted and logged at load (1.5) |
+| Bare `int8` means `int8_float32` — a trap on GPU, correct on CPU | Documented in 1.6 so nobody "fixes" the CPU build to `int8_float16` |
+| Porting `develop`'s splitter imports its bn/fa under-generation | Gate on Axis B for zh **and** bn/fa (3.4a, 8.2); keep beam 4 (5.2) |
+| CPU target may be too slow to be usable | Measure in 8.3/8.4 before promising it |
 | `develop`↔CT2 merge conflicts across all four files | Phase 0 first, in its own commit, before any feature work |
 | `nllb_utils` casing mismatch silently breaks language lookup | Explicit task 6.1 + test over a language/script matrix |
 | Tokenizer swap changes output subtly | Default stays SentencePiece; A/B gate (2.5) before any default change |
 
 ## Open questions
 
-1. ~~Is fp16 worth 2× the disk over `int8_float16`? Convert ourselves or use the prebuilt?~~
-   **Decided: the prebuilt `OpenNMT` int8 model stays the default.** The evaluation shows
-   quantization costs nothing in quality (p≥0.80 on every metric), so there is no quality argument
-   for fp16; and since the prebuilt is already `int8_float16`, keeping it avoids a long build stage
-   *and* holds the Phase 8 baseline fixed. fp16 remains available as an opt-in conversion
-   (task 1.2), spot-checked in 8.4.
+1. ~~fp16 or int8? Convert ourselves or use the prebuilt?~~ **Decided: both precisions, one source,
+   selected by `BUILD_TYPE` — `gpu` → fp16, `cpu` → int8, both converted from
+   `facebook/nllb-200-3.3B`.** Quality is not a factor (Δquant non-significant on all 9 pairs), so
+   the choice is purely device fit: on H100 fp16 is faster than int8 on every pair, and on CPU fp16
+   is not even supported. Dropping the `OpenNMT` prebuilt costs a 17 GB conversion on every build
+   and buys a single provenance with one pinned revision — plus, since its SPM is byte-identical to
+   the source checkpoint's, it costs nothing in tokenizer fidelity.
 2. **Should `SENTENCE` split mode become the CT2 default** (task 3.5)? It suits batch translation
    but changes chunking behavior for every job.
 3. **Ship the HF tokenizer backend enabled or behind a flag?** It pulls `transformers` into the
