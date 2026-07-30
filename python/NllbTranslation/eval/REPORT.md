@@ -127,15 +127,26 @@ Compute types self-verified at load (`float16` and `int8_float16`).
 | uk-en | 33.46 | −0.10 (0.29) | +0.06 (0.67) | +0.03 (0.61) |
 | zh-en | 25.55 | +0.08 (0.58) | −0.08 (0.58) | −0.01 (0.86) |
 
-† **The ar-en engine figure is an artifact, not an engine effect.** `run_decomp.sh` passes no job
-properties to the HF system, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` is active for Arabic there, while
-`run_pipeline.sh` disables it for Axis A. HF-fp16 scores 38.29 in the decomposition versus 40.71 in
-Axis A, at ~55% the throughput of the other pairs (1.23 vs ~2.2 sent/s) — both consistent with
-over-aggressive chunking. Excluding it, Δengine spans −0.26 to +0.19 and is significant only for
-fr-en. **`run_decomp.sh` now passes `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` for parity**, so future runs
-are sound — but the committed ar-en decomposition predates that fix and its engine contrast should be
-regenerated. Only Arabic is affected; no other language triggers the difficult-language path by
-default.
+† **ar-en is an unexplained outlier.** It is the only pair where Δengine is large (+1.91 BLEU /
++0.71 COMET, p<0.001); the other eight span −0.26 to +0.19 and reach significance only for fr-en.
+It also has the slowest HF-fp16 throughput by a wide margin (1.23 vs ~2.2 sent/s), giving it the
+highest apparent engine speedup (4.1× vs ~2.3×).
+
+An earlier version of this report attributed both to a harness confound —
+`run_decomp.sh` passed no job properties to the HF system, leaving
+`DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` active for Arabic, while `run_pipeline.sh` disables it for
+Axis A. **That explanation was tested and is wrong.** Re-running the ar-en decomposition with
+`DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` produced **identical** results. (`run_decomp.sh` passes the
+property for parity now regardless; the change turned out to be harmless rather than necessary.)
+
+A second explanation — that the sentences are too short to reach the 50-token limit — also fails:
+**13.4% of ar-en sentences exceed 50 tokens** (median 25, p90 56, max 541). Why the limit is inert
+is not established. One untested possibility is that the splitter cannot subdivide a *single*
+sentence, making any token limit a no-op for the decomposition's per-sentence input.
+
+The figure is therefore reported as measured and **included** in the engine range, flagged as
+unexplained rather than dismissed. If the engine effect is genuinely language-dependent, that is
+worth knowing; a repeat on a second Arabic-script corpus would settle it.
 
 **Quantization is a no-op for quality.** Δquant is non-significant on **every pair, on both metrics**
 (BLEU p = 0.33–0.96, COMET p = 0.21–0.98), with signs mixed — even though the two systems genuinely
@@ -147,7 +158,7 @@ engineering choice.
 
 | Pair | HF-fp16 | CT2-fp16 | CT2-int8 | engine speedup | int8 ÷ fp16 |
 |---|---|---|---|---|---|
-| ar-en | 1.23 † | 5.02 | 4.65 | (4.1× †) | 0.93× |
+| ar-en | 1.23 † | 5.02 | 4.65 | **4.1×** † | 0.93× |
 | bn-en | 2.15 | 5.06 | 4.66 | 2.4× | 0.92× |
 | de-en | 2.23 | 4.80 | 4.44 | 2.2× | 0.93× |
 | fa-en | 2.05 | 4.62 | 4.55 | 2.3× | 0.98× |
@@ -160,7 +171,7 @@ engineering choice.
 **Two conclusions, both of which change prior guidance.**
 
 **The speedup is the engine, and it is smaller on server hardware.** CTranslate2 at *unchanged* fp16
-precision buys 1.7–2.4× on H100. The same contrast measured 6.3× on the RTX 5070 Ti: H100
+precision buys 1.7–2.4× on H100 across eight of nine pairs, and 4.1× on the ar-en outlier (†). The same contrast measured 6.3× on the RTX 5070 Ti: H100
 accelerates the batched PyTorch path far more than it accelerates CTranslate2's latency-bound
 single-sentence path. The engine win is real and worth taking, but "~6×" is a consumer-GPU number.
 
@@ -260,8 +271,10 @@ Implementation plan: `../PLAN.md`.
 
 - **Axis B confounds splitter and decoding** (greedy vs beam 4). The bn/fa reversal is established;
   its cause is not. See the discriminating experiment above.
-- **The ar-en engine contrast is invalid** as measured — `DIFFICULT_LANGUAGE_TOKEN_LIMIT` is active
-  in the HF path and disabled in Axis A. Excluded from the engine-speedup range.
+- **The ar-en engine contrast is unexplained**, not invalid. The chunking-confound explanation was
+  tested and disproved (re-running with `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` gave identical results),
+  and "sentences too short to trigger it" also fails (13.4% exceed 50 tokens). Reported as measured
+  and included in the range; see the † note under the decomposition table.
 - **Decomposition sample size** is 1,000 per pair (vs 5,000 for Axis A), so its confidence intervals
   are wider. The quantization null result is consistent across all nine pairs, which is what carries
   it, rather than any single pair's precision.
