@@ -256,11 +256,18 @@ decoding.
    fa**, and target a length ratio near 0.90 rather than `develop`'s 0.751.
 4. **Keep beam 4; never inherit `develop`'s greedy default.** It is the most likely cause of the
    ~7 BLEU bn/fa deficit and costs little on this engine.
-5. **Fix `NLLB_MODEL` handling on the ctranslate2 branch (component bug, found during this work).**
-   The component loads `DEFAULT_NLLB_MODEL` in `__init__` and `_check_model` only reloads
-   `if not self._model.model_is_loaded` — so a job-level `NLLB_MODEL` property is silently
-   **ignored** and the baked-in model is used regardless. (Worked around here with a standalone
-   `ct2_driver.py`.)
+5. ~~**Fix `NLLB_MODEL` handling on the ctranslate2 branch (component bug, found during this
+   work).**~~ **RESOLVED** on `prototype/nllb-ctranslate2` (commit `777437f9`). The component loaded
+   `DEFAULT_NLLB_MODEL` in `__init__` and `_check_model` only reloaded
+   `if not self._model.model_is_loaded` — never false for a live `Translator` — so a job-level
+   `NLLB_MODEL` was silently **ignored** and the baked-in model served every request. This is the
+   defect that invalidated a decomposition run and forced the standalone `ct2_driver.py` workaround.
+   `_check_model` now compares the requested name against the loaded one and reloads, resetting the
+   tokenizer to the new model directory; a missing directory raises rather than falling back.
+   Verified by switching models between jobs and by a bogus name.
+   *Note:* `run_decomp.sh` still uses `ct2_driver.py`, which remains useful for forcing a
+   `compute_type` and recording `actual_compute_type` — but the bug that made the bypass
+   *necessary* is gone.
 6. **Assert the resolved `compute_type` at load.** Precision is becoming build-time-conditional, and
    two silent failure modes exist: bare `int8` resolving to the slow `int8_float32` on GPU, and
    float16 up-converting to float32 on CPU. One log line makes the deployed numerics auditable.
