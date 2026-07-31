@@ -75,7 +75,7 @@ What the merge landed, and what it left:
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **done** — 38 tests green on both builds (1 gated golden test) |
-| 8 — validation | **passed** (8.1–8.4); 8.5b and 8.6 are optional follow-ups |
+| 8 — validation | **passed** (8.1–8.5b); 8.6 is an optional optimisation |
 
 ---
 
@@ -619,23 +619,18 @@ names by string needs updating.
       mismatch check stayed silent — so it does not cry wolf when things are right. The two builds
       agree within 0.03 BLEU.
 
-- [~] **8.5b Why ar-en is an outlier — the earlier refutation was invalid.** This plan and
-      `REPORT.md` both recorded that re-running the ar-en decomposition with
-      `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` "produced identical results", and concluded the chunking
-      confound was disproved. **That test did not actually run anything.** `run_decomp.sh`'s
-      `gen_component` skips regeneration when the hypothesis file is already complete
-      (`if [ "$(nlines "$H/hyp.$label.en")" -ge "$NL" ]; then ... return`), so a re-run with the
-      property set logged `already done`, reused the existing hypotheses and re-scored the same
-      text. Identical results were guaranteed regardless of the property.
+- [x] **8.5b ar-en outlier — RESOLVED: it was the harness confound.** Two clean re-runs (property
+      disabled *and* hypothesis files deleted) put Δengine at **−0.038** (H100, n=1,000) and
+      **+0.155** (RTX 5070 Ti, n=200), against **+1.91** in the original. Disabling
+      `DIFFICULT_LANGUAGE_TOKEN_LIMIT` lifts HF-fp16 from 38.288 to 40.236 and normalises its
+      throughput from 1.226 to 1.996 sent/s, so the apparent 4.1× engine speedup was the same
+      artifact. ar-en is now in line with the other eight pairs.
 
-      Direct testing shows the property is **not** inert: on 8 of 8 single Arabic sentences between
-      55 and 125 tokens, `DIFFICULT_LANGUAGE_TOKEN_LIMIT` 50 vs 0 produces different output, each
-      splitting one sentence into 2 chunks. So the original chunking hypothesis is live again.
-      A clean re-run (empty `results/decomp/`) is the arbiter; until it lands, treat the ar-en
-      engine figure as **unexplained**, which is what `REPORT.md` already says.
-
-      *Lesson: any experiment run through `run_decomp.sh` or `run_pipeline.sh` must start from
-      deleted hypothesis files, or the resume guard silently turns it into a no-op.*
+      **The reasoning went wrong twice, and both errors are worth remembering.** The original
+      diagnosis was right; an intermediate "refutation" retracted it on the strength of a re-run
+      that never executed (the resume guard reused cached hypotheses); the retraction was then
+      itself retracted. The signal each time was *absence of change*, which reads as confirmation.
+      Nothing here was learned from reasoning — only from deleting the outputs and re-running.
 
 ## Phase 9 — Before the merge request
 
