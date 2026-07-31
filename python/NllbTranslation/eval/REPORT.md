@@ -240,6 +240,42 @@ decoding.
 
 ---
 
+## Follow-up: the as-deployed gap is chunk size, and it is fixable
+
+*(Added 2026-07-31, after the CTranslate2 implementation work. Supersedes the splitter
+recommendation below, which is left in place as the reasoning at the time.)*
+
+Porting `develop`'s token-based splitter to the CTranslate2 branch fixed Chinese as-deployed
+(length ratio 0.551 -> 0.704) but **regressed** Bangla (0.825 -> 0.666) and Persian (0.899 -> 0.756):
+it imported `develop`'s own under-generation. Neither splitter was right.
+
+A controlled sweep (`eval/sweep_splitter.sh`, 200 sentences/pair) found the actual mechanism.
+**NLLB under-generates on long inputs, monotonically in chunk count** - on bn-en: 15 chunks ->
+0.363, 23 -> 0.457, 42 -> 0.727, 69 -> 0.869, 238 -> 1.031. Raising the token budget makes it worse.
+
+Setting **`SENTENCE_SPLITTER_MODE=SENTENCE`** - one sentence per chunk - fixes every pair tested:
+
+| pair | packed chunks | **one sentence per chunk** |
+|---|---|---|
+| bn-en | 23.73 / 0.727 | **33.60 / 1.031** |
+| zh-en | 16.84 / 0.704 | **28.24 / 0.986** |
+| pt-en (Latin control) | 48.25 / 0.949 | **48.85 / 0.971** |
+
+Every ratio lands in 0.97-1.03 - better than `develop`'s best (0.94) and better than the character
+splitter's best (0.899), with no regression on the Latin control. It is now the shipped default.
+
+Two consequences for how this report should be read:
+
+- **The character-vs-token splitter framing was a red herring.** With one sentence per chunk the
+  sizing unit barely matters (`USE_NLLB_TOKEN_LENGTH=FALSE` scores the same). The -10.0 BLEU Chinese
+  result and the +7 BLEU Bangla/Persian results were both artifacts of *packing sentences into
+  chunks*, not of characters versus tokens.
+- **This explains why Axis A never showed under-generation.** Axis A feeds one sentence per
+  detection - it was unknowingly running the fixed configuration all along, which is why the
+  intrinsic and as-deployed axes disagreed so sharply.
+
+---
+
 ## Recommendation
 
 1. **Choose precision by device, not by quality.** Quantization is quality-neutral on all nine
