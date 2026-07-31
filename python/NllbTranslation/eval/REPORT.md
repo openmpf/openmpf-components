@@ -253,7 +253,30 @@ A controlled sweep (`eval/sweep_splitter.sh`, 200 sentences/pair) found the actu
 **NLLB under-generates on long inputs, monotonically in chunk count** - on bn-en: 15 chunks ->
 0.363, 23 -> 0.457, 42 -> 0.727, 69 -> 0.869, 238 -> 1.031. Raising the token budget makes it worse.
 
-Setting **`SENTENCE_SPLITTER_MODE=SENTENCE`** - one sentence per chunk - fixes every pair tested:
+Setting **`SENTENCE_SPLITTER_MODE=SENTENCE`** - one sentence per chunk - fixes every pair tested.
+**Confirmed at full scale** (5,000 sentences/pair on H100), not just in the sweep:
+
+| pair | char splitter *(this report's original CT2)* | token, packed | **SENTENCE (shipped)** | HF (`develop`) |
+|---|---|---|---|---|
+| zh-en | 17.00 / 0.551 | 25.59 / 0.704 | **35.88 / 0.972** | 27.03 / 0.751 |
+| bn-en | 37.43 / 0.825 | 28.71 / 0.666 | **43.89 / 0.972** | 29.86 / 0.692 |
+| fa-en | 42.20 / 0.899 | 35.05 / 0.756 | **45.58 / 1.024** | 34.98 / 0.764 |
+
+**The as-deployed gap has reversed.** Axis B dBLEU (CT2 - HF) was -8.64 on Chinese in this report;
+it is now **+8.85**, with **+14.03** on Bangla and **+10.60** on Persian. CTranslate2 as-deployed now
+*beats* `develop` on precisely the languages where `develop` was weakest, and every length ratio sits
+in 0.97-1.02 rather than 0.55-0.90.
+
+The 200-sentence sweep predicted 0.97-1.03 and full scale delivered 0.972-1.024, so the sweep is a
+sound proxy for future splitter questions.
+
+**Axis A independently re-confirms that quantization is quality-neutral.** The CT2 column is now
+float16 where this report's baseline was int8: bn +0.12, fa -0.06, zh -0.02 - all within noise,
+reached from a different direction than the decomposition.
+
+The original sweep evidence follows.
+
+
 
 | pair | packed chunks | **one sentence per chunk** |
 |---|---|---|
@@ -286,10 +309,11 @@ Two consequences for how this report should be read:
      float16 model loaded on CPU is silently up-converted to float32, forfeiting the size win.
 2. **Adopt CTranslate2 as the engine** — ~2.3× over Transformers on H100 at indistinguishable
    quality, and more on smaller cards. Credit the gain to the engine, not to quantization.
-3. **Fix segmentation for dense scripts — in both directions.** Porting `develop`'s token-based
-   splitter remains necessary for Chinese, but it is **not sufficient and not risk-free**: it would
-   import `develop`'s bn/fa under-generation. Gate any splitter change on Axis B for **zh, bn, and
-   fa**, and target a length ratio near 0.90 rather than `develop`'s 0.751.
+3. ~~**Fix segmentation for dense scripts — in both directions.**~~ **RESOLVED.** Neither splitter
+   was the answer: the fix is `SENTENCE_SPLITTER_MODE=SENTENCE` (one sentence per chunk), now the
+   shipped default. Confirmed at 5,000 sentences/pair — all three length ratios land at 0.97-1.02
+   and CTranslate2 now beats `develop` as-deployed by +8.85 to +14.03 BLEU. See the follow-up
+   section above.
 4. **Keep beam 4; never inherit `develop`'s greedy default.** It is the most likely cause of the
    ~7 BLEU bn/fa deficit and costs little on this engine.
 5. ~~**Fix `NLLB_MODEL` handling on the ctranslate2 branch (component bug, found during this
