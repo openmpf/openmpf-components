@@ -75,7 +75,7 @@ What the merge landed, and what it left:
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **done** — 38 tests green on both builds (1 gated golden test) |
-| 8 — validation | 8.1/8.2/8.3 **passed**; 8.4 CPU smoke on a rebuilt image outstanding |
+| 8 — validation | **passed** (8.1–8.4); 8.5b and 8.6 are optional follow-ups |
 
 ---
 
@@ -511,7 +511,7 @@ names by string needs updating.
       Original 7.2 text: Assert both backends produce CT2-compatible token strings and
       round-trip a fixed corpus. Encode the two known divergences (trailing whitespace, unknown-char
       surface form) as *expected*, so they do not read as regressions.
-- [x] **7.4 Behaviour tests for the new job properties — done.** Every property added in Phases
+- [x] **7.5 Behaviour tests for the new job properties — done.** Every property added in Phases
       1/2/5 is now covered, by asserting the value **reaches CTranslate2** rather than by diffing
       translations. Output-diffing is unreliable here for two independent reasons — easy input does
       not discriminate (beam 1 and beam 4 agree on short sentences), and the gpu/cpu builds word
@@ -532,8 +532,15 @@ names by string needs updating.
       (`'nllb-model-swap-test' != 'nllb-200-3.3B-ct2'`, `DetectionException not raised`).
       Original 7.3 text: for Phase 4 — assert `NLLB_MODEL` actually changes the loaded model,
       and that a bogus name raises rather than silently falling back.
-- [ ] **7.4 Keep `RUN_TESTS` build arg working** for **both** `BUILD_TYPE` values, since each now
-      produces a different model artifact. The CPU build is the one likely to time out.
+- [x] **7.4 `RUN_TESTS=true` passes during the build for both `BUILD_TYPE` values.** Worth being
+      precise about what that covers: the tests run in the **`build` stage**, which has no NVIDIA
+      runtime, so they exercise the **CPU inference path for both targets**. For `BUILD_TYPE=gpu`
+      that means the float16 model running on CPU, which CTranslate2 auto-converts to float32 — a
+      *third* precision configuration, and the suite passed there too. Stronger build-agnosticism
+      evidence than intended. The **GPU inference path is not covered by `RUN_TESTS`**; it is
+      covered by running the suite with `--gpus` against a built image (done, 38 green).
+      `NLLB_EXPECTED_COMPUTE_TYPE` is only set in the later stages, so the in-build run produces no
+      spurious mismatch warnings.
 
 ## Phase 8 — Validation
 
@@ -584,20 +591,19 @@ names by string needs updating.
       mode always splits. Small (~0.03 s of weight loading against 10-15 s of translation) so it is
       an optimisation, not a defect — but it is free to fix by caching on
       (model name, device, language).
-- [ ] **8.4 Smoke-test the CPU build end-to-end** (`--build-arg BUILD_TYPE=cpu`). Confirm the
-      converted model loads with `compute_type=int8_float32`, that `_resolve_device()` correctly
-      falls back to CPU, and that a short job completes. This path is now a shipped configuration,
-      not an option — it needs its own gate.
-- [x] **8.5 Decomposition Arabic parity — harness updated, but the confound was not real.**
-      `run_decomp.sh` now passes `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` to `hf-fp16`, matching
-      `run_pipeline.sh`. **The hypothesis this was meant to fix has been disproved:** re-running
-      ar-en with the property set produced *identical* results, so the +1.91 BLEU / +0.71 COMET
-      engine effect is **not** a chunking artifact. The change is harmless parity insurance, not a
-      correction.
-- [x] **8.5a Re-run the ar-en decomposition — done, results unchanged.** The committed data stands
-      as valid. ar-en remains an unexplained outlier: the only pair with a large Δengine, and the
-      slowest HF-fp16 throughput (1.23 vs ~2.2 sent/s). Reported as measured in `REPORT.md` rather
-      than excluded.
+- [x] **8.4 Both builds smoke-tested end to end — through the shipped artifacts, nothing mounted.**
+      Rebuilt images, `RUN_TESTS=true` passing during the build for both targets:
+
+      | image | split mode | compute type | BLEU | ratio | mismatch warnings |
+      |---|---|---|---|---|---|
+      | `ctranslate2` (gpu) | SENTENCE | float16 | 30.52 | **1.025** | 0 |
+      | `ctranslate2-cpu` | SENTENCE | int8_float32 | 30.49 | **1.027** | 0 |
+
+      The descriptor shipped with `SENTENCE_SPLITTER_MODE=SENTENCE` and zero `NLLB_LENGTH_PENALTY`
+      entries in both images, both compute types match `NLLB_EXPECTED_COMPUTE_TYPE`, and the
+      mismatch check stayed silent — so it does not cry wolf when things are right. The two builds
+      agree within 0.03 BLEU.
+
 - [ ] **8.5b Optional: establish *why* ar-en is an outlier.** Two explanations are dead (chunking
       confound; sentences too short). A repeat on a second Arabic-script corpus would show whether
       the effect is language-specific or sample-specific. Not blocking — it changes no decision in
