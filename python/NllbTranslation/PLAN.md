@@ -75,7 +75,7 @@ What the merge landed, and what it left:
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **done** — 38 tests green on both builds (1 gated golden test) |
-| 8 — validation | 8.1/8.2 **passed** at full scale; 8.3 throughput and 8.4 CPU smoke outstanding |
+| 8 — validation | 8.1/8.2/8.3 **passed**; 8.4 CPU smoke on a rebuilt image outstanding |
 
 ---
 
@@ -178,17 +178,18 @@ Why this split, measured not assumed (`ctranslate2` 4.8.1):
       download separately. The 17 GB transient checkpoint did not cause a build
       failure on this host; CI disk headroom is still worth confirming separately.
 
-- [x] **1.9 CPU target expectations — measured, and it is slow.** On 4 container
-      cores the CPU image runs **0.215 sent/s** (~4.7 s/sentence) against **1.88
-      sent/s** for the GPU image on an RTX 5070 Ti — roughly **9× slower**, and the
-      GPU figure is itself batch-1 on a consumer card. Extrapolated, a
-      5,000-sentence job is ~6.5 hours on CPU. **Treat the CPU build as a
-      portability/functionality option, not a throughput one**, and say so in any
-      deployment guidance.
-      - [ ] **1.9a Expose CTranslate2 threading** (`inter_threads` / `intra_threads`)
-            as properties. It matters far more on CPU than GPU, and the measurement
-            above was taken at CTranslate2's defaults on only 4 visible cores, so
-            there is likely headroom on a larger host. Folds naturally into Phase 5.1.
+- [x] **1.9 CPU target expectations — measured, then revised upward.** Two figures, and which one
+      applies depends on the job shape:
+      - **Per-detection (one sentence per job): 0.215 sent/s** on 4 container cores, ~9× slower than
+        the GPU image's 1.88 sent/s. This is the feed-forward path.
+      - **Document mode (whole file): 0.77 sent/s** — **3.6× faster than the per-detection figure**,
+        because CTranslate2 batches all of a document's chunks (measured in 8.3).
+
+      A 5,000-sentence *file* is therefore ~1.8 hours, not the ~6.5 hours an earlier version of this
+      task claimed. That claim extrapolated the per-detection rate to a whole-file job, which is the
+      wrong workload. The CPU build is still far slower than GPU, but for batch document work it is
+      usable rather than merely a portability option.
+      *(Threading knobs for this are task 1.9a, implemented under Phase 5.1.)*
 
 **Consequence for Phase 7:** the two build targets **produce different
 translations**. On a 10-sentence sample, CPU (`int8_float32`) and GPU (`float16`)
@@ -557,9 +558,32 @@ names by string needs updating.
 
       The 200-sentence sweep predicted 0.97-1.03 and full scale delivered 0.972-1.024, so
       `sweep_splitter.sh` is a trustworthy proxy for future splitter questions.
-- [ ] **8.3 Re-measure throughput on the target hardware.** Expect ~2.3× over HF-fp16 on H100, not
-      the ~6× seen on a consumer card. Record CPU-build throughput separately — it sets whether the
-      CPU target is viable for the intended workload at all.
+- [x] **8.3 Throughput measured — SENTENCE mode is free, and on CPU it is a win.** The concern was
+      that sentence mode's 6-8x higher chunk count would cost throughput. It does not
+      (`eval/bench_split_mode.py`, in-process so model load and container startup are excluded;
+      200 sentences x3 on an RTX 5070 Ti, 25 x2 on CPU):
+
+      | build | mode | sent/s | chars/s | wall-time ratio |
+      |---|---|---|---|---|
+      | gpu, bn-en | SENTENCE | 12.86 | **1289** | 0.98x |
+      | gpu, bn-en | DEFAULT | 12.66 | 893 | |
+      | gpu, zh-en | SENTENCE | 19.37 | **1677** | 1.03x |
+      | gpu, zh-en | DEFAULT | 19.87 | 1229 | |
+      | cpu, bn-en | SENTENCE | **0.77** | **93** | **0.86x** |
+      | cpu, bn-en | DEFAULT | 0.66 | 60 | |
+
+      Wall time is within noise on GPU and **14% faster** on CPU. The chars/s column is the real
+      story: sentence mode emits ~35-45% more output in the same time, because that output is the
+      content packed mode was losing. Per unit of *correct* output it is substantially cheaper.
+
+- [ ] **8.6 Cache `TextSplitterModel` — it is rebuilt on every translation.**
+      `nllb_translation_component.py:396` constructs a new `TextSplitterModel` inside the
+      per-property loop, so the sentence-splitter weights are re-read for every job that needs
+      splitting. Visible in the 8.3 benchmark as a `Loading weights: 55/55` line per call. Inherited
+      from `develop`, not introduced here, but it now fires on *every* document job because SENTENCE
+      mode always splits. Small (~0.03 s of weight loading against 10-15 s of translation) so it is
+      an optimisation, not a defect — but it is free to fix by caching on
+      (model name, device, language).
 - [ ] **8.4 Smoke-test the CPU build end-to-end** (`--build-arg BUILD_TYPE=cpu`). Confirm the
       converted model loads with `compute_type=int8_float32`, that `_resolve_device()` correctly
       falls back to CPU, and that a short job completes. This path is now a shipped configuration,
