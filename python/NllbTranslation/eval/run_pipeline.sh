@@ -177,5 +177,17 @@ for entry in "${PAIRS[@]}"; do
   run_pair "$name" "$tmx" "$tsrc" "$nsrc" "$nscript"
 done
 log "assembling combined SUMMARY..."
-$PY summarize.py >> "$RUNLOG" 2>&1 || true
-log "PIPELINE COMPLETE. Log: $RUNLOG   Summary: results/SUMMARY.md"
+# Do not hide a failure here behind `|| true`: summarize.py writes nothing when no
+# pair produced an axisA.metrics.csv (i.e. Axis A never completed), and the old
+# code then still announced "Summary: results/SUMMARY.md" for a file that did not
+# exist.
+if ! $PY summarize.py >> "$RUNLOG" 2>&1; then
+  log "WARNING: summarize.py failed — see $RUNLOG"
+fi
+if [ -s "$EVAL/results/SUMMARY.md" ]; then
+  log "PIPELINE COMPLETE. Log: $RUNLOG   Summary: results/SUMMARY.md"
+else
+  log "PIPELINE COMPLETE, but NO SUMMARY was written. Log: $RUNLOG"
+  log "  Most likely no pair completed Axis A, so there was no axisA.metrics.csv to"
+  log "  summarise. Check for 'Axis A incomplete, skipping scoring' above."
+fi

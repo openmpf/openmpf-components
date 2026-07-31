@@ -63,8 +63,11 @@ def main():
     paths = sorted(set(glob.glob("results/axisA.metrics.csv")
                        + glob.glob("results/*/axisA.metrics.csv")))
     if not paths:
-        print("no axisA.metrics.csv found under results/")
-        return
+        print("NO SUMMARY WRITTEN: no axisA.metrics.csv found under results/.")
+        print("  Axis A scoring only runs once BOTH hypothesis files are complete, so this")
+        print("  usually means a generation leg did not finish. Look for 'Axis A incomplete,")
+        print("  skipping scoring' in the pipeline log.")
+        return 1
 
     lines = ["# MT Evaluation — combined summary (HF vs CT2)", ""]
     lines += ["Δ = CT2 − HF. **CT2** = the CTranslate2-branch image; its precision follows that "
@@ -103,4 +106,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main() or 0)
