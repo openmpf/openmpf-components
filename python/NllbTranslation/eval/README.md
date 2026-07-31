@@ -210,6 +210,56 @@ resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
 | `make_sample.py` | optional: sample from moses parallel files instead of TMX |
 | `setup_venv.sh` / `preflight.sh` / `requirements.txt` | env setup + readiness check |
 
+## CTranslate2 compute types, and why the images are not interchangeable
+
+CTranslate2 compute types are named `<weight storage>_<compute precision>`. The first part is how
+weights are stored; the second is the dtype used for the actual matrix multiplications and
+intermediate activations. Where both are the same there is only one marker.
+
+| compute type | weights | arithmetic |
+|---|---|---|
+| `float16` | fp16 | fp16 |
+| `int8_float32` | int8 | fp32 |
+| `int8_float16` | int8 | fp16 (tensor cores) |
+
+**A CPU cannot do `int8_float16`.** The supported sets are:
+
+```
+CPU : ['float32', 'int8', 'int8_float32']
+CUDA: ['bfloat16', 'float16', 'float32', 'int8', 'int8_bfloat16', 'int8_float16', 'int8_float32']
+```
+
+Asking for `int8_float16` on CPU raises `ValueError` -- it is not a fallback. So int8 weights on CPU
+necessarily mean fp32 arithmetic, which is why the `BUILD_TYPE=cpu` image resolves to
+`int8_float32`. `int8_float16` is the *fast* int8 path and exists only on GPU; it is what the old
+prebuilt `OpenNMT/nllb-200-3.3B-ct2-int8` model stored. The current GPU build does not use it,
+because measurement showed plain `float16` is faster than int8 on every language pair tested.
+
+### Use the GPU image on GPU hosts and the CPU image on CPU hosts
+
+They are **not** interchangeable, and the failure is quiet in one direction:
+
+- **CPU image on a GPU host** -- the stored `int8_float32` is a type CUDA *supports*, so CTranslate2
+  honours it rather than upgrading. You silently get the slow int8 path instead of tensor cores.
+  Verified: loading the cpu-built model with `device="cuda"` still reports `int8_float32`.
+- **GPU image on a CPU host** -- `float16` is unsupported on CPU, so weights are auto-converted to
+  `float32`. This one is at least loud: CTranslate2 logs a conversion warning, and the component
+  logs a mismatch against `NLLB_EXPECTED_COMPUTE_TYPE`.
+
+Note the boundary of that check: `NLLB_EXPECTED_COMPUTE_TYPE` records what the **build** intended,
+so it catches a wrong-for-the-build type. It does **not** catch a correct-for-the-build image
+deployed to the wrong kind of host -- in the CPU-image-on-GPU case the expectation matches and the
+check stays quiet.
+
+To see what an image actually resolves:
+
+```bash
+docker run --rm --gpus '"device=0"' --entrypoint /opt/mpf/plugin-venv/bin/python \
+  openmpf_nllb_translation:ctranslate2 -c \
+  "import ctranslate2, os; t = ctranslate2.Translator('/models/nllb-200-3.3B-ct2', device='cuda'); \
+   print(t.compute_type, '| built for', os.environ.get('NLLB_EXPECTED_COMPUTE_TYPE'))"
+```
+
 ## Notes / gotchas
 
 - **fp16 OOM:** batched fp16 fragments GPU memory on long runs. The pipeline

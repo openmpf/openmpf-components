@@ -637,6 +637,8 @@ names by string needs updating.
       *Lesson: any experiment run through `run_decomp.sh` or `run_pipeline.sh` must start from
       deleted hypothesis files, or the resume guard silently turns it into a no-op.*
 
+## Phase 9 — Before the merge request
+
 - [ ] **9.1 Delete `python/NllbTranslation/eval/`.** It is a prototype enabler, not product code
       (see the banner at the top of this document). `git rm -r python/NllbTranslation/eval` — nothing
       under `nllb_component/`, `plugin-files/`, `tests/` or the `Dockerfile` imports or references
@@ -645,8 +647,11 @@ names by string needs updating.
 - [ ] **9.2 Confirm nothing else prototype-only leaks into the MR** — e.g. `Dockerfile.dev`, any
       scratch models under `models/`, and the `TODO (Phase N)` comments seeded in
       `nllb_translation_component.py` during the merge.
-- [ ] **9.3 Decide the fate of this document.** `PLAN.md` is itself prototype scaffolding; either
-      drop it from the MR or reduce it to whatever design notes are worth keeping in-tree.
+- [ ] **9.3 Decide the fate of `PLAN.md` and `HANDOFF.md`.** Both are prototype scaffolding.
+      `PLAN.md` is task state and has served its purpose once the work merges. `HANDOFF.md` is
+      decision rationale and is *most* useful **during** the review — so it should probably survive
+      until the MR is approved, then be dropped or reduced to whatever design notes are worth
+      keeping in-tree.
 
 ---
 
