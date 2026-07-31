@@ -927,12 +927,10 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
         kwargs = self._record_translate_batch(self._decode_props(
             NLLB_BEAM_SIZE='2',
             NLLB_MAX_BATCH_SIZE='512',
-            NLLB_BATCH_TYPE='examples',
-            NLLB_LENGTH_PENALTY='1.5'))
+            NLLB_BATCH_TYPE='examples'))
         self.assertEqual(2, kwargs['beam_size'])
         self.assertEqual(512, kwargs['max_batch_size'])
         self.assertEqual('examples', kwargs['batch_type'])
-        self.assertEqual(1.5, kwargs['length_penalty'])
 
     def test_decode_property_defaults_reach_ctranslate2(self):
         # Guards the defaults themselves, so a job that sets nothing still gets the
@@ -941,7 +939,6 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
         self.assertEqual(4, kwargs['beam_size'])
         self.assertEqual(2024, kwargs['max_batch_size'])
         self.assertEqual('tokens', kwargs['batch_type'])
-        self.assertEqual(1.0, kwargs['length_penalty'])
 
     def test_max_decoding_length_follows_the_token_limit(self):
         # The chunk limit doubles as CTranslate2's max_decoding_length; if these ever
@@ -997,7 +994,6 @@ Me parece que cuanto más al este se viaja, más impuntuales son los trenes. ¿C
             'NLLB_BEAM_SIZE': 'nllb_beam_size',
             'NLLB_MAX_BATCH_SIZE': 'nllb_max_batch_size',
             'NLLB_BATCH_TYPE': 'nllb_batch_type',
-            'NLLB_LENGTH_PENALTY': 'nllb_length_penalty',
             'NLLB_INTER_THREADS': 'nllb_inter_threads',
             'NLLB_INTRA_THREADS': 'nllb_intra_threads',
             'NLLB_TRANSLATION_TOKEN_LIMIT': 'nllb_token_limit',

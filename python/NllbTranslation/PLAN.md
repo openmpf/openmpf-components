@@ -70,7 +70,7 @@ What the merge landed, and what it left:
 | 0 — branch hygiene | **done** |
 | 1 — model packaging | **done and built** — both `BUILD_TYPE` images verified |
 | 2 — tokenizer abstraction | **done**; default unchanged (SENTENCEPIECE), full-scale A/B still owed |
-| 3 — token-based splitter | **mostly landed**; validation outstanding |
+| 3 — token-based splitter | **done** — validated; SENTENCE mode is the fix |
 | 4 — model lifecycle bug | **fixed and verified**; `NLLB_MODEL` now takes effect |
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
@@ -294,15 +294,35 @@ This is the fix for the −8.6 BLEU Chinese regression. Source: `develop`
       *(An earlier version of this plan cited "Arabic scored 38.29 in the decomposition vs 40.71 in
       Axis A" as evidence the limit hurts. That comparison was across different samples — n=1,000 vs
       n=5,000 — and the controlled re-run has since disproved the causal claim.)*
-- [ ] **3.4a Do not assume `develop`'s splitter is uniformly better.** As-deployed, `develop`
-      under-generates on **Bengali (length ratio 0.692)** and **Persian (0.764)** while the CT2
-      branch reaches 0.825 / 0.899 and wins by ~7 BLEU on both. Porting the splitter fixes Chinese
-      but may import a bn/fa regression. Gate the port on Axis B for **zh, bn, and fa** — not zh
-      alone.
-- [ ] **3.5 Consider `SENTENCE_SPLITTER_MODE=SENTENCE` as the CT2 default.** It yields one sentence
-      at a time, which pairs naturally with CT2's batch translation — the engine can batch the
-      sentences that the splitter emits, instead of translating a few large chunks. This is a
-      CT2-specific opportunity `develop` cannot exploit. Validate against `DEFAULT` before adopting.
+- [x] **3.4a Gate on zh, bn AND fa — the gate fired, and was worth having.** Porting `develop`'s
+      token-based splitter fixed Chinese as-deployed (0.551 → 0.704) but **regressed** Bangla
+      (0.825 → 0.666) and Persian (0.899 → 0.756) on the H100 full run. Resolved by 3.5.
+
+- [x] **3.5 `SENTENCE_SPLITTER_MODE=SENTENCE` is now the default — this was the fix.** Filed
+      originally as a throughput idea; it turned out to be the correctness fix for the as-deployed
+      under-generation.
+
+      **Mechanism, measured by `eval/sweep_splitter.sh`:** NLLB under-generates on long inputs, and
+      the relationship is monotonic — the fewer chunks a document is split into, the shorter the
+      output. On bn-en at N=200: 15 chunks → 0.363, 23 → 0.457, 42 → 0.727, 69 → 0.869, 238 →
+      1.031. Raising the token soft limit therefore makes it *worse*, not better.
+
+      | pair | packed (old default) | **SENTENCE (new default)** |
+      |---|---|---|
+      | bn-en | 23.73 / 0.727 | **33.60 / 1.031** |
+      | zh-en | 16.84 / 0.704 | **28.24 / 0.986** |
+      | pt-en (Latin control) | 48.25 / 0.949 | **48.85 / 0.971** |
+
+      Every ratio lands in 0.97–1.03, better than anything else measured in this project including
+      `develop`'s best (0.94). No regression on the Latin control.
+
+      This also explains why **Axis A never showed under-generation**: it feeds one sentence per
+      detection, which is what sentence mode does in document mode.
+
+      **The char-vs-token splitter debate is moot in sentence mode.** With one sentence per chunk the
+      sizing unit barely matters — `USE_NLLB_TOKEN_LENGTH=FALSE` now scores the same as the default
+      (bn 33.47, zh 28.24, pt 49.08). The whole regression was an artifact of *packing* sentences.
+
 - [ ] **3.6 Map `max_length` → `max_decoding_length`.** `develop` passes `max_length=hard_limit` to
       `generate()`; the CT2 equivalent on `translate_batch` is `max_decoding_length`. Do not drop it.
 
@@ -353,7 +373,6 @@ Currently hardcoded at `nllb_translation_component.py:245–250`: `beam_size = 4
       | `NLLB_BEAM_SIZE` | 4 | what the evaluation measured |
       | `NLLB_MAX_BATCH_SIZE` | 2024 | as hardcoded before |
       | `NLLB_BATCH_TYPE` | `tokens` | as hardcoded before |
-      | `NLLB_LENGTH_PENALTY` | 1.0 | CTranslate2 default; exposed because the as-deployed gaps were under-generation |
       | `NLLB_INTER_THREADS` | 1 | CTranslate2 default |
       | `NLLB_INTRA_THREADS` | 0 | CTranslate2 default (one thread per core) |
 
@@ -422,6 +441,19 @@ names by string needs updating.
       AzureTranslation is literally `-OUTPUT_MERGE_WITH_PREVIOUS_TASK` / `+IS_ANNOTATOR`), and it
       appears in **zero** descriptors on `develop`. Re-adding it would have resurrected a dead
       property. Dropped.
+- [x] **6.5 The DESCRIPTOR's defaultValue is the operative default, not `JobConfig`'s.** The
+      executor reads `descriptor.json` and passes every property explicitly, so a `JobConfig`
+      default is only a fallback for callers that omit it. Changing a default therefore means
+      changing **both**. This cost real time: after flipping only the `JobConfig` default, a sweep
+      appeared to show the change had no effect, because the image's descriptor was still supplying
+      the old value. `sweep_splitter.sh`'s `COMPONENT_SRC` now mounts both. It also makes the
+      descriptor-drift test (7.4) load-bearing rather than tidy.
+- [x] **6.6 `NLLB_LENGTH_PENALTY` removed.** It was added in Phase 5 on the reasoning that "the
+      evaluation traced the as-deployed gaps to under-generation, and length penalty is the direct
+      lever on that". The sweep disproved that: at 1.5 it produced **identical translations** to the
+      default on all three pairs. It is not inert in general (Phase 5 saw 3.0 alter a short
+      sentence), but it does not address the problem it was added for, and a knob whose rationale
+      has evaporated is worse than no knob.
 - [ ] **6.4 Known gap: `zho_Hans` is absent from `_flores_to_wtpsplit_iso_639_1`.** Pre-existing on
       the CT2 branch, not introduced by the merge — `get_normalized_iso("zho_Hans")` returns the
       input unchanged, so the WtP/SaT adaptor language falls back rather than resolving to `zh`

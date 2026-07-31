@@ -51,12 +51,6 @@
           "defaultValue": "tokens"
         },
         {
-          "name": "NLLB_LENGTH_PENALTY",
-          "description": "CTranslate2 beam-search length penalty. 1.0 is the library default; higher values favour longer output.",
-          "type": "DOUBLE",
-          "defaultValue": "1.0"
-        },
-        {
           "name": "NLLB_INTER_THREADS",
           "description": "Number of translations CTranslate2 runs in parallel. Fixed when the model loads, so only the first job after component start takes effect.",
           "type": "INT",
@@ -166,9 +160,9 @@
         },
         {
           "name": "SENTENCE_SPLITTER_MODE",
-          "description": "Determines how text is split: `DEFAULT` mode splits text into chunks based on the character limit, while `SENTENCE` mode splits text strictly at sentence boundaries (may yield smaller segments), unless the character limit is reached.",
+          "description": "How text is chunked before translation. SENTENCE (default) sends one sentence per chunk; DEFAULT packs sentences up to the token budget. NLLB under-generates on long inputs, so SENTENCE gives markedly better as-deployed length ratios on dense scripts.",
           "type": "STRING",
-          "defaultValue": "DEFAULT"
+          "defaultValue": "SENTENCE"
         },
         {
           "name": "SENTENCE_SPLITTER_NEWLINE_BEHAVIOR",

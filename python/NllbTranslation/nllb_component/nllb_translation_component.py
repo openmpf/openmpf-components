@@ -461,7 +461,6 @@ class NllbTranslationComponent:
                     batch_type=config.nllb_batch_type,
                     max_batch_size=config.nllb_max_batch_size,
                     beam_size=config.nllb_beam_size,
-                    length_penalty=config.nllb_length_penalty,
                     max_decoding_length=hard_limit,
                     target_prefix=target_prefix)
 
@@ -503,8 +502,14 @@ class JobConfig:
             ).split(',')
         ]
 
+        # SENTENCE (one sentence per chunk) rather than DEFAULT (pack chunks up to a
+        # token budget). NLLB under-generates on long inputs -- measured monotonically:
+        # the fewer chunks a document is split into, the shorter the output. Sentence
+        # mode gives the best length ratio on every pair tested (bn 1.031, zh 0.986,
+        # pt 0.971) and is what Axis A has always done implicitly, which is why Axis A
+        # never showed under-generation. See PLAN.md Phase 3.
         self._sentence_split_mode = mpf_util.get_property(
-            props, 'SENTENCE_SPLITTER_MODE', 'DEFAULT')
+            props, 'SENTENCE_SPLITTER_MODE', 'SENTENCE')
 
         self._newline_behavior = mpf_util.get_property(
             props, 'SENTENCE_SPLITTER_NEWLINE_BEHAVIOR', 'GUESS')
@@ -618,11 +623,6 @@ class JobConfig:
         self.nllb_beam_size = mpf_util.get_property(props, 'NLLB_BEAM_SIZE', 4)
         self.nllb_max_batch_size = mpf_util.get_property(props, 'NLLB_MAX_BATCH_SIZE', 2024)
         self.nllb_batch_type = mpf_util.get_property(props, 'NLLB_BATCH_TYPE', 'tokens')
-
-        # CTranslate2 length penalty. 1 is the library default (no change); values
-        # above 1 favour longer output. Exposed because the evaluation traced the
-        # as-deployed quality gaps to under-generation -- see PLAN.md Phase 3.
-        self.nllb_length_penalty = mpf_util.get_property(props, 'NLLB_LENGTH_PENALTY', 1.0)
 
         # Threading is a property of the loaded Translator, not of a translation
         # call, so these only take effect when the model is (re)loaded. They matter
