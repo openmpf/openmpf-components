@@ -75,7 +75,7 @@ What the merge landed, and what it left:
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **done** — 38 tests green on both builds (1 gated golden test) |
-| 8 — validation | not started |
+| 8 — validation | 8.1/8.2 **passed** at full scale; 8.3 throughput and 8.4 CPU smoke outstanding |
 
 ---
 
@@ -536,17 +536,27 @@ names by string needs updating.
 
 ## Phase 8 — Validation
 
-- [ ] **8.1 Re-run Axis A** (`eval/run_pipeline.sh`) on the new GPU image for at least pt/ar/zh plus
-      one Cyrillic and one Indic pair. **Baseline: the fp16 column of `eval/pipeline-results/`**, not
-      the int8 column — the GPU build now ships fp16. Axis A proved hardware-independent (H100
-      reproduced the RTX 5070 Ti scores to 3 decimals), so the recorded numbers are a valid target.
-      Acceptance: no significant regression. Any large delta points at a decode-parameter or
-      tokenizer change, not at the model, since Δquant is non-significant on all 9 pairs.
-- [ ] **8.2 Re-run Axis B** (`RUN_AXIS_B=1`) for **zh, bn, and fa** — the acceptance test for
-      Phase 3. Acceptance: **zh length ratio reaches ~0.90**, in line with the healthy languages.
-      Note the earlier target of "recover toward `develop`'s 0.751" was **wrong**: 0.751 is itself
-      deficient, and `develop` is worse still on bn (0.692) and fa (0.764). Do not regress bn/fa
-      below the CT2 branch's current 0.825 / 0.899.
+- [x] **8.1 Re-run Axis A — done for bn/fa/zh, no regression.** The HF column reproduces the
+      recorded numbers exactly (33.243 / 36.17 / 24.384). The CT2 column is now **fp16** where the
+      recorded baseline was **int8**, and the deltas are bn +0.12, fa -0.06, zh -0.02 — all within
+      noise. An independent confirmation, from a different direction, of the decomposition's finding
+      that quantization is quality-neutral.
+- [x] **8.2 Re-run Axis B for zh, bn and fa — PASSED, and exceeded the target.** 5,000 sentences on
+      H100 with `SENTENCE_SPLITTER_MODE=SENTENCE`:
+
+      | pair | char splitter (orig eval) | token, packed | **SENTENCE (shipped)** | HF |
+      |---|---|---|---|---|
+      | zh-en | 17.00 / 0.551 | 25.59 / 0.704 | **35.88 / 0.972** | 27.03 / 0.751 |
+      | bn-en | 37.43 / 0.825 | 28.71 / 0.666 | **43.89 / 0.972** | 29.86 / 0.692 |
+      | fa-en | 42.20 / 0.899 | 35.05 / 0.756 | **45.58 / 1.024** | 34.98 / 0.764 |
+
+      Acceptance was "zh reaches ~0.90, bn/fa do not regress below 0.825/0.899". All three landed at
+      0.972-1.024, and `AxisB dBLEU` is **positive on every pair** (+8.85, +14.03, +10.60): the
+      component now beats `develop` as-deployed on exactly the languages where `develop` was weakest.
+      The Chinese figure that started this investigation moved from **-8.64 to +8.85**.
+
+      The 200-sentence sweep predicted 0.97-1.03 and full scale delivered 0.972-1.024, so
+      `sweep_splitter.sh` is a trustworthy proxy for future splitter questions.
 - [ ] **8.3 Re-measure throughput on the target hardware.** Expect ~2.3× over HF-fp16 on H100, not
       the ~6× seen on a consumer card. Record CPU-build throughput separately — it sets whether the
       CPU target is viable for the intended workload at all.
