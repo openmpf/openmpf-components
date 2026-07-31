@@ -68,7 +68,7 @@ else COMET_VISIBLE="$COMET_DEVICE"; COMET_GPUS=1; fi
 RUNLOG="$EVAL/results/pipeline.$(date +%Y%m%d_%H%M%S).log"
 mkdir -p "$EVAL/results"
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$RUNLOG"; }
-nlines() { wc -l < "$1" 2>/dev/null | tr -d ' ' || echo 0; }
+nlines() { [ -f "$1" ] && wc -l < "$1" 2>/dev/null | tr -d ' ' || echo 0; }
 
 driver_run() {  # image env_args... -- driver_args...
   local image=$1; shift

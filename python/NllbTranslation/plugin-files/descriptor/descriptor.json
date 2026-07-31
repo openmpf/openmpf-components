@@ -106,7 +106,7 @@
         },
         {
           "name": "NLLB_TRANSLATION_TOKEN_SOFT_LIMIT",
-          "description": "Ideal token size for translation chunks when USE_NLLB_TOKEN_LENGTH=TRUE. If > 0 and less than NLLB_TRANSLATION_TOKEN_LIMIT, the splitter will attempt to produce chunks near this size (and will split even if the full text fits under the hard limit). Must be <= hard limit. Recommended ~130.",
+          "description": "Ideal token size for translation chunks when USE_NLLB_TOKEN_LENGTH=TRUE. If > 0 and less than NLLB_TRANSLATION_TOKEN_LIMIT, the splitter will attempt to produce chunks near this size (and will split even if the full text fits under the hard limit). Must be <= hard limit. Recommended ~130. Only applies when SENTENCE_SPLITTER_MODE=DEFAULT; in SENTENCE mode each chunk is one sentence, so this limit has nothing to act on.",
           "type": "INT",
           "defaultValue": "130"
         },
@@ -178,7 +178,7 @@
         },
         {
           "name": "DIFFICULT_LANGUAGE_TOKEN_LIMIT",
-          "description": "Token size for translation chunks of difficult languages when USE_NLLB_TOKEN_LENGTH=TRUE. Overrides NLLB_TRANSLATION_TOKEN_SOFT_LIMIT when a difficult language specified by PROCESS_DIFFICULT_LANGUAGES is in use. ",
+          "description": "Token size for translation chunks of difficult languages when USE_NLLB_TOKEN_LENGTH=TRUE. Overrides NLLB_TRANSLATION_TOKEN_SOFT_LIMIT when a difficult language specified by PROCESS_DIFFICULT_LANGUAGES is in use.  Only applies when SENTENCE_SPLITTER_MODE=DEFAULT; in SENTENCE mode each chunk is one sentence, so this limit has nothing to act on.",
           "type": "INT",
           "defaultValue": "50"
         }

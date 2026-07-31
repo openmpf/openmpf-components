@@ -39,7 +39,7 @@ H="$EVAL/results/decomp/$name"; RREL="results/decomp/$name"
 mkdir -p "$H"
 LOG="$H/decomp.log"
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
-nlines() { wc -l < "$1" 2>/dev/null | tr -d ' ' || echo 0; }
+nlines() { [ -f "$1" ] && wc -l < "$1" 2>/dev/null | tr -d ' ' || echo 0; }
 
 log "DECOMP pair=$name ($nsrc"_"$nscript->eng_Latn) N=$N"
 

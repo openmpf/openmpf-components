@@ -583,6 +583,21 @@ names by string needs updating.
       story: sentence mode emits ~35-45% more output in the same time, because that output is the
       content packed mode was losing. Per unit of *correct* output it is substantially cheaper.
 
+- [x] **8.7 `NLLB_TRANSLATION_TOKEN_SOFT_LIMIT` and `DIFFICULT_LANGUAGE_TOKEN_LIMIT` are inert
+      under the SENTENCE default.** Both work by overriding `preferred_limit`, which
+      `_split_sentences_individually` never consults — it compares against the *hard* limit. Measured
+      on the `test_long_spanish` text: in SENTENCE mode soft 130 vs 512 is byte-identical (3816
+      chars); in packed mode it halves the output (3798 -> 1846). **Kept, not removed** — unlike
+      `NLLB_LENGTH_PENALTY` these are `develop`'s properties with a real effect in packed mode, and
+      dropping them would diverge from `develop` and remove a legitimate escape hatch. Both
+      descriptions now say they apply only when `SENTENCE_SPLITTER_MODE=DEFAULT`.
+- [x] **8.8 `ct2_driver.py` was broken by Phase 1 — fixed.** It hardcoded
+      `/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model`, which Phase 1 removed from the
+      images, so both CT2 legs of the decomposition died instantly (`0/200`, blank `compute_type`).
+      It now searches the model directory, then any `/models/*/sentencepiece.bpe.model`, then the
+      legacy path, and fails with an actionable message listing what it tried.
+      `convert_ct2.sh` never received the `--copy_files` fix the Dockerfile got in Phase 1, so
+      models it converts have no tokenizer at all; it does now.
 - [ ] **8.6 Cache `TextSplitterModel` — it is rebuilt on every translation.**
       `nllb_translation_component.py:396` constructs a new `TextSplitterModel` inside the
       per-property loop, so the sentence-splitter weights are re-read for every job that needs
@@ -604,12 +619,23 @@ names by string needs updating.
       mismatch check stayed silent — so it does not cry wolf when things are right. The two builds
       agree within 0.03 BLEU.
 
-- [ ] **8.5b Optional: establish *why* ar-en is an outlier.** Two explanations are dead (chunking
-      confound; sentences too short). A repeat on a second Arabic-script corpus would show whether
-      the effect is language-specific or sample-specific. Not blocking — it changes no decision in
-      this plan, since the engine choice does not hinge on one pair.
+- [~] **8.5b Why ar-en is an outlier — the earlier refutation was invalid.** This plan and
+      `REPORT.md` both recorded that re-running the ar-en decomposition with
+      `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` "produced identical results", and concluded the chunking
+      confound was disproved. **That test did not actually run anything.** `run_decomp.sh`'s
+      `gen_component` skips regeneration when the hypothesis file is already complete
+      (`if [ "$(nlines "$H/hyp.$label.en")" -ge "$NL" ]; then ... return`), so a re-run with the
+      property set logged `already done`, reused the existing hypotheses and re-scored the same
+      text. Identical results were guaranteed regardless of the property.
 
-## Phase 9 — Before the merge request
+      Direct testing shows the property is **not** inert: on 8 of 8 single Arabic sentences between
+      55 and 125 tokens, `DIFFICULT_LANGUAGE_TOKEN_LIMIT` 50 vs 0 produces different output, each
+      splitting one sentence into 2 chunks. So the original chunking hypothesis is live again.
+      A clean re-run (empty `results/decomp/`) is the arbiter; until it lands, treat the ar-en
+      engine figure as **unexplained**, which is what `REPORT.md` already says.
+
+      *Lesson: any experiment run through `run_decomp.sh` or `run_pipeline.sh` must start from
+      deleted hypothesis files, or the resume guard silently turns it into a no-op.*
 
 - [ ] **9.1 Delete `python/NllbTranslation/eval/`.** It is a prototype enabler, not product code
       (see the banner at the top of this document). `git rm -r python/NllbTranslation/eval` — nothing

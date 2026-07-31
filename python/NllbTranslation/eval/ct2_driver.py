@@ -16,6 +16,7 @@ Runs INSIDE the ctranslate2 image (has ctranslate2 + sentencepiece + the SPM).
 """
 import argparse
 import json
+import glob
 import os
 import sys
 import time
@@ -23,7 +24,33 @@ import time
 import ctranslate2
 import sentencepiece as spm
 
-SP_DEFAULT = "/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model"
+# SentencePiece model locations, newest first. Images built after the CTranslate2
+# conversion work copy the tokenizer INTO the converted model directory
+# (--copy_files); older images downloaded it separately from OpenNMT. The two
+# files are byte-identical (md5 05c551ae7955b3980d5a9d044eb09d70), so either works
+# -- this just has to find one.
+SP_CANDIDATES = (
+    "sentencepiece.bpe.model",  # relative to the model dir (converted --copy_files)
+    "/models/*/sentencepiece.bpe.model",  # the image's own shipped model dir
+    "/models/OpenNMT/flores200_sacrebleu_tokenizer_spm.model",  # legacy images
+)
+
+
+def resolve_sp_model(explicit, model_dir):
+    """Locate the SentencePiece model, or fail with something actionable."""
+    if explicit:
+        if not os.path.isfile(explicit):
+            sys.exit(f"--sp-model not found: {explicit}")
+        return explicit
+    tried = []
+    for cand in SP_CANDIDATES:
+        path = cand if os.path.isabs(cand) else os.path.join(model_dir, cand)
+        tried.append(path)
+        for match in sorted(glob.glob(path)):
+            if os.path.isfile(match):
+                return match
+    sys.exit("No SentencePiece model found. Tried:\n  " + "\n  ".join(tried)
+             + "\nPass one explicitly with --sp-model.")
 
 
 def log(m):
@@ -40,7 +67,9 @@ def main():
     ap.add_argument("--source-script", default="Latn")
     ap.add_argument("--target-lang", default="eng")
     ap.add_argument("--target-script", default="Latn")
-    ap.add_argument("--sp-model", default=SP_DEFAULT)
+    ap.add_argument("--sp-model", default=None,
+                    help="SentencePiece model; default: look inside the model dir, "
+                         "then the legacy /models/OpenNMT path")
     ap.add_argument("--beam", type=int, default=4)
     ap.add_argument("--compute-type", default="default",
                     help="ctranslate2 compute_type (default = the model's own)")
@@ -72,7 +101,9 @@ def main():
         mode = "a"
         log(f"resuming: {done} lines already translated")
 
-    sp = spm.SentencePieceProcessor(model_file=args.sp_model)
+    sp_path = resolve_sp_model(args.sp_model, args.model)
+    print(f'tokenizer: {sp_path}', flush=True)
+    sp = spm.SentencePieceProcessor(model_file=sp_path)
     log(f"loading model {args.model} (device={args.device}, compute_type={args.compute_type})...")
     t0 = time.time()
     translator = ctranslate2.Translator(args.model, device=args.device,

@@ -30,8 +30,14 @@ for q in "${QUANTS[@]}"; do
     continue
   fi
   echo "=== converting $MODEL ($REV) -> $d  [quantization=$q] ==="
+  # --copy_files is load-bearing: without it the converted directory has no
+  # tokenizer at all (only config.json, model.bin, shared_vocabulary.json), and
+  # ct2_driver.py has nothing to encode with. The component's images hit exactly
+  # this after the tokenizer download was dropped.
   "$CONV" --model "$MODEL" --revision "$REV" --output_dir "$d" \
-    --quantization "$q" --low_cpu_mem_usage --force
+    --quantization "$q" --low_cpu_mem_usage --force \
+    --copy_files sentencepiece.bpe.model tokenizer.json \
+                 tokenizer_config.json special_tokens_map.json
 done
 echo "done. CTranslate2 models under $OUT/  (tokenization uses the image's FLORES SPM)"
 ls -la "$OUT"/nllb-3.3B-ct2-*/model.bin 2>/dev/null || true
