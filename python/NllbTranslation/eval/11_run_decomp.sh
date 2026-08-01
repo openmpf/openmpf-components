@@ -9,9 +9,9 @@
 #     quantization effect= CT2-fp16 vs CT2-int8   (same engine, diff precision)
 # Produces decomp.SUMMARY.md with quality + throughput per system.
 #
-# Prereqs: ./convert_ct2.sh has produced models/nllb-3.3B-ct2-{float16,int8}.
-# Usage:   ./run_decomp.sh              (default pair below)
-#          PAIR="de-en|tmx/de-en.tmx|de|deu|Latn" N=2000 ./run_decomp.sh
+# Prereqs: ./10_convert_ct2.sh has produced models/nllb-3.3B-ct2-{float16,int8}.
+# Usage:   ./11_run_decomp.sh              (default pair below)
+#          PAIR="de-en|tmx/de-en.tmx|de|deu|Latn" N=2000 ./11_run_decomp.sh
 # ===========================================================================
 set -uo pipefail
 EVAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,7 +29,7 @@ INT8_IMAGE=${INT8_IMAGE:-openmpf_nllb_translation:$INT8_IMAGE_TAG}
 BOOTSTRAP=${BOOTSTRAP:-1000}
 CT2_FP16=${CT2_FP16:-nllb-3.3B-ct2-float16}          # dir name under ./models
 CT2_INT8=${CT2_INT8:-nllb-3.3B-ct2-int8_float16}     # int8_float16 = production-matching fast int8
-# COMET on host -> CUDA_VISIBLE_DEVICES (see run_pipeline.sh notes)
+# COMET on host -> CUDA_VISIBLE_DEVICES (see 03_run_pipeline.sh notes)
 _gpu_idx=$(printf '%s' "$GPU" | grep -oE '[0-9]+' | head -1)
 COMET_DEVICE=${COMET_DEVICE:-${_gpu_idx:-0}}
 if [ "$COMET_DEVICE" = "cpu" ]; then COMET_VISIBLE=""; COMET_GPUS=0; else COMET_VISIBLE="$COMET_DEVICE"; COMET_GPUS=1; fi
@@ -45,7 +45,7 @@ log "DECOMP pair=$name ($nsrc"_"$nscript->eng_Latn) N=$N"
 
 # model dirs must exist
 for d in "$CT2_FP16" "$CT2_INT8"; do
-  [ -f "models/$d/model.bin" ] || { log "MISSING models/$d/model.bin — run ./convert_ct2.sh first"; exit 1; }
+  [ -f "models/$d/model.bin" ] || { log "MISSING models/$d/model.bin — run ./10_convert_ct2.sh first"; exit 1; }
 done
 
 # mteval/ct2_driver.py imports ctranslate2, which only exists in the CTranslate2 image.
@@ -108,7 +108,7 @@ gen_ct2() {  # label model_dir
 # mteval/ct2_driver.py has no such logic, so leaving it enabled makes the engine
 # contrast measure chunking rather than the engine: with it on, ar-en showed a
 # spurious +1.91 BLEU / +0.71 COMET "engine effect" (p<0.001) and HF-fp16 ran at
-# ~55% the throughput of comparable pairs. run_pipeline.sh disables it for
+# ~55% the throughput of comparable pairs. 03_run_pipeline.sh disables it for
 # Axis A for the same reason.
 gen_component hf-fp16  "$FP16_IMAGE" "" "DIFFICULT_LANGUAGE_TOKEN_LIMIT=0"
 gen_ct2 ct2-fp16 "$CT2_FP16"

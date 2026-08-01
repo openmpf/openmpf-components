@@ -12,10 +12,11 @@ alternative).
 > ## ⚠️ `eval/` is a prototype enabler — remove it before the merge request
 >
 > This branch is deliberately named with a **`prototype/`** prefix. The `eval/` directory carries the
-> machine-translation evaluation harness — user-facing scripts at its top level
-> (`run_pipeline.sh`, `run_decomp.sh`, `sweep_splitter.sh`, `preflight.sh`, …) over a `mteval/`
-> package of supporting modules. It is here to make the plan *executable* — Phases 2.5, 7 and 8 all
-> invoke these scripts, and without them the validation steps cannot be run from this checkout.
+> machine-translation evaluation harness — numbered user-facing scripts at its top level
+> (`00_setup_venv.sh` … `03_run_pipeline.sh`, plus the optional `1x_`/`2x_` tracks) over a
+> `mteval/` package of supporting modules. It is here to make the plan *executable* — Phases 2.5,
+> 7 and 8 all invoke these scripts, and without them the validation steps cannot be run from this
+> checkout.
 >
 > **It is development tooling, not product code.** It benchmarks two OpenMPF *images* against each
 > other, depends on TMX corpora and a separate scoring venv, and has no role at runtime.
@@ -307,7 +308,7 @@ This is the fix for the −8.6 BLEU Chinese regression. Source: `develop`
       originally as a throughput idea; it turned out to be the correctness fix for the as-deployed
       under-generation.
 
-      **Mechanism, measured by `eval/sweep_splitter.sh`:** NLLB under-generates on long inputs, and
+      **Mechanism, measured by `eval/20_sweep_splitter.sh`:** NLLB under-generates on long inputs, and
       the relationship is monotonic — the fewer chunks a document is split into, the shorter the
       output. On bn-en at N=200: 15 chunks → 0.363, 23 → 0.457, 42 → 0.727, 69 → 0.869, 238 →
       1.031. Raising the token soft limit therefore makes it *worse*, not better.
@@ -359,7 +360,7 @@ and the baked-in default is always used. This was discovered the hard way during
       Verified: a bogus `NLLB_MODEL` raises, state resets to `None`, and the next valid job reloads
       and translates normally.
 
-**Consequence for the eval harness:** `run_decomp.sh` drives `ct2_driver.py` instead of the
+**Consequence for the eval harness:** `11_run_decomp.sh` drives `ct2_driver.py` instead of the
 component specifically because this bug made `--prop NLLB_MODEL=<dir>` a no-op. That reason is now
 gone. The standalone driver is still worth keeping — it can force a `compute_type` and records
 `actual_compute_type` — but the decomposition could be re-pointed at the component if a
@@ -451,7 +452,7 @@ names by string needs updating.
       default is only a fallback for callers that omit it. Changing a default therefore means
       changing **both**. This cost real time: after flipping only the `JobConfig` default, a sweep
       appeared to show the change had no effect, because the image's descriptor was still supplying
-      the old value. `sweep_splitter.sh`'s `COMPONENT_SRC` now mounts both. It also makes the
+      the old value. `20_sweep_splitter.sh`'s `COMPONENT_SRC` now mounts both. It also makes the
       descriptor-drift test (7.4) load-bearing rather than tidy.
 - [x] **6.6 `NLLB_LENGTH_PENALTY` removed.** It was added in Phase 5 on the reasoning that "the
       evaluation traced the as-deployed gaps to under-generation, and length penalty is the direct
@@ -573,7 +574,7 @@ names by string needs updating.
       The Chinese figure that started this investigation moved from **-10.03 to +8.85**.
 
       The 200-sentence sweep predicted 0.97-1.03 and full scale delivered 0.972-1.024, so
-      `sweep_splitter.sh` is a trustworthy proxy for future splitter questions.
+      `20_sweep_splitter.sh` is a trustworthy proxy for future splitter questions.
 
       **Extended to all nine pairs** (2026-07-31 H100 run). Every pair now favours CTranslate2,
       where seven of nine previously lost: ar +2.61, bn +14.03, de +1.91, fa +10.60, fr +1.23,
@@ -616,7 +617,7 @@ names by string needs updating.
       images, so both CT2 legs of the decomposition died instantly (`0/200`, blank `compute_type`).
       It now searches the model directory, then any `/models/*/sentencepiece.bpe.model`, then the
       legacy path, and fails with an actionable message listing what it tried.
-      `convert_ct2.sh` never received the `--copy_files` fix the Dockerfile got in Phase 1, so
+      `10_convert_ct2.sh` never received the `--copy_files` fix the Dockerfile got in Phase 1, so
       models it converts have no tokenizer at all; it does now.
 - [ ] **8.6 Cache `TextSplitterModel` — it is rebuilt on every translation.**
       `nllb_translation_component.py:396` constructs a new `TextSplitterModel` inside the
@@ -665,7 +666,7 @@ names by string needs updating.
 
       Clean re-run: HF-fp16 **24.946**, Δengine **+0.603**, which agrees with the n=5,000 Axis A
       figure (+0.709). Mechanism is either the crossed image-tag assignment that once existed in
-      `run_decomp.sh` or its resume guard preserving a stale `hyp.hf-fp16.en`; the artifacts do not
+      `11_run_decomp.sh` or its resume guard preserving a stale `hyp.hf-fp16.en`; the artifacts do not
       distinguish them. Corrected engine speedup for this pair: 1.7× → 2.41×.
 
       This also retires a claim in the previous REPORT.md revision that the n=1,000 Δengine column

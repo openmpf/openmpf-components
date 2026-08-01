@@ -3,7 +3,7 @@
 # both from the SAME source checkpoint so the fp16-vs-int8 comparison is clean.
 # Runs on the host venv (needs ctranslate2 + transformers + internet for the
 # first download). Output dirs go under ./models/ and are mounted into the
-# ctranslate2 image by run_decomp.sh.
+# ctranslate2 image by 11_run_decomp.sh.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 

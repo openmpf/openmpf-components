@@ -2,7 +2,7 @@
 """Assemble the engine-vs-quantization decomposition table for one pair.
 
 Reads the two pairwise compare CSVs and the three per-system meta files that
-run_decomp.sh produced, and prints a Markdown summary: per-metric absolute
+11_run_decomp.sh produced, and prints a Markdown summary: per-metric absolute
 scores for HF-fp16 / CT2-fp16 / CT2-int8, the engine delta (CT2-fp16 − HF-fp16)
 and quantization delta (CT2-int8 − CT2-fp16), plus throughput and speedups.
 

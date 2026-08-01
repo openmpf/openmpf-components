@@ -40,22 +40,22 @@ Two axes per pair:
    ```
    If your enclave tags them differently, point the pipeline at your tags:
    ```bash
-   HF_IMAGE=my/nllb:hf CT2_IMAGE=my/nllb:ct2 ./run_pipeline.sh
+   HF_IMAGE=my/nllb:hf CT2_IMAGE=my/nllb:ct2 ./03_run_pipeline.sh
    # (the former FP16_IMAGE / INT8_IMAGE names are still accepted)
    ```
    (You can compare any two image variants — whichever two you set as
    HF_IMAGE / CT2_IMAGE.)
-3. **Python 3 + internet** for the scoring venv (`./setup_venv.sh`).
+3. **Python 3 + internet** for the scoring venv (`./00_setup_venv.sh`).
 
 ## Setup
 
 ```bash
-./setup_venv.sh            # pip-installs sacrebleu, COMET (+torch), etc.
-./download_tmx_files.sh    # fetch the nine OPUS TED2020 corpora into ./tmx (~226 MB)
-./preflight.sh             # verifies docker, GPU, images, venv, tmx files
+./00_setup_venv.sh            # pip-installs sacrebleu, COMET (+torch), etc.
+./01_download_tmx_files.sh    # fetch the nine OPUS TED2020 corpora into ./tmx (~226 MB)
+./02_preflight.sh             # verifies docker, GPU, images, venv, tmx files
 ```
 
-`download_tmx_files.sh` reads the file list straight out of `run_pipeline.sh`'s `PAIRS`
+`01_download_tmx_files.sh` reads the file list straight out of `03_run_pipeline.sh`'s `PAIRS`
 table, so it stays in step with whatever you configure below. It is idempotent —
 already-extracted corpora are left alone, a partial download is discarded rather than
 mistaken for a complete one, and `-n` reports what it *would* fetch without writing
@@ -64,7 +64,7 @@ the script will then skip it.
 
 ## Configure your language pairs
 
-Edit the `PAIRS` array in `run_pipeline.sh`. Each line is:
+Edit the `PAIRS` array in `03_run_pipeline.sh`. Each line is:
 
 ```
 name | tmx_path | tmx_src_lang | nllb_src_lang | nllb_src_script
@@ -117,9 +117,9 @@ the code is rejected**, so a bad code won't waste a whole overnight run.
 ## Run
 
 ```bash
-./run_pipeline.sh                 # all pairs, both axes (long — run overnight)
-./run_pipeline.sh ar-en           # a single pair
-RUN_AXIS_B=0 ./run_pipeline.sh    # Axis A only (skips the slow as-deployed blobs)
+./03_run_pipeline.sh                 # all pairs, both axes (long — run overnight)
+./03_run_pipeline.sh ar-en           # a single pair
+RUN_AXIS_B=0 ./03_run_pipeline.sh    # Axis A only (skips the slow as-deployed blobs)
 ```
 
 Knobs (env vars): `N` (sentences/pair, default 5000), `SEED`, `GPU`
@@ -136,9 +136,9 @@ drives **both**: the COMET device defaults to the same index parsed from `GPU`.
 Override independently if needed:
 
 ```bash
-GPU='"device=2"' ./run_pipeline.sh              # translate AND score on GPU 2
-COMET_DEVICE=cpu GPU='"device=2"' ./run_pipeline.sh   # translate on 2, COMET on CPU
-COMET_DEVICE=3   GPU='"device=2"' ./run_pipeline.sh   # translate on 2, COMET on GPU 3
+GPU='"device=2"' ./03_run_pipeline.sh              # translate AND score on GPU 2
+COMET_DEVICE=cpu GPU='"device=2"' ./03_run_pipeline.sh   # translate on 2, COMET on CPU
+COMET_DEVICE=3   GPU='"device=2"' ./03_run_pipeline.sh   # translate on 2, COMET on GPU 3
 ```
 
 If you're only re-running scoring (generation already done) and just need COMET
@@ -170,10 +170,10 @@ systems — HF-fp16, CT2-fp16, CT2-int8 — and reports two clean contrasts:
 CT2-int8, same engine), plus per-system throughput.
 
 ```bash
-./convert_ct2.sh
+./10_convert_ct2.sh
 # facebook/nllb-200-3.3B -> models/nllb-3.3B-ct2-{float16,int8}
 # (host venv; needs ctranslate2 + internet; ~13 GB download once)
-PAIR="pt-en|tmx/en-pt.tmx|pt|por|Latn" N=1000 ./run_decomp.sh
+PAIR="pt-en|tmx/en-pt.tmx|pt|por|Latn" N=1000 ./11_run_decomp.sh
 #    -> results/decomp/<pair>/decomp.SUMMARY.md
 ```
 
@@ -184,12 +184,12 @@ sidesteps "was the HF int8 built from the same checkpoint?").
 > **The CT2 systems bypass the OpenMPF component.** The ctranslate2 component
 > ignores the job's `NLLB_MODEL` (it loads its default baked model once at
 > construction and never reloads by name — the code says `# TODO: this doesn't
-> do much`), so it can't evaluate a *converted* model. `run_decomp.sh` therefore
+> do much`), so it can't evaluate a *converted* model. `11_run_decomp.sh` therefore
 > drives CTranslate2 directly via **`mteval/ct2_driver.py`** (same FLORES-SPM
 > tokenization as the component). Each system's `meta.*.json` records the
 > `actual_compute_type` it loaded, so the model actually used is verifiable.
 
-> **int8 mode matters.** `convert_ct2.sh` uses `--quantization int8_float16`
+> **int8 mode matters.** `10_convert_ct2.sh` uses `--quantization int8_float16`
 > (int8 weights + fp16 compute) to match the production `OpenNMT/…ct2-int8`
 > model. Plain `--quantization int8` loads as `int8_float32` — int8 storage but
 > *float32 math*, which is essentially lossless AND gets no tensor-core speedup,
@@ -199,7 +199,7 @@ sidesteps "was the HF int8 built from the same checkpoint?").
 run per-line/beam 4, so throughput is single-sentence latency (batched
 throughput widens CTranslate2's lead further). `N` defaults smaller (1000)
 because HF-fp16 per-line is the slow one; the deltas we care about are small and
-resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
+resolve fine at that size. `10_convert_ct2.sh` requires `ctranslate2` in the venv
 (now in `requirements.txt`).
 
 ## Layout
@@ -207,24 +207,31 @@ resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
 Everything at the top level is meant to be run by you. Everything under `mteval/` is
 called *by* those scripts, never directly.
 
+The numbers are running order. **`00`–`03` is the required sequence** and each step
+depends on the ones before it. The higher decades are *separate optional tracks*, not
+steps 4 and 5 — they need `00`–`02` done, but not `03`, and not each other.
+
 ```
 eval/
-├── setup_venv.sh            build the scoring venv
-├── download_tmx_files.sh    fetch the TMX corpora into ./tmx
-├── preflight.sh             check docker, GPU, images, venv, corpora
-├── run_pipeline.sh          THE orchestrator — edit PAIRS, then run
-├── convert_ct2.sh           convert facebook/nllb-200-3.3B to CT2 models
-├── run_decomp.sh            engine-vs-quantization 3-system decomposition
-├── sweep_splitter.sh        splitter/chunk-size sweep (fast, minutes)
+├── 00_setup_venv.sh            build the scoring venv
+├── 01_download_tmx_files.sh    fetch the TMX corpora into ./tmx
+├── 02_preflight.sh             check docker, GPU, images, venv, corpora
+├── 03_run_pipeline.sh          THE orchestrator — edit PAIRS, then run
+│
+├── 10_convert_ct2.sh           ┐ optional: engine-vs-quantization
+├── 11_run_decomp.sh            ┘ decomposition (10 produces 11's models)
+│
+├── 20_sweep_splitter.sh        optional: splitter/chunk-size sweep (minutes)
+│
 ├── requirements.txt
-└── mteval/                  modules — not entry points
+└── mteval/                     modules — not entry points
 ```
 
 ### `mteval/` — two runtimes, deliberately not shared
 
 | Module | Role |
 |---|---|
-| **host** — the venv from `setup_venv.sh`, run as `-m mteval.<name>` | |
+| **host** — the venv from `00_setup_venv.sh`, run as `-m mteval.<name>` | |
 | `tmx_sample` | extract + fixed-seed sample from a TMX |
 | `make_sample` | the same, from Moses-format parallel files |
 | `mt_eval` | scoring: `compare` (2 systems + COMET + bootstrap) / `score` (1 system) |

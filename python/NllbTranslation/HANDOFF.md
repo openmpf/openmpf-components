@@ -49,12 +49,12 @@ harness defects, not real per-language variation. Both are corrected and documen
 Note the speedup is **hardware-dependent** — do not quote "~6×" without naming the GPU. H100
 accelerates the batched PyTorch path far more than it accelerates CTranslate2's latency-bound path.
 
-*Evidence:* `REPORT.md` § "Engine vs quantization". Reproduce with `eval/run_decomp.sh`.
+*Evidence:* `REPORT.md` § "Engine vs quantization". Reproduce with `eval/11_run_decomp.sh`.
 
 ### "Your decomposition table shows ar-en gaining +1.91 BLEU from the engine. Engines don't do that."
 
 Correct, and it didn't. That figure was a **harness artifact** and is gone from the current report;
-the committed decomposition now reads −0.038. `run_decomp.sh` passed no job properties to the
+the committed decomposition now reads −0.038. `11_run_decomp.sh` passed no job properties to the
 Transformers system, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` stayed active there while the pipeline
 disables it — and 13.4% of the ar-en sample exceeds 50 tokens, so only that leg got sub-chunked. It
 depressed the baseline, inventing both the quality gap and a bogus 4.1× speedup.
@@ -163,7 +163,7 @@ pairs are not a different phenomenon from bn/fa/zh — there was simply less und
 recover.
 
 *Evidence:* `REPORT.md` § "Final results" and § "What is actually responsible — measured, not
-inferred". Reproduce the mechanism in ~3 minutes with `eval/sweep_splitter.sh`.
+inferred". Reproduce the mechanism in ~3 minutes with `eval/20_sweep_splitter.sh`.
 
 **Where to stop.** Axis B still varies segmentation and decoding together (develop is greedy, this
 branch is beam 4). The decomposition *bounds* any uniform beam contribution at ~+0.44 BLEU — the
@@ -269,7 +269,7 @@ Each of these cost real time. They share a shape: **absence of change reads as c
    reads the descriptor and passes every property explicitly, so a `JobConfig` default is only a
    fallback for callers that omit it. Changing a default means changing **both**. Symptom: a change
    appears to have no effect because the image's descriptor still supplies the old value.
-2. **`run_pipeline.sh` and `run_decomp.sh` skip regeneration** when the hypothesis file is already
+2. **`03_run_pipeline.sh` and `11_run_decomp.sh` skip regeneration** when the hypothesis file is already
    complete. An experiment re-run without deleting `hyp.*.en` first silently re-scores the old text
    and "produces identical results" regardless of what you changed. This produced a wrong conclusion
    about the ar-en outlier that survived two documents, and is one of the two candidate mechanisms
@@ -290,10 +290,10 @@ Each of these cost real time. They share a shape: **absence of change reads as c
 
 ```bash
 # the full pipeline, one pair (hours)
-./eval/run_pipeline.sh zh-en
+./eval/03_run_pipeline.sh zh-en
 
 # splitter behaviour, ~3 minutes per pair -- predicted full-scale ratios to within 0.01
-COMPONENT_SRC=../nllb_component ./eval/sweep_splitter.sh          # PAIR=, N= to vary
+COMPONENT_SRC=../nllb_component ./eval/20_sweep_splitter.sh          # PAIR=, N= to vary
 
 # throughput, in-process so model load is excluded
 docker run --rm --gpus '"device=0"' -v "$PWD/eval":/eval:ro -v "$PWD/eval/results":/results:ro \
@@ -304,7 +304,7 @@ docker run --rm --gpus '"device=0"' -v "$PWD":/component:ro --entrypoint bash IM
   -c 'cd /component/tests && /opt/mpf/plugin-venv/bin/python -m unittest test_nllb_translation'
 ```
 
-`eval/` needs the TMX corpora under `eval/tmx/` and a scoring venv (`eval/setup_venv.sh`); neither
+`eval/` needs the TMX corpora under `eval/tmx/` and a scoring venv (`eval/00_setup_venv.sh`); neither
 is in git. `eval/README.md` covers setup.
 
 ---

@@ -7,11 +7,11 @@
 #
 # Portable: resolves its own directory, so it runs wherever this folder lives.
 # Requires: Docker + NVIDIA runtime, the two OpenMPF NllbTranslation images
-# (see README), and the local venv (./setup_venv.sh).
+# (see README), and the local venv (./00_setup_venv.sh).
 #
-#   ./run_pipeline.sh                 # all configured pairs
-#   ./run_pipeline.sh ar-en           # one pair by name
-#   RUN_AXIS_B=0 ./run_pipeline.sh    # skip slow as-deployed blobs (Axis A only)
+#   ./03_run_pipeline.sh                 # all configured pairs
+#   ./03_run_pipeline.sh ar-en           # one pair by name
+#   RUN_AXIS_B=0 ./03_run_pipeline.sh    # skip slow as-deployed blobs (Axis A only)
 # ===========================================================================
 set -uo pipefail
 EVAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # this folder, wherever it is

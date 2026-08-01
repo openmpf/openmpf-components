@@ -4,7 +4,7 @@ Nothing here is meant to be invoked directly by a user -- the shell scripts in t
 parent directory are the entry points. These modules are split across **two
 runtimes**, and mixing them up produces failures that only appear at run time:
 
-Host runtime -- the scoring venv built by ``../setup_venv.sh``. Invoked as
+Host runtime -- the scoring venv built by ``../00_setup_venv.sh``. Invoked as
 ``./venv/bin/python3 -m mteval.<module>`` from the ``eval/`` directory:
 
 * ``tmx_sample``    extract a fixed-seed sample from a TMX

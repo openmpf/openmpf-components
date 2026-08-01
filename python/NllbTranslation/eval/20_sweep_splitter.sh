@@ -13,9 +13,9 @@
 # on the NEW build. If it reproduces the old ratio, the splitter is the only
 # variable and nothing else in Phases 1-7 contributed.
 #
-#   ./sweep_splitter.sh                       # bn-en, 400 sentences
-#   PAIR=zh-en N=300 ./sweep_splitter.sh
-#   CT2_IMAGE=openmpf_nllb_translation:ctranslate2-dev ./sweep_splitter.sh
+#   ./20_sweep_splitter.sh                       # bn-en, 400 sentences
+#   PAIR=zh-en N=300 ./20_sweep_splitter.sh
+#   CT2_IMAGE=openmpf_nllb_translation:ctranslate2-dev ./20_sweep_splitter.sh
 # ===========================================================================
 set -uo pipefail
 EVAL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +25,7 @@ PY=./venv/bin/python3
 PAIR=${PAIR:-bn-en}
 N=${N:-400}
 GPU=${GPU:-'"device=0"'}
-# Defaults match run_pipeline.sh. Locally the new build is :ctranslate2-dev;
+# Defaults match 03_run_pipeline.sh. Locally the new build is :ctranslate2-dev;
 # on a machine where the new build was tagged :ctranslate2, no override is needed.
 CT2_IMAGE=${CT2_IMAGE:-${INT8_IMAGE:-openmpf_nllb_translation:ctranslate2}}
 
