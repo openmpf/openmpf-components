@@ -164,10 +164,11 @@ systems — HF-fp16, CT2-fp16, CT2-int8 — and reports two clean contrasts:
 CT2-int8, same engine), plus per-system throughput.
 
 ```bash
-./convert_ct2.sh                      # facebook/nllb-200-3.3B -> models/nllb-3.3B-ct2-{float16,int8}
-                                      #   (host venv; needs ctranslate2 + internet; ~13 GB download once)
+./convert_ct2.sh
+# facebook/nllb-200-3.3B -> models/nllb-3.3B-ct2-{float16,int8}
+# (host venv; needs ctranslate2 + internet; ~13 GB download once)
 PAIR="pt-en|tmx/en-pt.tmx|pt|por|Latn" N=1000 ./run_decomp.sh
-#   -> results/decomp/<pair>/decomp.SUMMARY.md
+#    -> results/decomp/<pair>/decomp.SUMMARY.md
 ```
 
 Both CT2 models are converted from the *same* `facebook/nllb-200-3.3B`
