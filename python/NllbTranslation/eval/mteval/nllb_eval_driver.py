@@ -19,7 +19,7 @@ Invoked (from the host) roughly as:
     docker run --rm --gpus device=0 -v /home/regexer/src/mt-eval:/eval \
         --entrypoint /opt/mpf/plugin-venv/bin/python \
         openmpf_nllb_translation:develop \
-        /eval/nllb_eval_driver.py \
+        /eval/mteval/nllb_eval_driver.py \
             --input  /eval/eval_data/sample5000.pt \
             --output /eval/results/hyp.develop.en \
             --source-lang por --source-script Latn \

@@ -6,7 +6,7 @@ run_decomp.sh produced, and prints a Markdown summary: per-metric absolute
 scores for HF-fp16 / CT2-fp16 / CT2-int8, the engine delta (CT2-fp16 − HF-fp16)
 and quantization delta (CT2-int8 − CT2-fp16), plus throughput and speedups.
 
-    python3 decomp_report.py results/decomp/pt-en
+    ./venv/bin/python3 -m mteval.decomp_report results/decomp/pt-en
 """
 import csv
 import json

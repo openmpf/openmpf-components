@@ -12,10 +12,10 @@ alternative).
 > ## ⚠️ `eval/` is a prototype enabler — remove it before the merge request
 >
 > This branch is deliberately named with a **`prototype/`** prefix. The `eval/` directory carries the
-> machine-translation evaluation harness (`run_pipeline.sh`, `run_decomp.sh`, `mt_eval.py`,
-> `nllb_eval_driver.py`, `ct2_driver.py`, and supporting scripts). It is here to make the plan
-> *executable* — Phases 2.5, 7 and 8 all invoke these scripts, and without them the validation steps
-> cannot be run from this checkout.
+> machine-translation evaluation harness — user-facing scripts at its top level
+> (`run_pipeline.sh`, `run_decomp.sh`, `sweep_splitter.sh`, `preflight.sh`, …) over a `mteval/`
+> package of supporting modules. It is here to make the plan *executable* — Phases 2.5, 7 and 8 all
+> invoke these scripts, and without them the validation steps cannot be run from this checkout.
 >
 > **It is development tooling, not product code.** It benchmarks two OpenMPF *images* against each
 > other, depends on TMX corpora and a separate scoring venv, and has no role at runtime.
@@ -34,8 +34,8 @@ Five findings drive this plan:
 - **Quantization is a no-op for quality — established across all 9 languages.** Holding the engine
   fixed, Δ(int8 − fp16) is non-significant on every pair: BLEU p = 0.33–0.96, COMET p = 0.21–0.98,
   signs mixed. Precision can therefore be chosen purely on speed/memory grounds.
-- **On H100, int8 is *slower* than fp16 — on all 9 pairs** (CT2-int8 is 0.80–0.98× CT2-fp16, ~8.5%
-  slower on average, 20% slower on Chinese). int8's only remaining advantage is footprint, which is
+- **On H100, int8 is *slower* than fp16 — on all 9 pairs** (CT2-int8 is 0.84–0.91× CT2-fp16, ~12%
+  slower on average, no pair reaching parity). int8's only remaining advantage is footprint, which is
   irrelevant on an 80 GB card. **This is why the GPU build uses fp16.**
 - **The engine win is real but hardware-dependent:** CT2-fp16 vs HF-fp16 is **~2.4× on H100**
   (2.35–2.47× across all nine pairs, per the clean decomposition) versus 6.3× on a consumer
@@ -48,6 +48,9 @@ Five findings drive this plan:
   `develop`'s own as-deployed pipeline *under-generates* on Bengali (0.692) and Persian (0.764),
   where int8 wins by ~7 BLEU. Axis B confounds splitter with decoding (`develop` = greedy, CT2 =
   beam 4). See Phase 3 and Phase 5.
+  *This is the finding as it stood when the plan was written, and it is what motivated Phase 3.*
+  **It was superseded:** neither splitter was right, the real variable was chunk *count*, and
+  `SENTENCE_SPLITTER_MODE=SENTENCE` now wins on all nine pairs. See task 8.2.
 
 **Branch topology.** The CT2 lineage forked from `develop` at `9adca039` (Feat/py3.12).
 **The component did not exist at that merge base** — `develop` added it in `23925349` (PR #384) and
@@ -154,7 +157,7 @@ Why this split, measured not assumed (`ctranslate2` 4.8.1):
       loading, and fail loudly if it disagrees with what the build intended. This matters more now
       that precision is build-time-conditional: it is the only runtime evidence of which artifact is
       deployed, and it catches both the silent float16→float32 CPU up-conversion and the
-      `int8_float32` GPU trap. `eval/ct2_driver.py` already records `actual_compute_type` — reuse it.
+      `int8_float32` GPU trap. `eval/mteval/ct2_driver.py` already records `actual_compute_type` — reuse it.
 - [x] **1.6 Note the `int8` warning is GPU-specific and inverts on CPU.** *(Recorded as a comment on the conversion `RUN` so it is visible where someone would 'fix' it.)* On **GPU**, bare `int8`
       resolves to `int8_float32`: accurate but with no tensor-core speedup — a trap (it cost us a
       whole decomposition run). On **CPU**, `int8_float32` is the *only* int8 mode available and is
@@ -584,7 +587,7 @@ names by string needs updating.
       contribution is bounded by the regression intercept at ~+0.44 BLEU.
 - [x] **8.3 Throughput measured — SENTENCE mode is free, and on CPU it is a win.** The concern was
       that sentence mode's 6-8x higher chunk count would cost throughput. It does not
-      (`eval/bench_split_mode.py`, in-process so model load and container startup are excluded;
+      (`eval/mteval/bench_split_mode.py`, in-process so model load and container startup are excluded;
       200 sentences x3 on an RTX 5070 Ti, 25 x2 on CPU):
 
       | build | mode | sent/s | chars/s | wall-time ratio |

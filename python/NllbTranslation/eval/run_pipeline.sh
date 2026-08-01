@@ -75,7 +75,7 @@ driver_run() {  # image env_args... -- driver_args...
   local envs=(); while [ "$1" != "--" ]; do envs+=("$1"); shift; done; shift
   docker run --rm --gpus "$GPU" "${envs[@]}" -v "$EVAL":/eval \
     --entrypoint bash "$image" \
-    -c "source /scripts/set-file-env-vars.sh 2>/dev/null || true; exec /opt/mpf/plugin-venv/bin/python /eval/nllb_eval_driver.py $*"
+    -c "source /scripts/set-file-env-vars.sh 2>/dev/null || true; exec /opt/mpf/plugin-venv/bin/python /eval/mteval/nllb_eval_driver.py $*"
 }
 
 blob_run() {  # image script lang outjson srcfile
@@ -92,7 +92,7 @@ run_pair() {
 
   if [ ! -s "$H/sample.src" ]; then
     log "$name: sampling $N pairs from $tmx"
-    $PY tmx_sample.py --tmx "$tmx" --src-lang "$tsrc" -n "$N" --seed "$SEED" \
+    $PY -m mteval.tmx_sample --tmx "$tmx" --src-lang "$tsrc" -n "$N" --seed "$SEED" \
         -o "$H/sample" >>"$RUNLOG" 2>&1 || { log "$name: SAMPLE FAILED, skipping"; return; }
   fi
   local NL; NL=$(nlines "$H/sample.src")
@@ -148,7 +148,7 @@ run_pair() {
 
   if [ "$(nlines "$H/hyp.hf.en")" -ge "$NL" ] && [ "$(nlines "$H/hyp.ct2.en")" -ge "$NL" ]; then
     log "$name: scoring Axis A (COMET on device '$COMET_DEVICE' + bootstrap $BOOTSTRAP)..."
-    CUDA_VISIBLE_DEVICES="$COMET_VISIBLE" $PY mt_eval.py compare \
+    CUDA_VISIBLE_DEVICES="$COMET_VISIBLE" $PY -m mteval.mt_eval compare \
       --hyp hf="$H/hyp.hf.en" --hyp ct2="$H/hyp.ct2.en" \
       -r "$H/sample.ref" -s "$H/sample.src" --comet --comet-gpus "$COMET_GPUS" \
       --bootstrap "$BOOTSTRAP" \
@@ -161,7 +161,7 @@ run_pair() {
 
   if [ "$RUN_AXIS_B" = "1" ]; then
     for m in hf ct2; do
-      [ -s "$H/asdeployed.$m.json" ] && $PY mt_eval.py score "$H/asdeployed.$m.json" \
+      [ -s "$H/asdeployed.$m.json" ] && $PY -m mteval.mt_eval score "$H/asdeployed.$m.json" \
         -r "$H/sample.ref" --csv "$H/axisB.$m.csv" > "$H/axisB.$m.report.txt" 2>>"$RUNLOG"
     done
     log "$name: Axis B reports written"
@@ -177,12 +177,12 @@ for entry in "${PAIRS[@]}"; do
   run_pair "$name" "$tmx" "$tsrc" "$nsrc" "$nscript"
 done
 log "assembling combined SUMMARY..."
-# Do not hide a failure here behind `|| true`: summarize.py writes nothing when no
+# Do not hide a failure here behind `|| true`: mteval/summarize.py writes nothing when no
 # pair produced an axisA.metrics.csv (i.e. Axis A never completed), and the old
 # code then still announced "Summary: results/SUMMARY.md" for a file that did not
 # exist.
-if ! $PY summarize.py >> "$RUNLOG" 2>&1; then
-  log "WARNING: summarize.py failed — see $RUNLOG"
+if ! $PY -m mteval.summarize >> "$RUNLOG" 2>&1; then
+  log "WARNING: mteval.summarize failed — see $RUNLOG"
 fi
 if [ -s "$EVAL/results/SUMMARY.md" ]; then
   log "PIPELINE COMPLETE. Log: $RUNLOG   Summary: results/SUMMARY.md"

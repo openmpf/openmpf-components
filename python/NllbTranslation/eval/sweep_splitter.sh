@@ -108,7 +108,7 @@ for entry in "${CONFIGS[@]}"; do
   chunks=$(grep -oE 'split into [0-9]+ chunks' "$log" | grep -oE '[0-9]+' | tail -1)
   [ -n "$chunks" ] || chunks="n/a"
 
-  $PY mt_eval.py score "$json" -r "$OUT/in.ref" --csv "$OUT/$name.csv" > "$OUT/$name.report.txt" 2>>"$log"
+  $PY -m mteval.mt_eval score "$json" -r "$OUT/in.ref" --csv "$OUT/$name.csv" > "$OUT/$name.report.txt" 2>>"$log"
   read -r bleu ratio chars <<<"$(
     $PY - "$OUT/$name.report.txt" <<'PYEOF'
 import re, sys

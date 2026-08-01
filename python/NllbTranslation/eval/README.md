@@ -51,10 +51,16 @@ Two axes per pair:
 
 ```bash
 ./setup_venv.sh            # pip-installs sacrebleu, COMET (+torch), etc.
-mkdir -p tmx && cp /path/to/*.tmx tmx/     # drop your TMX corpora here
-# edit run_pipeline.sh -> PAIRS (see below), then:
+./download_tmx_files.sh    # fetch the nine OPUS TED2020 corpora into ./tmx (~226 MB)
 ./preflight.sh             # verifies docker, GPU, images, venv, tmx files
 ```
+
+`download_tmx_files.sh` reads the file list straight out of `run_pipeline.sh`'s `PAIRS`
+table, so it stays in step with whatever you configure below. It is idempotent —
+already-extracted corpora are left alone, a partial download is discarded rather than
+mistaken for a complete one, and `-n` reports what it *would* fetch without writing
+anything. For a corpus that is not on OPUS TED2020, drop the `.tmx` into `./tmx/` by hand;
+the script will then skip it.
 
 ## Configure your language pairs
 
@@ -179,7 +185,7 @@ sidesteps "was the HF int8 built from the same checkpoint?").
 > ignores the job's `NLLB_MODEL` (it loads its default baked model once at
 > construction and never reloads by name — the code says `# TODO: this doesn't
 > do much`), so it can't evaluate a *converted* model. `run_decomp.sh` therefore
-> drives CTranslate2 directly via **`ct2_driver.py`** (same FLORES-SPM
+> drives CTranslate2 directly via **`mteval/ct2_driver.py`** (same FLORES-SPM
 > tokenization as the component). Each system's `meta.*.json` records the
 > `actual_compute_type` it loaded, so the model actually used is verifiable.
 
@@ -196,20 +202,44 @@ because HF-fp16 per-line is the slow one; the deltas we care about are small and
 resolve fine at that size. `convert_ct2.sh` requires `ctranslate2` in the venv
 (now in `requirements.txt`).
 
-## Files in this folder
+## Layout
 
-| File | Role |
+Everything at the top level is meant to be run by you. Everything under `mteval/` is
+called *by* those scripts, never directly.
+
+```
+eval/
+├── setup_venv.sh            build the scoring venv
+├── download_tmx_files.sh    fetch the TMX corpora into ./tmx
+├── preflight.sh             check docker, GPU, images, venv, corpora
+├── run_pipeline.sh          THE orchestrator — edit PAIRS, then run
+├── convert_ct2.sh           convert facebook/nllb-200-3.3B to CT2 models
+├── run_decomp.sh            engine-vs-quantization 3-system decomposition
+├── sweep_splitter.sh        splitter/chunk-size sweep (fast, minutes)
+├── requirements.txt
+└── mteval/                  modules — not entry points
+```
+
+### `mteval/` — two runtimes, deliberately not shared
+
+| Module | Role |
 |---|---|
-| `run_pipeline.sh` | orchestrator — edit `PAIRS`, then run |
-| `tmx_sample.py` | extract + fixed-seed sample from a TMX |
-| `nllb_eval_driver.py` | runs **inside** an image; 1 translation per input line (Axis A) |
-| `mt_eval.py` | scoring: `compare` (2 systems + COMET + bootstrap) / `score` (1 system) |
-| `summarize.py` | builds `results/SUMMARY.md` across pairs |
-| `convert_ct2.sh` | convert facebook/nllb-200-3.3B → CT2 fp16 + int8_float16 models |
-| `ct2_driver.py` | standalone CTranslate2 driver (loads a specific model; component can't) |
-| `run_decomp.sh` / `decomp_report.py` | engine-vs-quantization 3-system decomposition |
-| `make_sample.py` | optional: sample from moses parallel files instead of TMX |
-| `setup_venv.sh` / `preflight.sh` / `requirements.txt` | env setup + readiness check |
+| **host** — the venv from `setup_venv.sh`, run as `-m mteval.<name>` | |
+| `tmx_sample` | extract + fixed-seed sample from a TMX |
+| `make_sample` | the same, from Moses-format parallel files |
+| `mt_eval` | scoring: `compare` (2 systems + COMET + bootstrap) / `score` (1 system) |
+| `summarize` | builds `results/SUMMARY.md` across pairs |
+| `decomp_report` | renders one decomposition run as Markdown |
+| **container** — inside a component image, `eval/` mounted at `/eval` | |
+| `nllb_eval_driver` | 1 translation per input line, through the component (Axis A) |
+| `ct2_driver` | CTranslate2 directly, so a model and `compute_type` can be forced |
+| `bench_split_mode` | in-process throughput benchmark |
+
+The two groups share no imports and must not. The host modules need
+`numpy`/`sacrebleu`/`comet`, which are absent from the component images; the container
+modules need `mpf_component_api`/`nllb_component`/`ctranslate2`, which are absent from the
+scoring venv. An import across that line fails only at run time, inside a container —
+so if you add a shared helper, it has to satisfy both, which is why there isn't one.
 
 ## CTranslate2 compute types, and why the images are not interchangeable
 

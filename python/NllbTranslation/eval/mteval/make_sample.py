@@ -10,7 +10,7 @@ aligned files:
     <out>.idx  0-based line index of each pair in the original corpus
 
 Usage:
-    python3 make_sample.py -n 5000 --seed 42 -o eval_data/sample5000
+    ./venv/bin/python3 -m mteval.make_sample -n 5000 --seed 42 -o eval_data/sample5000
 """
 import argparse
 import os

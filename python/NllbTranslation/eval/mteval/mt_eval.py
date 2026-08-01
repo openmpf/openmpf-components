@@ -35,11 +35,11 @@ segment-aligned data (not document mode).
 
 Examples
 --------
-  ./venv/bin/python3 mt_eval.py score \
+  ./venv/bin/python3 -m mteval.mt_eval score \
       translations/TED2020.en-pt.pt.1200.ctranslate2.json \
       -r moses/OPUS-TED2020/en-pt/TED2020.en-pt.en.1200
 
-  ./venv/bin/python3 mt_eval.py compare \
+  ./venv/bin/python3 -m mteval.mt_eval compare \
       --hyp fp16=results/hyp.develop.en \
       --hyp int8=results/hyp.ctranslate2.en \
       -r eval_data/sample5000.en -s eval_data/sample5000.pt \

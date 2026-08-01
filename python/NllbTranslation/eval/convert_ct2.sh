@@ -32,7 +32,7 @@ for q in "${QUANTS[@]}"; do
   echo "=== converting $MODEL ($REV) -> $d  [quantization=$q] ==="
   # --copy_files is load-bearing: without it the converted directory has no
   # tokenizer at all (only config.json, model.bin, shared_vocabulary.json), and
-  # ct2_driver.py has nothing to encode with. The component's images hit exactly
+  # mteval/ct2_driver.py has nothing to encode with. The component's images hit exactly
   # this after the tokenizer download was dropped.
   "$CONV" --model "$MODEL" --revision "$REV" --output_dir "$d" \
     --quantization "$q" --low_cpu_mem_usage --force \

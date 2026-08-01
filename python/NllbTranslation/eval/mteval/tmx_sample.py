@@ -10,7 +10,7 @@ draws a fixed-seed random sample, and writes:
     <out>.idx   0-based index of each pair among eligible pairs
 
 Usage:
-    python3 tmx_sample.py --tmx tmx/ar-en.tmx --src-lang ar --ref-lang en \
+    ./venv/bin/python3 -m mteval.tmx_sample --tmx tmx/ar-en.tmx --src-lang ar --ref-lang en \
         -n 5000 --seed 42 -o results/ar-en/sample
 """
 import argparse

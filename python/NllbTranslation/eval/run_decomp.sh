@@ -48,19 +48,19 @@ for d in "$CT2_FP16" "$CT2_INT8"; do
   [ -f "models/$d/model.bin" ] || { log "MISSING models/$d/model.bin — run ./convert_ct2.sh first"; exit 1; }
 done
 
-# ct2_driver.py imports ctranslate2, which only exists in the CTranslate2 image.
+# mteval/ct2_driver.py imports ctranslate2, which only exists in the CTranslate2 image.
 # Check up front: otherwise a wrong INT8_IMAGE fails with ModuleNotFoundError
 # only AFTER the slow HF-fp16 stage has already run.
 if ! docker run --rm --entrypoint /opt/mpf/plugin-venv/bin/python "$INT8_IMAGE" \
        -c 'import ctranslate2' >/dev/null 2>&1; then
-  log "INT8_IMAGE ($INT8_IMAGE) has no 'ctranslate2' module — ct2_driver.py cannot run in it."
+  log "INT8_IMAGE ($INT8_IMAGE) has no 'ctranslate2' module — mteval/ct2_driver.py cannot run in it."
   log "  Point INT8_IMAGE at a CTranslate2-based image (default: openmpf_nllb_translation:$INT8_IMAGE_TAG)."
   exit 1
 fi
 
 # sample
 if [ ! -s "$H/sample.src" ]; then
-  $PY tmx_sample.py --tmx "$tmx" --src-lang "$tsrc" -n "$N" --seed "$SEED" -o "$H/sample" >>"$LOG" 2>&1 \
+  $PY -m mteval.tmx_sample --tmx "$tmx" --src-lang "$tsrc" -n "$N" --seed "$SEED" -o "$H/sample" >>"$LOG" 2>&1 \
     || { log "sample failed"; exit 1; }
 fi
 NL=$(nlines "$H/sample.src"); log "sample: $NL lines"
@@ -74,7 +74,7 @@ gen_component() {  # label image extra_mount extra_prop
   local extra=(); [ -n "$prop" ] && extra=(--prop "$prop")
   docker run --rm --gpus "$GPU" -e PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256 \
     -v "$EVAL":/eval "${mnt[@]}" --entrypoint bash "$image" \
-    -c "source /scripts/set-file-env-vars.sh 2>/dev/null || true; exec /opt/mpf/plugin-venv/bin/python /eval/nllb_eval_driver.py \
+    -c "source /scripts/set-file-env-vars.sh 2>/dev/null || true; exec /opt/mpf/plugin-venv/bin/python /eval/mteval/nllb_eval_driver.py \
         --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.$label.en \
         --source-lang $nsrc --source-script $nscript --num-beams 4 \
         ${extra[*]} --resume --progress-every 200 --meta-out /eval/$RREL/meta.$label.json" \
@@ -91,7 +91,7 @@ gen_ct2() {  # label model_dir
   log "generating $label via ct2_driver (model=$model)..."
   docker run --rm --gpus "$GPU" -v "$EVAL":/eval -v "$EVAL/models/$model:/models/$model" \
     --entrypoint /opt/mpf/plugin-venv/bin/python "$INT8_IMAGE" \
-    /eval/ct2_driver.py --model "/models/$model" \
+    /eval/mteval/ct2_driver.py --model "/models/$model" \
       --input /eval/$RREL/sample.src --output /eval/$RREL/hyp.$label.en \
       --source-lang "$nsrc" --source-script "$nscript" --beam 4 \
       --resume --progress-every 200 --meta-out /eval/$RREL/meta.$label.json \
@@ -105,7 +105,7 @@ gen_ct2() {  # label model_dir
 # DIFFICULT_LANGUAGE_TOKEN_LIMIT=0 is REQUIRED for parity, not optional. The
 # develop component applies a 50-token "preferred limit" to languages it flags
 # as difficult (Arabic by default), which sub-chunks even single sentences.
-# ct2_driver.py has no such logic, so leaving it enabled makes the engine
+# mteval/ct2_driver.py has no such logic, so leaving it enabled makes the engine
 # contrast measure chunking rather than the engine: with it on, ar-en showed a
 # spurious +1.91 BLEU / +0.71 COMET "engine effect" (p<0.001) and HF-fp16 ran at
 # ~55% the throughput of comparable pairs. run_pipeline.sh disables it for
@@ -117,7 +117,7 @@ gen_ct2 ct2-int8 "$CT2_INT8"
 # --- scoring: two contrasts ----------------------------------------------
 score_pair() {  # a b tag
   log "scoring $3: $1 vs $2 (COMET dev=$COMET_DEVICE + bootstrap $BOOTSTRAP)..."
-  CUDA_VISIBLE_DEVICES="$COMET_VISIBLE" $PY mt_eval.py compare \
+  CUDA_VISIBLE_DEVICES="$COMET_VISIBLE" $PY -m mteval.mt_eval compare \
     --hyp "$1"="$H/hyp.$1.en" --hyp "$2"="$H/hyp.$2.en" \
     -r "$H/sample.ref" -s "$H/sample.src" --comet --comet-gpus "$COMET_GPUS" \
     --bootstrap "$BOOTSTRAP" --csv "$H/decomp.$3.metrics.csv" \
@@ -126,6 +126,6 @@ score_pair() {  # a b tag
 score_pair hf-fp16  ct2-fp16 engine
 score_pair ct2-fp16 ct2-int8 quant
 
-$PY decomp_report.py "$H" > "$H/decomp.SUMMARY.md" 2>>"$LOG" || true
+$PY -m mteval.decomp_report "$H" > "$H/decomp.SUMMARY.md" 2>>"$LOG" || true
 log "DONE. Summary: $H/decomp.SUMMARY.md"
 cat "$H/decomp.SUMMARY.md" 2>/dev/null || true

@@ -297,7 +297,7 @@ COMPONENT_SRC=../nllb_component ./eval/sweep_splitter.sh          # PAIR=, N= to
 
 # throughput, in-process so model load is excluded
 docker run --rm --gpus '"device=0"' -v "$PWD/eval":/eval:ro -v "$PWD/eval/results":/results:ro \
-  --entrypoint /opt/mpf/plugin-venv/bin/python IMAGE /eval/bench_split_mode.py --pair bn-en -n 200
+  --entrypoint /opt/mpf/plugin-venv/bin/python IMAGE /eval/mteval/bench_split_mode.py --pair bn-en -n 200
 
 # the test suite, against a built image
 docker run --rm --gpus '"device=0"' -v "$PWD":/component:ro --entrypoint bash IMAGE \

@@ -11,7 +11,7 @@ load and container startup are excluded from the timings:
 
   docker run --rm --gpus '"device=0"' \\
     -v "$PWD/eval":/eval:ro -v "$PWD/eval/results":/results:ro \\
-    --entrypoint /opt/mpf/plugin-venv/bin/python IMAGE /eval/bench_split_mode.py \\
+    --entrypoint /opt/mpf/plugin-venv/bin/python IMAGE /eval/mteval/bench_split_mode.py \\
     --pair bn-en -n 200
 """
 import argparse
