@@ -15,8 +15,8 @@ Systems: **HF-fp16** (Transformers), **CT2-fp16** (CTranslate2, float16), **CT2-
 
 | System | sent/s | speedup vs HF-fp16 |
 |--------|--------|--------------------|
-| HF-fp16 | 2.23 | 1.0x |
-| CT2-fp16 | 4.801 | 2.2x |
-| CT2-int8 | 4.444 | 2.0x |
+| HF-fp16 | 2.248 | 1.0x |
+| CT2-fp16 | 5.318 | 2.4x |
+| CT2-int8 | 4.66 | 2.1x |
 
 _Throughput here is single-sentence latency (batch 1); batched throughput widens the CTranslate2 lead further. Significance (paired bootstrap) is in `decomp.engine.report.txt` / `decomp.quant.report.txt`._

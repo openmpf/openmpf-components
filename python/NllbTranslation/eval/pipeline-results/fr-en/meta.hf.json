@@ -1,0 +1,23 @@
+{
+  "input": "/eval/results/fr-en/sample.src",
+  "output": "/eval/results/fr-en/hyp.hf.en",
+  "source_lang": "fra",
+  "source_script": "Latn",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "fra",
+    "DEFAULT_SOURCE_SCRIPT": "Latn",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 708.7,
+  "sentences_per_sec": 7.055,
+  "output_chars": 453959,
+  "chars_per_sec": 640.5,
+  "batch": 16
+}

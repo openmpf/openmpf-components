@@ -9,8 +9,8 @@
   "batched": false,
   "n_lines": 1000,
   "lines_this_run": 1000,
-  "elapsed_sec": 210.5,
-  "sentences_per_sec": 4.75,
+  "elapsed_sec": 225.2,
+  "sentences_per_sec": 4.44,
   "output_chars": 94330,
-  "chars_per_sec": 448.0
+  "chars_per_sec": 418.9
 }

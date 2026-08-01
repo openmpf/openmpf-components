@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/zh-en/sample.src",
+  "output": "/eval/results/zh-en/hyp.ct2.en",
+  "source_lang": "zho",
+  "source_script": "Hans",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "zho",
+    "DEFAULT_SOURCE_SCRIPT": "Hans",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 1153.8,
+  "sentences_per_sec": 4.334,
+  "output_chars": 477814,
+  "chars_per_sec": 414.1,
+  "batch": null
+}

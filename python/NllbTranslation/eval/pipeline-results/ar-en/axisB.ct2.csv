@@ -1,0 +1,5 @@
+metric,score,detail,signature
+BLEU,48.79873501262878,90.4/64.4/39.8/26.2 (BP=0.983 ratio=0.984 hyp=98872 ref=100529),#:1|c:mixed|e:no|tok:13a|s:exp|v:2.6.0
+chrF,85.66293413400149,character F-score (beta=2),#:1|c:mixed|e:yes|nc:6|nw:0|s:no|v:2.6.0
+chrF++,83.26014656661744,chrF + word bigrams,#:1|c:mixed|e:yes|nc:6|nw:2|s:no|v:2.6.0
+TER,,skipped — segment too long (see --max-ter-tokens),

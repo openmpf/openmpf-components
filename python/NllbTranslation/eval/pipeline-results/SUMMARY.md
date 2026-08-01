@@ -1,17 +1,19 @@
-# MT Evaluation — combined summary (fp16 vs int8)
+# MT Evaluation — combined summary (HF vs CT2)
 
-Δ = int8 − fp16. Axis A = intrinsic per-sentence (beam 4 both, splitter neutralized). Axis B = as-deployed document blob.
+Δ = CT2 − HF. **CT2** = the CTranslate2-branch image; its precision follows that image's `BUILD_TYPE` (gpu → float16, cpu → int8_float32) and is **not** necessarily int8. **HF** = the develop/Transformers image (facebook/nllb-200-3.3B, fp16). Earlier runs labelled these fp16/int8.
 
-| Pair | BLEU fp16 | BLEU int8 | ΔBLEU | ΔchrF | COMET fp16 | COMET int8 | ΔCOMET | AxisB ΔBLEU |
-|------|-----------|-----------|-------|-------|------------|------------|--------|-------------|
-| ar-en | 40.709 | 40.836 | 0.127 | 0.051 | 84.88 | 84.901 | 0.021 | -1.00 |
-| bn-en | 33.243 | 33.146 | -0.097 | -0.081 | 85.755 | 85.744 | -0.011 | +7.57 |
-| de-en | 39.037 | 38.697 | -0.34 | -0.15 | 85.939 | 85.873 | -0.066 | -0.73 |
-| fa-en | 36.17 | 36.189 | 0.019 | -0.021 | 84.903 | 84.927 | 0.024 | +7.22 |
-| fr-en | 42.614 | 42.32 | -0.294 | -0.178 | 86.131 | 86.093 | -0.037 | -0.93 |
-| pt-en | 46.044 | 45.865 | -0.179 | -0.079 | 87.538 | 87.501 | -0.036 | -1.51 |
-| ru-en | 30.466 | 30.417 | -0.049 | 0.005 | 82.151 | 82.114 | -0.037 | -0.20 |
-| uk-en | 33.469 | 33.355 | -0.115 | -0.023 | 83.168 | 83.152 | -0.016 | -0.62 |
-| zh-en | 24.384 | 25.113 | 0.728 | 0.18 | 81.444 | 81.59 | 0.146 | -10.03 |
+Axis A = intrinsic per-sentence (beam 4 both, splitter neutralized). Axis B = as-deployed document blob.
+
+| Pair | BLEU HF | BLEU CT2 | ΔBLEU | ΔchrF | COMET HF | COMET CT2 | ΔCOMET | AxisB ΔBLEU |
+|------|---------|----------|-------|-------|----------|-----------|--------|-------------|
+| ar-en | 40.709 | 40.458 | -0.251 | -0.116 | 84.88  | 84.845 | -0.034 | +2.61 |
+| bn-en | 33.243 | 33.269 |  0.026 |  0.062 | 85.755 | 85.832 |  0.077 | +14.03 |
+| de-en | 39.037 | 38.879 | -0.158 | -0.057 | 85.939 | 85.928 | -0.011 | +1.91 |
+| fa-en | 36.17  | 36.125 | -0.045 | -0.008 | 84.903 | 84.942 |  0.039 | +10.60 |
+| fr-en | 42.614 | 42.586 | -0.028 |  0.006 | 86.131 | 86.137 |  0.007 | +1.23 |
+| pt-en | 46.044 | 45.982 | -0.062 | -0.028 | 87.538 | 87.54  |  0.003 | +1.39 |
+| ru-en | 30.466 | 30.448 | -0.018 | -0.009 | 82.151 | 82.136 | -0.015 | +2.34 |
+| uk-en | 33.469 | 33.351 | -0.119 | -0.05  | 83.168 | 83.152 | -0.016 | +2.23 |
+| zh-en | 24.384 | 25.094 |  0.709 |  0.23  | 81.444 | 81.561 |  0.117 | +8.85 |
 
 Per-pair detail: `results/<pair>/axisA.report.txt`, `axisA.segments.csv` (per-sentence + COMET), `axisB.*.report.txt`.

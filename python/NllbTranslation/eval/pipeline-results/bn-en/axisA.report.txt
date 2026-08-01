@@ -1,23 +1,23 @@
 ==========================================================================
 Machine Translation Evaluation
 ==========================================================================
-  System A:       fp16  (./results/bn-en/hyp.fp16.en)
-  System B:       int8  (./results/bn-en/hyp.int8.en)
+  System A:       hf  (./results/bn-en/hyp.hf.en)
+  System B:       ct2  (./results/bn-en/hyp.ct2.en)
   Reference:      ./results/bn-en/sample.ref
   Segments:       5000
 --------------------------------------------------------------------------
-  Metric        fp16      int8     Δ(B-A)  Better
+  Metric          hf       ct2     Δ(B-A)  Better
   --------  --------  --------  ---------  ------
-  BLEU         33.24     33.15      -0.10  fp16
-  chrF         55.37     55.29      -0.08  fp16
-  chrF++       54.12     54.06      -0.06  fp16
-  TER          56.46     56.27      -0.18  int8
-  COMET        85.75     85.74      -0.01  fp16
+  BLEU         33.24     33.27      +0.03  ct2
+  chrF         55.37     55.44      +0.06  ct2
+  chrF++       54.12     54.18      +0.06  ct2
+  TER          56.46     56.02      -0.44  ct2
+  COMET        85.75     85.83      +0.08  ct2
 --------------------------------------------------------------------------
-Paired bootstrap significance (1000 resamples, Δ = int8 − fp16):
+Paired bootstrap significance (1000 resamples, Δ = ct2 − hf):
   Metric           Δ              95% CI         p  sig
   --------  --------  ------------------  --------  ---
-  BLEU         -0.10      [-0.26, +0.08]     0.274  no
-  chrF         -0.08      [-0.19, +0.04]     0.194  no
-  COMET        -0.01      [-0.07, +0.05]     0.770  no
+  BLEU         +0.03      [-0.10, +0.14]     0.692  no
+  chrF         +0.06      [-0.02, +0.15]     0.148  no
+  COMET        +0.08      [+0.04, +0.12]     0.000  yes
 ==========================================================================

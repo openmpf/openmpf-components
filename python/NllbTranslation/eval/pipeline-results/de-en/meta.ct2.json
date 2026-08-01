@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/de-en/sample.src",
+  "output": "/eval/results/de-en/hyp.ct2.en",
+  "source_lang": "deu",
+  "source_script": "Latn",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "deu",
+    "DEFAULT_SOURCE_SCRIPT": "Latn",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 963.6,
+  "sentences_per_sec": 5.189,
+  "output_chars": 444838,
+  "chars_per_sec": 461.7,
+  "batch": null
+}

@@ -1,0 +1,23 @@
+{
+  "input": "/eval/results/fa-en/sample.src",
+  "output": "/eval/results/fa-en/hyp.hf.en",
+  "source_lang": "pes",
+  "source_script": "Arab",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "pes",
+    "DEFAULT_SOURCE_SCRIPT": "Arab",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 724.3,
+  "sentences_per_sec": 6.903,
+  "output_chars": 474797,
+  "chars_per_sec": 655.5,
+  "batch": 16
+}

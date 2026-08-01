@@ -10,13 +10,14 @@
     "DEFAULT_SOURCE_LANGUAGE": "zho",
     "DEFAULT_SOURCE_SCRIPT": "Hans",
     "TARGET_LANGUAGE": "eng",
-    "TARGET_SCRIPT": "Latn"
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
   },
   "n_lines": 1000,
   "lines_this_run": 1000,
-  "elapsed_sec": 366.4,
-  "sentences_per_sec": 2.729,
-  "output_chars": 90965,
-  "chars_per_sec": 248.2,
+  "elapsed_sec": 475.1,
+  "sentences_per_sec": 2.105,
+  "output_chars": 94204,
+  "chars_per_sec": 198.3,
   "batch": null
 }

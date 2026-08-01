@@ -10,13 +10,14 @@
     "DEFAULT_SOURCE_LANGUAGE": "ukr",
     "DEFAULT_SOURCE_SCRIPT": "Cyrl",
     "TARGET_LANGUAGE": "eng",
-    "TARGET_SCRIPT": "Latn"
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
   },
   "n_lines": 1000,
   "lines_this_run": 1000,
-  "elapsed_sec": 451.1,
-  "sentences_per_sec": 2.217,
+  "elapsed_sec": 460.3,
+  "sentences_per_sec": 2.173,
   "output_chars": 91000,
-  "chars_per_sec": 201.7,
+  "chars_per_sec": 197.7,
   "batch": null
 }

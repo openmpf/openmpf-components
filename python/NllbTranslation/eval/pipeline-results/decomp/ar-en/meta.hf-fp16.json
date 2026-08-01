@@ -10,13 +10,14 @@
     "DEFAULT_SOURCE_LANGUAGE": "arb",
     "DEFAULT_SOURCE_SCRIPT": "Arab",
     "TARGET_LANGUAGE": "eng",
-    "TARGET_SCRIPT": "Latn"
+    "TARGET_SCRIPT": "Latn",
+    "DIFFICULT_LANGUAGE_TOKEN_LIMIT": "0"
   },
   "n_lines": 1000,
   "lines_this_run": 1000,
-  "elapsed_sec": 815.5,
-  "sentences_per_sec": 1.226,
-  "output_chars": 97751,
-  "chars_per_sec": 119.9,
+  "elapsed_sec": 478.7,
+  "sentences_per_sec": 2.089,
+  "output_chars": 96160,
+  "chars_per_sec": 200.9,
   "batch": null
 }

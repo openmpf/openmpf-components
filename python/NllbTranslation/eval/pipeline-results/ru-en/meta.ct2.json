@@ -1,0 +1,22 @@
+{
+  "input": "/eval/results/ru-en/sample.src",
+  "output": "/eval/results/ru-en/hyp.ct2.en",
+  "source_lang": "rus",
+  "source_script": "Cyrl",
+  "target_lang": "eng",
+  "target_script": "Latn",
+  "num_beams_requested": 4,
+  "job_properties": {
+    "DEFAULT_SOURCE_LANGUAGE": "rus",
+    "DEFAULT_SOURCE_SCRIPT": "Cyrl",
+    "TARGET_LANGUAGE": "eng",
+    "TARGET_SCRIPT": "Latn"
+  },
+  "n_lines": 5000,
+  "lines_this_run": 5000,
+  "elapsed_sec": 1100.1,
+  "sentences_per_sec": 4.545,
+  "output_chars": 452271,
+  "chars_per_sec": 411.1,
+  "batch": null
+}
