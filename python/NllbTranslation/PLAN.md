@@ -37,9 +37,10 @@ Five findings drive this plan:
 - **On H100, int8 is *slower* than fp16 — on all 9 pairs** (CT2-int8 is 0.80–0.98× CT2-fp16, ~8.5%
   slower on average, 20% slower on Chinese). int8's only remaining advantage is footprint, which is
   irrelevant on an 80 GB card. **This is why the GPU build uses fp16.**
-- **The engine win is real but hardware-dependent:** CT2-fp16 vs HF-fp16 is ~2.3× on H100
-  (1.7–2.4× on eight of nine pairs; ar-en's 4.1× was a harness confound, resolved in 8.5b) versus
-  6.3× on a consumer RTX 5070 Ti. Do not quote "~6×" unqualified.
+- **The engine win is real but hardware-dependent:** CT2-fp16 vs HF-fp16 is **~2.4× on H100**
+  (2.35–2.47× across all nine pairs, per the clean decomposition) versus 6.3× on a consumer
+  RTX 5070 Ti. Do not quote "~6×" unqualified. The earlier "1.7–2.4×, varies by language" was two
+  harness defects, not real variation.
 - **Axis A is hardware-independent.** The H100 run reproduced the RTX 5070 Ti Axis A scores to three
   decimals on all 9 pairs — the quality conclusions do not depend on the GPU.
 - **The as-deployed splitter picture is bimodal, and `develop`'s splitter is not uniformly better.**
@@ -75,7 +76,7 @@ What the merge landed, and what it left:
 | 5 — decode/batching params | **done**; 5.2a experiment still open |
 | 6 — descriptor/properties | **done** via the merge |
 | 7 — tests | **done** — 38 tests green on both builds (1 gated golden test) |
-| 8 — validation | **passed** (8.1–8.5b); 8.6 is an optional optimisation |
+| 8 — validation | **passed** (8.1–8.5c, all nine pairs); 8.6 is an optional optimisation |
 
 ---
 
@@ -573,7 +574,14 @@ names by string needs updating.
 
       **Extended to all nine pairs** (2026-07-31 H100 run). Every pair now favours CTranslate2,
       where seven of nine previously lost: ar +2.61, bn +14.03, de +1.91, fa +10.60, fr +1.23,
-      pt +1.39, ru +2.34, uk +2.23, zh +8.85. Full tables in `eval/REPORT.md` § "Final results".
+      pt +1.39, ru +2.35, uk +2.23, zh +8.85. Full tables in `eval/REPORT.md` § "Final results".
+
+      With all nine length ratios now committed, the gain is **measured** as length recovery rather
+      than inferred: the BLEU brevity-penalty decomposition puts the n-gram precision term at
+      -1.48..+0.75 (negative on five of nine), and dBLEU tracks d(length ratio) at r2=0.971. Every
+      one of develop's ratios improves (0.692-0.942 -> 0.946-1.024). The earlier reading -- that the
+      six Latin/Cyrillic pairs were "plausibly mostly beam-vs-greedy" -- was wrong; a uniform beam
+      contribution is bounded by the regression intercept at ~+0.44 BLEU.
 - [x] **8.3 Throughput measured — SENTENCE mode is free, and on CPU it is a win.** The concern was
       that sentence mode's 6-8x higher chunk count would cost throughput. It does not
       (`eval/bench_split_mode.py`, in-process so model load and container startup are excluded;
@@ -640,6 +648,26 @@ names by string needs updating.
       that never executed (the resume guard reused cached hypotheses); the retraction was then
       itself retracted. The signal each time was *absence of change*, which reads as confirmation.
       Nothing here was learned from reasoning — only from deleting the outputs and re-running.
+
+      **Superseded detail:** the clean all-pairs decomposition (2026-08-01, committed) now records
+      HF-fp16 throughput at 2.089 sent/s rather than the 1.996 quoted above, and confirms Δengine
+      at −0.038.
+
+- [x] **8.5c zh-en decomposition was scoring the wrong file — found 2026-08-01.** Not a task that
+      was planned; it surfaced when the clean all-pairs decomp was diffed against the committed
+      artifacts. The original zh-en run reported HF-fp16 **identical to CT2-int8 on all five
+      metrics to three decimals** (BLEU 25.465, chrF 49.785, chrF++ 48.019, TER 67.122,
+      COMET 81.629) — one hypothesis file scored twice, with the tell sitting in the published
+      table as Δengine = −Δquant = 0.085 exactly.
+
+      Clean re-run: HF-fp16 **24.946**, Δengine **+0.603**, which agrees with the n=5,000 Axis A
+      figure (+0.709). Mechanism is either the crossed image-tag assignment that once existed in
+      `run_decomp.sh` or its resume guard preserving a stale `hyp.hf-fp16.en`; the artifacts do not
+      distinguish them. Corrected engine speedup for this pair: 1.7× → 2.41×.
+
+      This also retires a claim in the previous REPORT.md revision that the n=1,000 Δengine column
+      was merely *underpowered* on zh-en. It was wrong, for a findable reason. **A discrepancy
+      between two measurements is a reason to inspect artifacts, not to reconcile numbers.**
 
 ## Phase 9 — Before the merge request
 

@@ -39,9 +39,12 @@ testing.
 
 ### "Why CTranslate2 at all?"
 
-Throughput, at no measurable quality cost. CTranslate2 at *unchanged* fp16 precision is **~2.3×**
-faster than Transformers on H100 (1.7–2.4× across pairs) and **6.3×** on a consumer RTX 5070 Ti.
-Quality difference is not significant on 8 of 9 pairs.
+Throughput, at no measurable quality cost. CTranslate2 at *unchanged* fp16 precision is **~2.4×**
+faster than Transformers on H100 — 2.35–2.47× across all nine pairs, a 5% spread — and **6.3×** on a
+consumer RTX 5070 Ti. Quality difference is not significant on 8 of 9 pairs.
+
+If a reviewer quotes "1.7–2.4×, varies by language" from an older revision: that spread was two
+harness defects, not real per-language variation. Both are corrected and documented in `REPORT.md`.
 
 Note the speedup is **hardware-dependent** — do not quote "~6×" without naming the GPU. H100
 accelerates the batched PyTorch path far more than it accelerates CTranslate2's latency-bound path.
@@ -50,18 +53,33 @@ accelerates the batched PyTorch path far more than it accelerates CTranslate2's 
 
 ### "Your decomposition table shows ar-en gaining +1.91 BLEU from the engine. Engines don't do that."
 
-Correct, and they didn't. That figure is a **harness artifact**, and the report marks it with a †.
-`run_decomp.sh` passed no job properties to the Transformers system, so
-`DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` stayed active there while the pipeline disables it — and 13.4%
-of the ar-en sample exceeds 50 tokens, so only that leg got sub-chunked. It depressed the baseline,
-inventing both the quality gap and a bogus 4.1× speedup.
+Correct, and it didn't. That figure was a **harness artifact** and is gone from the current report;
+the committed decomposition now reads −0.038. `run_decomp.sh` passed no job properties to the
+Transformers system, so `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` stayed active there while the pipeline
+disables it — and 13.4% of the ar-en sample exceeds 50 tokens, so only that leg got sub-chunked. It
+depressed the baseline, inventing both the quality gap and a bogus 4.1× speedup.
 
-Three independent measurements put ar-en in line with every other pair: clean re-runs at n=1,000
-(−0.038) and n=200 (+0.155), and the full-scale nine-pair Axis A (**−0.251** at n=5,000).
+Three independent measurements agree: clean re-runs at n=1,000 (−0.038) and n=200 (+0.155), and the
+nine-pair Axis A at n=5,000 (−0.251).
 
 Worth knowing how this was *nearly missed*: an intermediate re-run appeared to show the property
 made no difference, and two documents briefly recorded the confound as disproved. That re-run never
 executed — see trap 2. **Delete `hyp.*.en` before re-running anything through these harnesses.**
+
+### "How confident are you in the evaluation harness itself?"
+
+Answer honestly: **two defects were found in it, both after their results had been published, and
+both by re-running rather than by review.** The ar-en confound above, and a zh-en run whose
+Transformers leg was scoring another system's output — its HF column was identical to the CT2-int8
+column on all five metrics to three decimals, which two different systems do not do.
+
+What that is worth to a reviewer: the current numbers come from a clean re-run of all nine pairs
+with hypothesis files deleted, and seven of nine reproduced their BLEU *exactly* while their
+throughput moved — so the pipeline is deterministic and those seven are independently confirmed.
+The defects were in how legs were wired and cached, not in scoring.
+
+What it costs: any figure from an earlier revision of `REPORT.md` should be re-checked against
+`pipeline-results/` before it is repeated. Both defects were invisible in the summary tables.
 
 ### "We shipped int8 before. Why is the GPU build fp16 now?"
 
@@ -121,7 +139,9 @@ swing on one setting.
 | | ar | bn | de | fa | fr | pt | ru | uk | zh |
 |---|---|---|---|---|---|---|---|---|---|
 | Δ BLEU vs develop, **before** | −1.00 | +7.57 | −0.73 | +7.22 | −0.93 | −1.51 | −0.20 | −0.62 | −10.03 |
-| Δ BLEU vs develop, **after** | **+2.61** | **+14.03** | **+1.91** | **+10.60** | **+1.23** | **+1.39** | **+2.34** | **+2.23** | **+8.85** |
+| Δ BLEU vs develop, **after** | **+2.61** | **+14.03** | **+1.91** | **+10.60** | **+1.23** | **+1.39** | **+2.35** | **+2.23** | **+8.85** |
+| length ratio, develop | 0.942 | 0.692 | 0.915 | 0.764 | 0.931 | 0.935 | 0.915 | 0.915 | 0.751 |
+| length ratio, **this branch** | 0.984 | 0.972 | 0.946 | 1.024 | 0.956 | 0.968 | 0.949 | 0.954 | 0.972 |
 
 Seven of nine were *losing* before the change. No pair regressed.
 
@@ -133,14 +153,22 @@ Two points a reviewer may raise:
   Bangla and Persian by importing develop's own under-generation. The character-vs-token framing was
   a red herring — with one sentence per chunk the sizing unit barely matters.
 
-*Evidence:* `REPORT.md` § "Final results — the shipping configuration, nine pairs". Reproduce in
-~3 minutes with `eval/sweep_splitter.sh`.
+**The whole gain is length recovery — this is measured, not asserted.** BLEU factors exactly as
+`BP × geomean(n-gram precisions)`, so the margin splits cleanly. The n-gram precision term is
+−1.48…+0.75 BLEU and *negative on five of nine pairs*; everything else is brevity-penalty recovery.
+Across the nine pairs ΔBLEU tracks Δlength-ratio at **r² = 0.971**.
 
-**Do not over-claim this table.** Axis B varies segmentation *and* decoding (develop is greedy, this
-branch is beam 4). The bn/fa/zh gains are segmentation — no decode setting is worth 14 BLEU, and
-develop's length ratios there were 0.69–0.76. The other six pairs are a +1.2…+2.6 band where develop
-was already at 0.92–0.94, so that band is plausibly mostly beam-vs-greedy. That split is inferred
-from length ratios, **not measured**; the discriminating run was never executed.
+All nine of `develop`'s length ratios improve (0.692–0.942 → 0.946–1.024). The six Latin/Cyrillic
+pairs are not a different phenomenon from bn/fa/zh — there was simply less under-generation left to
+recover.
+
+*Evidence:* `REPORT.md` § "Final results" and § "What is actually responsible — measured, not
+inferred". Reproduce the mechanism in ~3 minutes with `eval/sweep_splitter.sh`.
+
+**Where to stop.** Axis B still varies segmentation and decoding together (develop is greedy, this
+branch is beam 4). The decomposition *bounds* any uniform beam contribution at ~+0.44 BLEU — the
+regression intercept — but no run isolates beam search directly. Do not claim beam 4 is worth
+measurable as-deployed quality; claim it is cheap and standard.
 
 ### "Why does the component skip translation when source == target?"
 
@@ -219,15 +247,15 @@ History contains reversals. They are deliberate and evidence-driven; this is why
 
 Do not defend these as measured; they are not.
 
-- **The as-deployed margin is not decomposed.** "CT2 beats develop as-deployed" now rests on all
-  nine pairs at full scale — that part *is* measured. What is not measured is how much of it is
-  segmentation and how much is beam-4-vs-greedy. See the caveat under the splitter question.
-- **Axis B length ratios are known for three pairs.** bn/fa/zh land at 0.972–1.024. The other six
-  are in the per-pair `axisB.*.report.txt` on the H100 host but were not transcribed.
+- **Beam search is not isolated.** The as-deployed margin is measured on all nine pairs and
+  attributed to length recovery by the BP decomposition, which *bounds* any uniform beam
+  contribution at ~+0.44 BLEU. No run varies beam alone. The link from "length recovery" to
+  "segmentation" comes from the sweep, which varied chunk count at fixed beam 4.
 - **Quantization neutrality is per-language for Axis A, but the decomposition is n=1,000 per pair**
   versus 5,000 for Axis A. The consistency across nine pairs carries it, not any single pair.
-  Do **not** quote that run's per-pair *Δengine* figures — it was sized for Δquant and its Δengine
-  column is noisy (zh-en reads +0.08 there against +0.709 at n=5,000).
+- **CPU quality is not measured at all.** int8 is the CPU choice on capability grounds — CTranslate2
+  has no fp16 compute type on CPU. That `int8_float32` on CPU scores like `int8_float16` on GPU is a
+  reasonable assumption, not a measurement.
 - **CPU throughput is measured on 4 container cores** at CTranslate2's default threading. A larger
   host will differ; `NLLB_INTER_THREADS`/`NLLB_INTRA_THREADS` exist but are unmeasured.
 
@@ -244,10 +272,16 @@ Each of these cost real time. They share a shape: **absence of change reads as c
 2. **`run_pipeline.sh` and `run_decomp.sh` skip regeneration** when the hypothesis file is already
    complete. An experiment re-run without deleting `hyp.*.en` first silently re-scores the old text
    and "produces identical results" regardless of what you changed. This produced a wrong conclusion
-   about the ar-en outlier that survived two documents.
-3. **`RUN_TESTS=true` runs in the build stage**, which has no GPU — so it exercises the CPU
+   about the ar-en outlier that survived two documents, and is one of the two candidate mechanisms
+   for the zh-en mis-scored leg.
+3. **Check that two systems' scores are not *too* equal.** The zh-en decomposition published a
+   Transformers column identical to its CT2-int8 column on BLEU, chrF, chrF++, TER and COMET to
+   three decimals. That is a duplicated file, not agreement. The tell was algebraic and sat in the
+   published table: Δengine = −Δquant exactly. When two legs of an experiment agree implausibly
+   well, diff the hypothesis files before believing it.
+4. **`RUN_TESTS=true` runs in the build stage**, which has no GPU — so it exercises the CPU
    inference path for *both* build types. The GPU path needs a separate `--gpus` run.
-4. **Easy input does not discriminate decode settings.** Beam 1 and beam 4 agree on short sentences.
+5. **Easy input does not discriminate decode settings.** Beam 1 and beam 4 agree on short sentences.
    Any test asserting a decode property "does something" needs hard input or it passes vacuously.
 
 ---
@@ -282,6 +316,6 @@ resolved as the harness confound). **Phase 9 (pre-merge cleanup) is not started*
 deleting `eval/` from this branch. The one optional follow-up is task 8.6 (cache
 `TextSplitterModel`, a small optimisation).
 
-One loose end outside this branch: the final nine-pair run's per-pair artifacts are not yet in
-`eval/pipeline-results/` on the evaluation branch — `REPORT.md` § "Artifacts" flags exactly what is
-missing. The numbers in both documents are transcribed from that run's `SUMMARY.md`.
+The evaluation branch is complete: the final nine-pair run and the clean all-pairs decomposition are
+committed under `eval/pipeline-results/`, and every figure in `REPORT.md` and in this document is
+read from those files.
