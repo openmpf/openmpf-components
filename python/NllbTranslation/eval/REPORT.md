@@ -30,9 +30,11 @@ sample, seed 42), gold sentence-aligned references from TMX.
 
 - **RTX 5070 Ti (16 GB)**, 2026-07-25 → 07-28 — the original run. Artifacts in `results/`.
 - **H100**, 2026-07-29 — full re-run, all nine pairs, both axes, plus the decomposition on every
-  pair. Artifacts committed in `pipeline-results/` (hypothesis and sample files excluded for size).
-- **H100**, 2026-07-31 — the **final** nine-pair run, after the segmentation fix and the switch to a
-  build-time fp16 conversion. This is the configuration that ships; see
+  pair. Superseded; recoverable from git history at `ce0d5733`.
+- **H100**, 2026-07-31 → 08-01 — the **final** nine-pair run, after the segmentation fix and the
+  switch to a build-time fp16 conversion, plus a clean re-run of the decomposition on every pair.
+  This is the configuration that ships and the source of every current figure; artifacts are
+  committed in `pipeline-results/` (hypothesis and sample files excluded for size). See
   [the final results](#final-results--the-shipping-configuration-nine-pairs) below.
 
 Four experiments:
@@ -56,11 +58,12 @@ Four experiments:
    engine held fixed, Δ(int8 − fp16) is non-significant on **all nine pairs**: BLEU p = 0.33–0.96,
    COMET p = 0.21–0.98. Precision can be chosen purely on speed and memory grounds.
 3. **The throughput win is the *engine*, and its size is hardware-dependent.** CTranslate2-fp16 over
-   Transformers-fp16 is **~2.3× on H100** but **6.3× on the RTX 5070 Ti**. Quoting "~6×" without
-   naming the GPU overstates it for server hardware.
-4. **On H100, int8 is *slower* than fp16 — on all nine pairs** (0.80–0.98× CT2-fp16; ~8.5% slower on
-   average, 20% slower on Chinese). Combined with (2), int8's only remaining advantage is footprint.
-   **On GPU, prefer fp16.**
+   Transformers-fp16 is **~2.4× on H100** — 2.35–2.47× across nine languages, a 5% spread — but
+   **6.3× on the RTX 5070 Ti**. Quoting "~6×" without naming the GPU overstates it for server
+   hardware.
+4. **On H100, int8 is *slower* than fp16 — on all nine pairs** (0.84–0.91× CT2-fp16, ~12% slower on
+   average, no pair reaching parity). Combined with (2), int8's only remaining advantage is
+   footprint. **On GPU, prefer fp16.**
 5. ~~**As-deployed segmentation is broken in *both* branches, on different languages.**~~ **Superseded
    — and it was the finding that mattered.** As originally measured, the character splitter was
    catastrophic on Chinese (−10.0 BLEU, length ratio 0.551) while `develop` under-generated on Bangla
@@ -69,7 +72,10 @@ Four experiments:
    See [Final results](#final-results--the-shipping-configuration-nine-pairs).
 6. **The shipping configuration beats `develop` as-deployed on all nine pairs**, by **+1.23 to
    +14.03 BLEU**, having *lost* on seven of nine before the fix. Length ratios go from 0.55–0.91
-   (CTranslate2, character splitter) and 0.69–0.94 (`develop`) to **~0.97–1.02**.
+   (CTranslate2, character splitter) and 0.69–0.94 (`develop`) to **0.946–1.024**.
+   **That gain is length recovery, not better decoding** — a BLEU brevity-penalty decomposition puts
+   the n-gram precision term at −1.48…+0.75 BLEU, negative on five of nine pairs, and ΔBLEU tracks
+   Δlength-ratio at r² = 0.971. One mechanism, nine magnitudes.
 7. **Axis A is hardware-independent.** The H100 run reproduced the RTX 5070 Ti Axis A scores to three
    decimals on all nine pairs — the quality conclusions do not depend on the GPU.
 8. **The engine swap is quality-neutral at full scale.** The final nine-pair Axis A (fp16 vs fp16,
@@ -84,8 +90,8 @@ Four experiments:
 > engine and precision are confounded; it is what the study originally ran, and its conclusion
 > (quantization is quality-neutral) still stands. The **shipping** configuration is fp16 on both
 > sides, making the engine the sole variable — that table is in
-> [Final results](#final-results--the-shipping-configuration-nine-pairs) and it supersedes the
-> n=1,000 Δengine estimates in the decomposition section.
+> [Final results](#final-results--the-shipping-configuration-nine-pairs). The two agree, and both
+> agree with the clean decomposition below.
 
 Per-sentence, beam 4 on both, splitter neutralized. Δ = int8 − fp16. Significance = paired
 bootstrap, 1,000 resamples. 5,000 segments per pair. **Identical on both hardware platforms.**
@@ -136,73 +142,104 @@ Compute types self-verified at load (`float16` and `int8_float16`).
 Δengine = CT2-fp16 − HF-fp16 (same precision, different engine).
 Δquant = CT2-int8 − CT2-fp16 (same engine, different precision).
 
-> **The Δquant column is this section's result and stands.** The **Δengine** column is superseded by
-> the same contrast at n=5,000 in
-> [Final results](#final-results--the-shipping-configuration-nine-pairs) — this run was sized for
-> Δquant, and its per-pair Δengine estimates are noisy (zh-en +0.08 here vs +0.709 at full scale).
+**These are the 2026-08-01 clean re-run figures**, with `DIFFICULT_LANGUAGE_TOKEN_LIMIT=0` passed to
+the HF leg on every pair and all `hyp.*.en` deleted first. Two pairs changed materially from the
+first attempt; both were harness defects, documented under the table.
 
-| Pair | CT2-fp16 BLEU | Δengine BLEU (p) | Δquant BLEU (p) | Δquant COMET (p) |
-|---|---|---|---|---|
-| ar-en † | 40.20 | +1.91 (p<0.001) † | +0.17 (0.37) | −0.00 (0.98) |
-| bn-en | 33.55 | +0.19 (0.14) | +0.07 (0.71) | −0.04 (0.47) |
-| de-en | 38.85 | −0.19 (0.36) | +0.00 (0.96) | +0.03 (0.71) |
-| fa-en | 36.11 | +0.11 (0.17) | −0.05 (0.73) | +0.07 (0.21) |
-| fr-en | 42.53 | −0.26 (0.036) | −0.18 (0.33) | −0.02 (0.59) |
-| pt-en | 44.92 | −0.14 (0.46) | −0.03 (0.85) | −0.01 (0.84) |
-| ru-en | 30.48 | +0.15 (0.076) | −0.14 (0.34) | −0.04 (0.48) |
-| uk-en | 33.46 | −0.10 (0.29) | +0.06 (0.67) | +0.03 (0.61) |
-| zh-en | 25.55 | +0.08 (0.58) | −0.08 (0.58) | −0.01 (0.86) |
+| Pair | HF-fp16 | CT2-fp16 | CT2-int8 | Δengine BLEU | Δquant BLEU |
+|---|---|---|---|---|---|
+| ar-en | 40.236 | 40.198 | 40.370 | −0.038 | +0.172 |
+| bn-en | 33.356 | 33.547 | 33.619 | +0.191 | +0.072 |
+| de-en | 39.038 | 38.850 | 38.854 | −0.188 | +0.004 |
+| fa-en | 36.002 | 36.109 | 36.058 | +0.107 | −0.051 |
+| fr-en | 42.793 | 42.529 | 42.348 | −0.264 | −0.181 |
+| pt-en | 45.062 | 44.923 | 44.896 | −0.139 | −0.027 |
+| ru-en | 30.325 | 30.475 | 30.338 | +0.150 | −0.138 |
+| uk-en | 33.562 | 33.459 | 33.522 | −0.102 | +0.063 |
+| zh-en | 24.946 | 25.549 | 25.465 | **+0.603** | −0.085 |
 
-† **ar-en was a harness confound, now confirmed and corrected.** The figures in the table above
-were produced with `DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` active in the HF path only — `run_decomp.sh`
-passed no job properties to that system, while `run_pipeline.sh` disables the limit for Axis A. For
-Arabic that limit sub-chunks any sentence over 50 tokens, and 13.4% of the ar-en sample exceeds it.
+**Δquant is non-significant on all nine pairs** (BLEU p = 0.33–0.96, COMET p = 0.21–0.98), spanning
+−0.181…+0.172. Quantization is quality-neutral; precision is a speed-and-memory decision.
 
-Two independent clean re-runs, with the property disabled and the hypothesis files deleted, put
-ar-en in line with every other pair:
+**Δengine spans −0.264…+0.603**, and only zh-en moves. That figure now *agrees* with the
+independent n=5,000 Axis A measurement of the same contrast (+0.709, see
+[Final results](#final-results--the-shipping-configuration-nine-pairs)); at n=1,000 it is not
+individually significant (p=0.158, 95% CI [−0.13, +1.46]), but the two runs bracket the same effect.
+
+### Two harness defects this run corrected
+
+Both were found by comparing the re-run against the original artifacts, and both share the shape
+described in the caveats: **absence of change reads as confirmation.**
+
+**1. ar-en — the `DIFFICULT_LANGUAGE_TOKEN_LIMIT` confound (previously documented).** The original
+run produced HF-fp16 38.288 and Δengine **+1.91**, the largest engine effect in the study. It was an
+artifact: `run_decomp.sh` passed no job properties to the HF system, leaving the limit at its default
+50, while `run_pipeline.sh` disables it. Arabic is the only language in `PROCESS_DIFFICULT_LANGUAGES`
+by default, and 13.4% of the ar-en sample exceeds 50 tokens, so only that leg got sub-chunked.
 
 | run | HF-fp16 BLEU | Δengine BLEU |
 |---|---|---|
-| original (limit active) | 38.288 | **+1.91** (p<0.001) |
-| clean, H100, n=1,000 | **40.236** | **−0.038** |
-| clean, RTX 5070 Ti, n=200 | **40.81** | **+0.155** |
+| original (limit active) | 38.288 | **+1.91** |
+| clean, RTX 5070 Ti, n=200 | 40.81 | +0.155 |
+| clean, H100, n=1,000 | 40.236 | −0.038 |
+| **this run** | **40.236** | **−0.038** |
 
-Disabling the limit lifts HF-fp16 by ~1.95 BLEU and drops Δengine into the −0.26…+0.19 band the
-other eight pairs occupy. HF-fp16 throughput normalises too (1.226 → 1.996 sent/s), so the apparent
-4.1× engine speedup for this pair was also an artifact of the extra chunking.
+Throughput normalised with it (1.226 → 2.089 sent/s), so the apparent 4.1× engine speedup on this
+pair was the same artifact.
 
-*A note on how this was established, because the intermediate steps were wrong.* An earlier re-run
-appeared to show the property made no difference, and this report briefly recorded the confound as
-"disproved". That re-run never executed: `run_decomp.sh` skips generation when the hypothesis file
-is already complete, so it reused the old text and re-scored it. Any experiment through these
-harnesses must delete `hyp.*.en` first.
+**2. zh-en — the HF leg was scoring another system's output.** In the original run zh-en's HF-fp16
+column was **identical to its CT2-int8 column on every metric** — BLEU 25.465, chrF 49.785,
+chrF++ 48.019, TER 67.122, COMET 81.629, all to three decimals. Two different systems do not agree
+to three decimals on five metrics; that is one hypothesis file scored twice. The algebraic
+signature was visible in the published table as Δengine = −Δquant = 0.085 exactly.
+
+The clean re-run gives HF-fp16 **24.946**, and Δengine moves +0.085 → **+0.603**. This also retires
+an inference in an earlier revision of this report, which treated the n=1,000 Δengine column as
+merely *underpowered* on zh-en and preferred the n=5,000 Axis A figure. The column was not noisy
+there — it was wrong, for a specific and findable reason, and the corrected value agrees with
+Axis A.
+
+Two candidate mechanisms, both documented traps in this harness, and the artifacts do not
+distinguish them: the crossed image-tag assignment that once existed in `run_decomp.sh`, or its
+resume guard preserving a stale `hyp.hf-fp16.en` across every subsequent run. Either way the rule is
+the same — **delete `hyp.*.en` before re-running anything.**
+
+*Seven of nine pairs reproduced their BLEU exactly* (all metrics, three decimals) while their
+throughput figures moved, confirming both that they were genuinely regenerated and that beam-4
+decoding on this stack is deterministic.
 
 ### Throughput (sentences/sec, single-sentence latency, batch 1, H100)
 
+Same clean re-run. Both defects above also distorted this table; corrected, it is strikingly uniform.
+
 | Pair | HF-fp16 | CT2-fp16 | CT2-int8 | engine speedup | int8 ÷ fp16 |
 |---|---|---|---|---|---|
-| ar-en † | 1.23 † | 5.02 | 4.65 | 4.1× † | 0.93× |
-| bn-en | 2.15 | 5.06 | 4.66 | 2.4× | 0.92× |
-| de-en | 2.23 | 4.80 | 4.44 | 2.2× | 0.93× |
-| fa-en | 2.05 | 4.62 | 4.55 | 2.3× | 0.98× |
-| fr-en | 2.06 | 4.95 | 4.75 | 2.4× | 0.96× |
-| pt-en | 2.06 | 5.00 | 4.59 | 2.4× | 0.92× |
-| ru-en | 2.23 | 5.33 | 4.77 | 2.4× | 0.89× |
-| uk-en | 2.22 | 5.30 | 4.84 | 2.4× | 0.91× |
-| zh-en | 2.73 | 4.64 | 3.69 | 1.7× | **0.80×** |
+| ar-en | 2.089 | 4.977 | 4.253 | 2.38× | 0.85× |
+| bn-en | 2.206 | 5.179 | 4.574 | 2.35× | 0.88× |
+| de-en | 2.248 | 5.318 | 4.660 | 2.37× | 0.88× |
+| fa-en | 2.128 | 5.042 | 4.569 | 2.37× | 0.91× |
+| fr-en | 2.056 | 5.081 | 4.440 | 2.47× | 0.87× |
+| pt-en | 2.097 | 5.005 | 4.539 | 2.39× | 0.91× |
+| ru-en | 2.252 | 5.386 | 4.498 | 2.39× | 0.84× |
+| uk-en | 2.173 | 5.137 | 4.624 | 2.36× | 0.90× |
+| zh-en | 2.105 | 5.079 | 4.576 | 2.41× | 0.90× |
 
 **Two conclusions, both of which change prior guidance.**
 
-**The speedup is the engine, and it is smaller on server hardware.** CTranslate2 at *unchanged* fp16
-precision buys 1.7–2.4× on H100. (The ar-en row above reads 4.1×, but that pair's HF-fp16 figure is depressed by the harness confound in † — corrected, it is in the same band.) The same contrast measured 6.3× on the RTX 5070 Ti: H100
-accelerates the batched PyTorch path far more than it accelerates CTranslate2's latency-bound
-single-sentence path. The engine win is real and worth taking, but "~6×" is a consumer-GPU number.
+**The speedup is the engine, and on H100 it is ~2.4× — uniformly.** The range is **2.35–2.47×**
+across nine languages, a spread of 5%. The previously reported "1.7–2.4×, varies by language" was
+itself an artifact of the two defects: ar-en's 4.1× came from the depressed HF baseline, and zh-en's
+1.7× from the mis-scored leg. There is no real per-language variation in the engine win to explain.
 
-**int8 is slower than fp16 on H100, unanimously.** Every pair lands below 1.0×, averaging ~0.92× and
-falling to 0.80× on Chinese. This reverses the RTX 5070 Ti result (int8 was ~5% *faster* there).
-Since quantization is also quality-neutral, int8 retains exactly one advantage on GPU — 3.36 GB vs
-6.7 GB — which is immaterial on an 80 GB card. **CT2-fp16 is the right GPU configuration.** int8
-remains correct for CPU deployment, where CTranslate2 does not support fp16 at all.
+It *is* hardware-dependent: the same contrast measured 6.3× on the RTX 5070 Ti, because H100
+accelerates the batched PyTorch path far more than CTranslate2's latency-bound single-sentence path.
+The engine win is real and worth taking, but "~6×" is a consumer-GPU number.
+
+**int8 is slower than fp16 on H100, unanimously** — 0.84–0.91×, averaging ~0.88×, with no pair
+reaching parity. This reverses the RTX 5070 Ti result (int8 was ~5% *faster* there). Since
+quantization is also quality-neutral, int8 retains exactly one advantage on GPU — 3.36 GB vs 6.7 GB
+— which is immaterial on an 80 GB card. **CT2-fp16 is the right GPU configuration.** int8 remains
+correct for CPU deployment, where CTranslate2 does not support fp16 at all.
 
 ### A note on the main pipeline's own timings
 
@@ -303,17 +340,17 @@ beat Transformers by the same margin on zh-en — +0.73 BLEU as int8 (original A
 (here) — while differing from *each other* by +0.02. A gain common to both precisions and absent
 between them is the engine.
 
-This supersedes the n=1,000 Δengine column in the decomposition: the range tightens from
-−0.26…+1.91 to **−0.25…+0.71**, and ar-en — the pair that produced the +1.91 harness artifact —
-lands at −0.251, in the same band as everything else. Third independent confirmation that the ar-en
-outlier was the confound and not the engine.
+**This agrees with the clean decomposition**, which measures the same contrast independently at
+n=1,000 and reports Δengine −0.264…+0.603 against this run's −0.251…+0.709. The two runs concur
+pair-by-pair on which languages move and by roughly how much, including zh-en (+0.603 vs +0.709) and
+ar-en (−0.038 vs −0.251).
 
-*Where the two disagree.* The decomposition put zh-en Δengine at **+0.08** (p=0.58); this run puts it
-at **+0.709**. Underpowered rather than contradictory: at n=1,000 its HF-fp16 subset scored ~25.47
-against 24.384 over the full 5,000, so the subsample was ~1.1 BLEU unrepresentative for this pair,
-and its bootstrap could not separate the delta from zero in either direction. Prefer the n=5,000
-figure. Read generally: the decomposition was sized to detect a *quantization* effect and reported
-Δengine as a by-product; do not quote its per-pair Δengine point estimates.
+They did not always concur, and the reason was a defect rather than sampling noise: the *original*
+decomposition read zh-en Δengine as +0.08, and an earlier revision of this report explained that
+away as an underpowered subsample. It was not — that run's HF leg was scoring another system's
+output. See [the two harness defects](#two-harness-defects-this-run-corrected). The lesson is
+recorded because the wrong explanation was plausible enough to publish: *a discrepancy between two
+measurements is a reason to inspect the artifacts, not to reconcile the numbers.*
 
 **Quantization: a consistency check, not new evidence.** Differencing the two CT2 columns gives
 fp16 − int8 of ar −0.378, bn +0.123, de +0.182, fa −0.064, fr +0.266, pt +0.117, ru +0.031,
@@ -324,41 +361,63 @@ remains the decomposition's paired bootstrap, not this arithmetic.
 
 ### Axis B — as-deployed, each branch exactly as shipped
 
-| Pair | HF (`develop`) | CT2 before fix (char splitter) | Δ before | **CT2 shipping** | **Δ now** |
-|---|---|---|---|---|---|
-| ar-en | 46.19 | 45.18 | −1.00 | **48.80** | **+2.61** |
-| bn-en | 29.86 | 37.43 | +7.57 | **43.89** | **+14.03** |
-| de-en | 45.97 | 45.24 | −0.73 | **47.88** | **+1.91** |
-| fa-en | 34.98 | 42.20 | +7.22 | **45.58** | **+10.60** |
-| fr-en | 49.35 | 48.42 | −0.93 | **50.58** | **+1.23** |
-| pt-en | 51.47 | 49.96 | −1.51 | **52.86** | **+1.39** |
-| ru-en | 38.74 | 38.54 | −0.20 | **41.08** | **+2.34** |
-| uk-en | 41.78 | 41.16 | −0.62 | **44.01** | **+2.23** |
-| zh-en | 27.03 | 17.00 | −10.03 | **35.88** | **+8.85** |
+All values below are read from the committed per-pair `axisB.{hf,ct2}.report.txt`.
 
-The run's `SUMMARY.md` reports Axis B as a delta only, so the **CT2 shipping** column is
-`HF + Δ`. The HF leg is unchanged between runs (its Axis A scores are identical to three decimals),
-and the derivation reproduces the three independently-measured SENTENCE-mode scores exactly —
-bn 43.89, fa 45.58, zh 35.88 — so the other six absolutes are sound. Per-pair
-`axisB.*.report.txt` holds the directly-measured values and the length ratios.
+| Pair | HF (`develop`) | ratio HF | **CT2 shipping** | ratio CT2 | **ΔBLEU** | Δ *before* the fix |
+|---|---|---|---|---|---|---|
+| ar-en | 46.19 | 0.942 | **48.80** | 0.984 | **+2.61** | −1.00 |
+| bn-en | 29.86 | 0.692 | **43.89** | 0.972 | **+14.03** | +7.57 |
+| de-en | 45.97 | 0.915 | **47.88** | 0.946 | **+1.91** | −0.73 |
+| fa-en | 34.98 | 0.764 | **45.58** | 1.024 | **+10.60** | +7.22 |
+| fr-en | 49.35 | 0.931 | **50.58** | 0.956 | **+1.23** | −0.93 |
+| pt-en | 51.47 | 0.935 | **52.86** | 0.968 | **+1.39** | −1.51 |
+| ru-en | 38.74 | 0.915 | **41.09** | 0.949 | **+2.35** | −0.20 |
+| uk-en | 41.78 | 0.915 | **44.01** | 0.954 | **+2.23** | −0.62 |
+| zh-en | 27.03 | 0.751 | **35.88** | 0.972 | **+8.85** | −10.03 |
 
-**Every pair now favours CTranslate2, where seven of nine previously lost.** The smallest swing is
-+2.2 BLEU (fr-en), the largest +18.9 (zh-en). Length ratios, where measured, move into 0.97–1.02
-(zh 0.972, bn 0.972, fa 1.024) from 0.55–0.91.
+**Every pair now favours CTranslate2, where seven of nine previously lost.** The smallest swing
+against the pre-fix configuration is +2.2 BLEU (fr-en), the largest +18.9 (zh-en).
 
-**What is actually responsible.** Axis B varies three things at once — engine, decoding
-(greedy vs beam 4), and segmentation. Axis A above prices the engine at ≈0, which leaves two, and
-the results split cleanly along how badly `develop` was under-generating:
+### What is actually responsible — measured, not inferred
 
-- **bn/fa/zh (+8.85 … +14.03)** — `develop`'s length ratios were 0.692 / 0.764 / 0.751. These pairs
-  are dominated by **segmentation**; there is no plausible decoding change worth 14 BLEU.
-- **The other six (+1.23 … +2.61)** — `develop`'s ratios were already 0.915–0.942, so little
-  under-generation was available to fix. This band is plausibly mostly **beam 4 vs greedy**.
+An earlier revision of this report split the result by eye: bn/fa/zh were "dominated by
+segmentation" and the remaining six were "plausibly mostly beam 4 vs greedy". **With all nine length
+ratios now available that inference is testable, and it was wrong.**
 
-The split is an inference from the length ratios, not a measured decomposition; the discriminating
-run (force beam 4 in the HF blob) was never executed. It is now a low-value experiment — it would
-apportion credit between two changes that are both being kept — but it is the honest caveat on
-reading the +1.23…+2.61 band as a segmentation win.
+BLEU factors exactly as `BP × geomean(n-gram precisions)`, so the gain splits into a *length
+recovery* term and an *n-gram precision* term with no modelling assumptions:
+
+| Pair | ΔBLEU | from length recovery | from n-gram precision | length share |
+|---|---|---|---|---|
+| ar-en | +2.61 | +2.13 | +0.48 | 82% |
+| bn-en | +14.03 | +14.99 | −0.96 | 107% |
+| de-en | +1.91 | +1.67 | +0.24 | 88% |
+| fa-en | +10.60 | +12.08 | −1.48 | 114% |
+| fr-en | +1.23 | +1.43 | −0.20 | 116% |
+| pt-en | +1.39 | +1.97 | −0.58 | 141% |
+| ru-en | +2.35 | +1.60 | +0.75 | 68% |
+| uk-en | +2.23 | +1.94 | +0.29 | 87% |
+| zh-en | +8.85 | +9.38 | −0.53 | 106% |
+
+**The entire as-deployed gain is length recovery, on all nine pairs.** The precision term spans
+−1.48…+0.75 BLEU and is *negative on five of nine* — translating more text slightly dilutes n-gram
+precision, which is the expected signature of recovering content rather than of decoding better.
+Shares above 100% are exactly that effect. (The split is order-dependent in principle; computing it
+the other way moves no value by more than 0.5 BLEU and changes no sign that matters.)
+
+Regressing ΔBLEU on Δlength-ratio across the nine pairs gives **r² = 0.971** with an intercept of
+**+0.44 BLEU**. A uniform benefit from beam-4-vs-greedy would appear precisely as that intercept, so
+it is bounded at well under half a BLEU point — consistent with the per-pair precision terms.
+
+The six Latin/Cyrillic pairs were *not* a different phenomenon. Their length ratios improved too
+(0.911–0.942 → 0.944–0.984); there was simply less under-generation available to recover. It is one
+mechanism operating at nine different magnitudes, and the magnitude tracks how badly `develop` was
+truncating that language.
+
+That leaves attribution to segmentation rather than to beam search resting on one further link: the
+splitter sweep held the decoder fixed at beam 4 and varied only chunk count, reproducing length
+ratios from 0.363 to 1.031 — the full observed range — so chunk count alone is sufficient to produce
+these length effects.
 
 ### The mechanism, and how it was found
 
@@ -416,18 +475,20 @@ Two consequences for how this report should be read:
      server cards.
    - **CPU → int8** (`int8_float32`). CTranslate2 does not support fp16 on CPU at all; a
      float16 model loaded on CPU is silently up-converted to float32, forfeiting the size win.
-2. **Adopt CTranslate2 as the engine** — ~2.3× over Transformers on H100 at indistinguishable
-   quality, and more on smaller cards. Credit the gain to the engine, not to quantization.
+2. **Adopt CTranslate2 as the engine** — **~2.4×** over Transformers on H100 (2.35–2.47× across
+   nine languages) at indistinguishable quality, and more on smaller cards. Credit the gain to the
+   engine, not to quantization.
 3. ~~**Fix segmentation for dense scripts — in both directions.**~~ **RESOLVED, and it was the
    highest-value change in the study.** Neither splitter was the answer: the fix is
    `SENTENCE_SPLITTER_MODE=SENTENCE` (one sentence per chunk), now the shipped default. Confirmed
    at 5,000 sentences/pair on **all nine** — CTranslate2 as-deployed now beats `develop` by
    **+1.23 to +14.03 BLEU**, having lost on seven of nine before. See
    [Final results](#final-results--the-shipping-configuration-nine-pairs).
-4. **Keep beam 4; never inherit `develop`'s greedy default.** It costs little on this engine, and
-   it is the most likely source of the +1.2…+2.6 BLEU as-deployed margin on the six pairs where
-   segmentation had little left to fix. (It is *not* the cause of the bn/fa/zh gap — that was
-   segmentation.)
+4. **Keep beam 4; never inherit `develop`'s greedy default.** It costs little on this engine. Note
+   that the as-deployed margin is *not* the argument for it: the BP decomposition bounds any uniform
+   beam contribution at ~+0.44 BLEU, and the +1.23…+14.03 gain is length recovery on every pair.
+   Beam 4 is kept because it is standard practice and cheap here, not because this study measured a
+   benefit from it.
 5. ~~**Fix `NLLB_MODEL` handling on the ctranslate2 branch (component bug, found during this
    work).**~~ **RESOLVED** on `prototype/nllb-ctranslate2` (commit `777437f9`). The component loaded
    `DEFAULT_NLLB_MODEL` in `__init__` and `_check_model` only reloaded
@@ -448,14 +509,22 @@ Implementation plan: `../PLAN.md`.
 
 ## Caveats
 
-- **Axis B confounds segmentation and decoding** (greedy vs beam 4). The +1.23…+14.03 as-deployed
-  margin is established on all nine pairs; its *apportionment* between the two is inferred from
-  length ratios, not measured. The engine's share is separately known to be ≈0 from the final
-  Axis A.
-- **The ar-en engine contrast was a harness confound, now corrected.** `DIFFICULT_LANGUAGE_TOKEN_LIMIT`
-  was active in the HF path only. Two clean re-runs put Δengine at −0.038 and +0.155, in line with
-  the other pairs. An intermediate claim in this report that the confound had been "disproved" was
-  itself wrong — that test silently reused cached hypotheses. See the † note.
+- **Axis B still varies segmentation and decoding together** (greedy vs beam 4). The BP
+  decomposition bounds the decoding share at ~+0.44 BLEU and attributes the rest to length recovery,
+  but no run isolates beam search directly. "Segmentation causes the length recovery" rests on the
+  sweep, which varied chunk count at fixed beam 4 and reproduced the full range of ratios.
+- **Two harness defects were found by re-running, not by review**, and both had already been
+  published: the ar-en `DIFFICULT_LANGUAGE_TOKEN_LIMIT` confound, and the zh-en HF leg scoring
+  another system's output. Neither was visible in the summary tables without cross-checking the
+  per-metric artifacts. Assume the same class of defect until an experiment has been reproduced from
+  deleted hypothesis files.
+- **The pre-fix Axis B figures are no longer backed by working-tree artifacts.** The
+  `axisB.{fp16,int8}.*` files were replaced in place by `axisB.{hf,ct2}.*` when the shipping
+  configuration was measured. The "Δ before the fix" column is recoverable only from git history
+  (`git show ce0d5733:python/NllbTranslation/eval/pipeline-results/<pair>/axisB.int8.report.txt`).
+- **Decomposition sample size** is 1,000 per pair (vs 5,000 for Axis A), so its confidence intervals
+  are wider. The quantization null result is consistent across all nine pairs, which is what carries
+  it, rather than any single pair's precision.
 - **Decomposition sample size** is 1,000 per pair (vs 5,000 for Axis A), so its confidence intervals
   are wider. The quantization null result is consistent across all nine pairs, which is what carries
   it, rather than any single pair's precision.
@@ -484,25 +553,22 @@ Implementation plan: `../PLAN.md`.
   signal, not a benchmark: it is not server silicon and no CPU quality run exists. Axis A's
   quantization null result carries over on the reasonable assumption that `int8_float32` on CPU
   scores like `int8_float16` on GPU, which has **not** been verified.
-- **The beam-4 discriminating run.** Would apportion the six small-margin pairs between beam search
-  and segmentation. Now low value — both changes are being kept, and the bn/fa/zh result no longer
-  depends on the answer. It was the highest-value remaining experiment *before* the segmentation
-  fix, when it would have decided whether the splitter port was a fix or a regression; the sweep
-  answered that question more directly.
+- **The beam-4 discriminating run.** Would isolate beam search from segmentation directly rather
+  than bounding it. Largely answered by the BP decomposition, which caps any uniform beam
+  contribution at ~+0.44 BLEU, and low value regardless since both changes are being kept.
 - **Batched throughput for the CT2 systems.** All decomposition figures are batch 1. Batched
   CTranslate2 was spot-checked only on the RTX 5070 Ti (fp16 33.1 vs int8 32.1 sent/s).
 
 ## Artifacts
 
-- **`pipeline-results/`** — the **2026-07-29** H100 run (fp16-vs-int8 labels, char splitter).
-  `SUMMARY.md`; per pair `axisA.report.txt`, `axisB.{fp16,int8}.report.txt`, `meta.*.json`; per pair
-  `decomp/<pair>/decomp.SUMMARY.md` and `decomp.{engine,quant}.report.txt`. Hypothesis and sample
-  files omitted for size.
-  **⚠ The 2026-07-31 final run's artifacts are not yet committed here** — its numbers are
-  transcribed into [Final results](#final-results--the-shipping-configuration-nine-pairs) from the
-  run's `SUMMARY.md`, but the per-pair `axisA.report.txt` / `axisB.{ct2,hf}.report.txt` (and the
-  length ratios for six of nine pairs) still live only on the H100 host. Copy them in before this
-  report is reviewed.
+- **`pipeline-results/`** — the **final** H100 run of the shipping configuration, committed in
+  `99330c06`. `SUMMARY.md`; per pair `axisA.report.txt`, `axisB.{hf,ct2}.report.txt`,
+  `meta.{hf,ct2}.json`; per pair `decomp/<pair>/decomp.SUMMARY.md`,
+  `decomp.{engine,quant}.report.txt` and `meta.{hf-fp16,ct2-fp16,ct2-int8}.json`. Hypothesis and
+  sample files omitted for size. Every figure in this report is now read from these files, except
+  the pre-fix Axis B column noted in the caveats.
+  The legs were relabelled in this run: `fp16`/`int8` became `hf`/`ct2`, because the CTranslate2
+  image ships fp16 on GPU and the old names had stopped describing it.
 - **`results/`** — RTX 5070 Ti run (original, gitignored locally). Adds `axisA.segments.csv`
   (per-sentence + COMET) and the `hyp.*.en` files.
 - **Pipeline:** `run_pipeline.sh`, `run_decomp.sh`, `tmx_sample.py`, `mt_eval.py`,
