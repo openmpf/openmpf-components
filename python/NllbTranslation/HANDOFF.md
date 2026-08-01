@@ -48,6 +48,21 @@ accelerates the batched PyTorch path far more than it accelerates CTranslate2's 
 
 *Evidence:* `REPORT.md` § "Engine vs quantization". Reproduce with `eval/run_decomp.sh`.
 
+### "Your decomposition table shows ar-en gaining +1.91 BLEU from the engine. Engines don't do that."
+
+Correct, and they didn't. That figure is a **harness artifact**, and the report marks it with a †.
+`run_decomp.sh` passed no job properties to the Transformers system, so
+`DIFFICULT_LANGUAGE_TOKEN_LIMIT=50` stayed active there while the pipeline disables it — and 13.4%
+of the ar-en sample exceeds 50 tokens, so only that leg got sub-chunked. It depressed the baseline,
+inventing both the quality gap and a bogus 4.1× speedup.
+
+Three independent measurements put ar-en in line with every other pair: clean re-runs at n=1,000
+(−0.038) and n=200 (+0.155), and the full-scale nine-pair Axis A (**−0.251** at n=5,000).
+
+Worth knowing how this was *nearly missed*: an intermediate re-run appeared to show the property
+made no difference, and two documents briefly recorded the confound as disproved. That re-run never
+executed — see trap 2. **Delete `hyp.*.en` before re-running anything through these harnesses.**
+
 ### "We shipped int8 before. Why is the GPU build fp16 now?"
 
 Because int8 is **slower** on H100 — measured on all nine pairs, 0.80–0.98× the speed of fp16, worst
@@ -90,7 +105,7 @@ NLLB **under-generates on long inputs**, monotonically in chunk count. Measured 
 → length ratio 0.363, 23 → 0.457, 42 → 0.727, 69 → 0.869, 238 → 1.031. Packing sentences into
 larger chunks loses content; one sentence per chunk does not.
 
-Full-scale result (5,000 sentences/pair), as-deployed:
+Full-scale result (5,000 sentences/pair), as-deployed, on the three worst-affected pairs:
 
 | pair | before (char splitter) | **after (SENTENCE)** | develop |
 |---|---|---|---|
@@ -98,8 +113,17 @@ Full-scale result (5,000 sentences/pair), as-deployed:
 | bn-en | 37.43 / 0.825 | **43.89 / 0.972** | 29.86 / 0.692 |
 | fa-en | 42.20 / 0.899 | **45.58 / 1.024** | 34.98 / 0.764 |
 
-Chinese as-deployed went from **−8.64 BLEU behind** develop to **+8.85 ahead**. A Latin control
-(pt-en) improved slightly and did not regress.
+Chinese as-deployed went from **−10.03 BLEU behind** develop to **+8.85 ahead** — an 18.9-point
+swing on one setting.
+
+**All nine pairs were then re-run at full scale**, and CTranslate2 now wins every one:
+
+| | ar | bn | de | fa | fr | pt | ru | uk | zh |
+|---|---|---|---|---|---|---|---|---|---|
+| Δ BLEU vs develop, **before** | −1.00 | +7.57 | −0.73 | +7.22 | −0.93 | −1.51 | −0.20 | −0.62 | −10.03 |
+| Δ BLEU vs develop, **after** | **+2.61** | **+14.03** | **+1.91** | **+10.60** | **+1.23** | **+1.39** | **+2.34** | **+2.23** | **+8.85** |
+
+Seven of nine were *losing* before the change. No pair regressed.
 
 Two points a reviewer may raise:
 
@@ -109,8 +133,14 @@ Two points a reviewer may raise:
   Bangla and Persian by importing develop's own under-generation. The character-vs-token framing was
   a red herring — with one sentence per chunk the sizing unit barely matters.
 
-*Evidence:* `REPORT.md` § "Follow-up: the as-deployed gap is chunk size". Reproduce in ~3 minutes
-with `eval/sweep_splitter.sh`.
+*Evidence:* `REPORT.md` § "Final results — the shipping configuration, nine pairs". Reproduce in
+~3 minutes with `eval/sweep_splitter.sh`.
+
+**Do not over-claim this table.** Axis B varies segmentation *and* decoding (develop is greedy, this
+branch is beam 4). The bn/fa/zh gains are segmentation — no decode setting is worth 14 BLEU, and
+develop's length ratios there were 0.69–0.76. The other six pairs are a +1.2…+2.6 band where develop
+was already at 0.92–0.94, so that band is plausibly mostly beam-vs-greedy. That split is inferred
+from length ratios, **not measured**; the discriminating run was never executed.
 
 ### "Why does the component skip translation when source == target?"
 
@@ -189,14 +219,15 @@ History contains reversals. They are deliberate and evidence-driven; this is why
 
 Do not defend these as measured; they are not.
 
-- **The full-scale as-deployed result covers bn/fa/zh only.** The five Latin/Cyrillic pairs have not
-  been re-run at full scale under `SENTENCE` mode. A pt-en control at N=200 improved slightly, so
-  regression is unlikely — but "CT2 beats develop as-deployed" currently rests on three languages.
-- **The ar-en engine outlier is unexplained.** It is the only pair with a large Δengine (+1.91 BLEU)
-  and the slowest HF throughput. An earlier claim that this was disproved as a chunking artifact was
-  itself wrong — see the trap below.
+- **The as-deployed margin is not decomposed.** "CT2 beats develop as-deployed" now rests on all
+  nine pairs at full scale — that part *is* measured. What is not measured is how much of it is
+  segmentation and how much is beam-4-vs-greedy. See the caveat under the splitter question.
+- **Axis B length ratios are known for three pairs.** bn/fa/zh land at 0.972–1.024. The other six
+  are in the per-pair `axisB.*.report.txt` on the H100 host but were not transcribed.
 - **Quantization neutrality is per-language for Axis A, but the decomposition is n=1,000 per pair**
   versus 5,000 for Axis A. The consistency across nine pairs carries it, not any single pair.
+  Do **not** quote that run's per-pair *Δengine* figures — it was sized for Δquant and its Δengine
+  column is noisy (zh-en reads +0.08 there against +0.709 at n=5,000).
 - **CPU throughput is measured on 4 container cores** at CTranslate2's default threading. A larger
   host will differ; `NLLB_INTER_THREADS`/`NLLB_INTRA_THREADS` exist but are unmeasured.
 
@@ -246,6 +277,11 @@ is in git. `eval/README.md` covers setup.
 
 ## Open work
 
-`PLAN.md` is authoritative. In short: Phases 0–8 are complete; **Phase 9 (pre-merge cleanup) is
-not started** and includes deleting `eval/` from this branch. Optional follow-ups are task 8.5b (the
-ar-en outlier) and 8.6 (cache `TextSplitterModel`, a small optimisation).
+`PLAN.md` is authoritative. In short: Phases 0–8 are complete, including 8.5b (the ar-en outlier,
+resolved as the harness confound). **Phase 9 (pre-merge cleanup) is not started** and includes
+deleting `eval/` from this branch. The one optional follow-up is task 8.6 (cache
+`TextSplitterModel`, a small optimisation).
+
+One loose end outside this branch: the final nine-pair run's per-pair artifacts are not yet in
+`eval/pipeline-results/` on the evaluation branch — `REPORT.md` § "Artifacts" flags exactly what is
+missing. The numbers in both documents are transcribed from that run's `SUMMARY.md`.

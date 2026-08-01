@@ -38,8 +38,8 @@ Five findings drive this plan:
   slower on average, 20% slower on Chinese). int8's only remaining advantage is footprint, which is
   irrelevant on an 80 GB card. **This is why the GPU build uses fp16.**
 - **The engine win is real but hardware-dependent:** CT2-fp16 vs HF-fp16 is ~2.3× on H100
-  (1.7–2.4× on eight of nine pairs; ar-en is an unexplained outlier at 4.1×) versus 6.3× on a
-  consumer RTX 5070 Ti. Do not quote "~6×" unqualified.
+  (1.7–2.4× on eight of nine pairs; ar-en's 4.1× was a harness confound, resolved in 8.5b) versus
+  6.3× on a consumer RTX 5070 Ti. Do not quote "~6×" unqualified.
 - **Axis A is hardware-independent.** The H100 run reproduced the RTX 5070 Ti Axis A scores to three
   decimals on all 9 pairs — the quality conclusions do not depend on the GPU.
 - **The as-deployed splitter picture is bimodal, and `develop`'s splitter is not uniformly better.**
@@ -544,11 +544,16 @@ names by string needs updating.
 
 ## Phase 8 — Validation
 
-- [x] **8.1 Re-run Axis A — done for bn/fa/zh, no regression.** The HF column reproduces the
-      recorded numbers exactly (33.243 / 36.17 / 24.384). The CT2 column is now **fp16** where the
-      recorded baseline was **int8**, and the deltas are bn +0.12, fa -0.06, zh -0.02 — all within
-      noise. An independent confirmation, from a different direction, of the decomposition's finding
-      that quantization is quality-neutral.
+- [x] **8.1 Re-run Axis A — done for all nine pairs, no regression.** The HF column reproduces the
+      recorded numbers exactly (33.243 / 36.17 / 24.384 …). The CT2 column is now **fp16** where the
+      recorded baseline was **int8**, so this contrast isolates the *engine* with no quantization
+      confound, at 5,000 segments/pair. dBLEU spans **-0.251 … +0.709** across nine pairs; only
+      zh-en moves at all, and it moves *up*.
+
+      This supersedes the n=1,000 `Δengine` column in the original decomposition, which was sized
+      for `Δquant` and is noisy per-pair — zh-en reads +0.08 there against +0.709 here. It is also
+      the third independent confirmation that ar-en's +1.91 was the harness confound (8.5b): it
+      lands at **-0.251**, in the same band as everything else.
 - [x] **8.2 Re-run Axis B for zh, bn and fa — PASSED, and exceeded the target.** 5,000 sentences on
       H100 with `SENTENCE_SPLITTER_MODE=SENTENCE`:
 
@@ -559,12 +564,16 @@ names by string needs updating.
       | fa-en | 42.20 / 0.899 | 35.05 / 0.756 | **45.58 / 1.024** | 34.98 / 0.764 |
 
       Acceptance was "zh reaches ~0.90, bn/fa do not regress below 0.825/0.899". All three landed at
-      0.972-1.024, and `AxisB dBLEU` is **positive on every pair** (+8.85, +14.03, +10.60): the
+      0.972-1.024, and `AxisB dBLEU` is **positive on all three** (+8.85, +14.03, +10.60): the
       component now beats `develop` as-deployed on exactly the languages where `develop` was weakest.
-      The Chinese figure that started this investigation moved from **-8.64 to +8.85**.
+      The Chinese figure that started this investigation moved from **-10.03 to +8.85**.
 
       The 200-sentence sweep predicted 0.97-1.03 and full scale delivered 0.972-1.024, so
       `sweep_splitter.sh` is a trustworthy proxy for future splitter questions.
+
+      **Extended to all nine pairs** (2026-07-31 H100 run). Every pair now favours CTranslate2,
+      where seven of nine previously lost: ar +2.61, bn +14.03, de +1.91, fa +10.60, fr +1.23,
+      pt +1.39, ru +2.34, uk +2.23, zh +8.85. Full tables in `eval/REPORT.md` § "Final results".
 - [x] **8.3 Throughput measured — SENTENCE mode is free, and on CPU it is a win.** The concern was
       that sentence mode's 6-8x higher chunk count would cost throughput. It does not
       (`eval/bench_split_mode.py`, in-process so model load and container startup are excluded;
